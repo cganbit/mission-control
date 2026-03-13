@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   const [task] = await query(
     `INSERT INTO tasks (squad_id, agent_id, title, description, priority, due_date, created_by)
      VALUES ($1, $2, $3, $4, $5, $6, 'user') RETURNING *`,
-    [squad_id, agent_id ?? null, title, description ?? null, priority ?? 'medium', due_date ?? null]
+    [squad_id, agent_id || null, title, description || null, priority || 'medium', due_date || null]
   );
 
   // Log activity
