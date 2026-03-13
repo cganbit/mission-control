@@ -1,0 +1,11 @@
+.env
+.env.local
+*.env
+node_modules/
+.next/
+.npm/
+__pycache__/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
