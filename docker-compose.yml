@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  mission-control:
+    build: .
+    container_name: mission-control
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://evolution:REDACTED_PG_PASS@postgres:5432/mission_control
+      JWT_SECRET: REDACTED_JWT_SECRET
+      ADMIN_PASSWORD: REDACTED_ADMIN_PASS
+      DATABASE_SSL: "false"
+      NODE_ENV: production
+    networks:
+      - evolution-api-h4pg_default
+
+networks:
+  evolution-api-h4pg_default:
+    external: true

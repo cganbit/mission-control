@@ -1,0 +1,43 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getSessionFromRequest } from '@/lib/auth';
+import { query, queryOne } from '@/lib/db';
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!await getSessionFromRequest(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { id } = await params;
+  const body = await req.json();
+
+  const task = await queryOne<{ squad_id: string; title: string }>(
+    'SELECT squad_id, title FROM tasks WHERE id = $1', [id]
+  );
+  if (!task) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  const [updated] = await query(
+    `UPDATE tasks SET
+      title       = COALESCE($1, title),
+      description = COALESCE($2, description),
+      status      = COALESCE($3, status),
+      agent_id    = COALESCE($4, agent_id),
+      priority    = COALESCE($5, priority),
+      due_date    = COALESCE($6, due_date),
+      updated_at  = NOW()
+     WHERE id = $7 RETURNING *`,
+    [body.title, body.description, body.status, body.agent_id, body.priority, body.due_date, id]
+  );
+
+  if (body.status) {
+    await query(
+      `INSERT INTO activity_log (squad_id, action, detail) VALUES ($1, 'task_moved', $2)`,
+      [task.squad_id, `"${task.title}" → ${body.status}`]
+    );
+  }
+
+  return NextResponse.json(updated);
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!await getSessionFromRequest(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { id } = await params;
+  await query('DELETE FROM tasks WHERE id = $1', [id]);
+  return NextResponse.json({ ok: true });
+}
