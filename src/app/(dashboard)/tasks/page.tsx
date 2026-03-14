@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import confetti from 'canvas-confetti';
 import { STATUS_LABELS, STATUS_COLORS, PRIORITY_COLORS, formatDate } from '@/lib/utils';
 
 const STATUSES = ['backlog', 'assigned', 'in_progress', 'review', 'done'] as const;
@@ -30,6 +31,7 @@ export default function TasksPage() {
   const [form, setForm] = useState({ squad_id: '', agent_id: '', title: '', description: '', priority: 'medium', due_date: '' });
   const [saving, setSaving] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
+  const [justDone, setJustDone] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     const url = filterSquad ? `/api/tasks?squad_id=${filterSquad}` : '/api/tasks';
@@ -56,10 +58,15 @@ export default function TasksPage() {
     setForm({ squad_id: '', agent_id: '', title: '', description: '', priority: 'medium', due_date: '' });
     setShowForm(false);
     setSaving(false);
-    load();
+    await load();
   }
 
   async function moveTask(taskId: string, newStatus: string) {
+    if (newStatus === 'done') {
+      setJustDone(prev => new Set(prev).add(taskId));
+      setTimeout(() => setJustDone(prev => { const s = new Set(prev); s.delete(taskId); return s; }), 700);
+      confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 }, colors: ['#22c55e', '#86efac', '#4ade80', '#bbf7d0', '#ffffff'] });
+    }
     await fetch(`/api/tasks/${taskId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -200,7 +207,7 @@ export default function TasksPage() {
                     draggable
                     onDragStart={() => setDragging(task.id)}
                     onDragEnd={() => setDragging(null)}
-                    className="bg-gray-800 rounded-lg p-3 cursor-grab active:cursor-grabbing border border-gray-700 hover:border-gray-600 transition-colors group"
+                    className={`bg-gray-800 rounded-lg p-3 cursor-grab active:cursor-grabbing border transition-colors group ${justDone.has(task.id) ? 'border-green-500 task-done-anim' : 'border-gray-700 hover:border-gray-600'}`}
                   >
                     <div className="flex items-start justify-between gap-1 mb-2">
                       <p className="text-sm text-gray-200 leading-snug">{task.title}</p>
