@@ -23,8 +23,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (qty !== undefined) { sets.push(`qty = $${pi++}`); vals.push(qty); }
 
   vals.push(id);
+  vals.push(session.username);
   const result = await pool.query(
-    `UPDATE lista_compras SET ${sets.join(', ')} WHERE id = $${pi} RETURNING *`,
+    `UPDATE lista_compras SET ${sets.join(', ')} WHERE id = $${pi} AND added_by = $${pi + 1} RETURNING *`,
     vals
   );
   return NextResponse.json(result.rows[0] ?? { error: 'not found' });
@@ -35,6 +36,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
-  await pool.query('DELETE FROM lista_compras WHERE id = $1', [id]);
+  await pool.query('DELETE FROM lista_compras WHERE id = $1 AND added_by = $2', [id, session.username]);
   return NextResponse.json({ ok: true });
 }

@@ -12,6 +12,13 @@ interface NavItem {
   minRole: 'viewer' | 'member' | 'admin';
 }
 
+interface AppItem {
+  href: string;
+  label: string;
+  icon: string;
+  minRole: 'viewer' | 'member' | 'admin';
+}
+
 const NAV: NavItem[] = [
   { href: '/dashboard',  label: 'Dashboard',      icon: '🏠', minRole: 'viewer' },
   { href: '/squads',     label: 'Squads',          icon: '🛡️', minRole: 'viewer' },
@@ -22,9 +29,12 @@ const NAV: NavItem[] = [
   { href: '/memory',     label: 'Memory',          icon: '🧠', minRole: 'viewer' },
   { href: '/documents',  label: 'Documentos',      icon: '📂', minRole: 'viewer' },
   { href: '/tokens',     label: 'Tokens & Custo',  icon: '🪙', minRole: 'member'  },
-  { href: '/paraguai',   label: 'Oportunidades PY', icon: '🇵🇾', minRole: 'member'  },
   { href: '/connectors', label: 'Conectores',      icon: '🔌', minRole: 'admin'   },
-  { href: '/users',      label: 'Usuários',        icon: '👤', minRole: 'admin'   },
+  { href: '/users',      label: 'Usuarios',        icon: '👤', minRole: 'admin'   },
+];
+
+const APPS: AppItem[] = [
+  { href: '/paraguai', label: 'Oportunidades PY', icon: '🇵🇾', minRole: 'member' },
 ];
 
 const ROLE_LEVEL: Record<string, number> = { admin: 3, member: 2, viewer: 1 };
@@ -41,6 +51,13 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router   = useRouter();
   const [me, setMe] = useState<Me | null>(null);
+  const [appsOpen, setAppsOpen] = useState(() => {
+    // Auto-open if current path is an app
+    if (typeof window !== 'undefined') {
+      return APPS.some(a => window.location.pathname.startsWith(a.href));
+    }
+    return false;
+  });
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -49,13 +66,23 @@ export default function Sidebar() {
       .catch(() => {});
   }, []);
 
-  const roleLevel  = ROLE_LEVEL[me?.role ?? ''] ?? 0;
-  const visibleNav = NAV.filter(item => roleLevel >= ROLE_LEVEL[item.minRole]);
+  // Auto-open Apps section if on an app page
+  useEffect(() => {
+    if (APPS.some(a => pathname.startsWith(a.href))) {
+      setAppsOpen(true);
+    }
+  }, [pathname]);
+
+  const roleLevel   = ROLE_LEVEL[me?.role ?? ''] ?? 0;
+  const visibleNav  = NAV.filter(item => roleLevel >= ROLE_LEVEL[item.minRole]);
+  const visibleApps = APPS.filter(app => roleLevel >= ROLE_LEVEL[app.minRole]);
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');
   }
+
+  const isAppActive = APPS.some(a => pathname.startsWith(a.href));
 
   return (
     <aside className="w-60 bg-gray-900 border-r border-gray-800 flex flex-col h-screen fixed left-0 top-0">
@@ -87,6 +114,45 @@ export default function Sidebar() {
             {item.label}
           </Link>
         ))}
+
+        {/* Apps submenu */}
+        {visibleApps.length > 0 && (
+          <div className="pt-1">
+            <button
+              onClick={() => setAppsOpen(o => !o)}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                isAppActive
+                  ? 'text-indigo-300 bg-indigo-950'
+                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+              )}
+            >
+              <span className="text-base">📦</span>
+              <span className="flex-1 text-left">Apps</span>
+              <span className="text-xs text-gray-600">{appsOpen ? '▲' : '▼'}</span>
+            </button>
+
+            {appsOpen && (
+              <div className="mt-1 ml-3 pl-3 border-l border-gray-800 space-y-1">
+                {visibleApps.map(app => (
+                  <Link
+                    key={app.href}
+                    href={app.href}
+                    className={cn(
+                      'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                      pathname.startsWith(app.href)
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                    )}
+                  >
+                    <span className="text-sm">{app.icon}</span>
+                    {app.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </nav>
 
       {/* Current user card */}

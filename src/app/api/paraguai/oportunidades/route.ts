@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
       END AS margem_pct,
       EXISTS(
         SELECT 1 FROM lista_compras lc
-        WHERE lc.fingerprint = l.fingerprint AND lc.status = 'pendente'
+        WHERE lc.fingerprint = l.fingerprint AND lc.status = 'pendente' AND lc.added_by = $${pi}
       ) AS no_carrinho,
       EXISTS(
         SELECT 1 FROM price_watches pw

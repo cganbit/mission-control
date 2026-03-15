@@ -12,7 +12,8 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const result = await pool.query(
-    `SELECT * FROM lista_compras WHERE status = 'pendente' ORDER BY added_at DESC`
+    `SELECT * FROM lista_compras WHERE status = 'pendente' AND added_by = $1 ORDER BY added_at DESC`,
+    [session.username]
   );
   return NextResponse.json(result.rows);
 }
