@@ -108,6 +108,44 @@ const CONNECTORS: ConnectorDef[] = [
     ],
   },
 
+  // ── Paraguai Engine ──
+  {
+    id: 'firecrawl',
+    name: 'Firecrawl',
+    description: 'Scraping de catálogos do Mercado Livre. 500 créditos/mês (1/chamada standard, 2/min browser). Usado pelo ML Search do Paraguai Arbitrage Engine.',
+    category: 'Paraguai',
+    icon: '🔥',
+    color: '#f97316',
+    fields: [
+      { key: 'firecrawl_api_key', label: 'API Key', placeholder: 'fc-...', secret: true },
+    ],
+    docsUrl: 'https://www.firecrawl.dev/app',
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    description: 'Extração de PDFs de listas de preços via IA (arcee-ai/trinity-large-preview:free). Free tier — zero custo.',
+    category: 'Paraguai',
+    icon: '🔀',
+    color: '#a855f7',
+    fields: [
+      { key: 'openrouter_api_key', label: 'API Key', placeholder: 'sk-or-v1-...', secret: true },
+    ],
+    docsUrl: 'https://openrouter.ai/keys',
+  },
+  {
+    id: 'n8n',
+    name: 'n8n',
+    description: 'Orquestrador do pipeline de arbitragem. Webhook Evolution → Parsers → ML Search → Alertas WhatsApp.',
+    category: 'Paraguai',
+    icon: '⚙️',
+    color: '#ef4444',
+    fields: [
+      { key: 'n8n_url',     label: 'URL',     placeholder: 'http://187.77.43.141:5678' },
+      { key: 'n8n_api_key', label: 'API Key', placeholder: 'n8n_api_...', secret: true },
+    ],
+  },
+
   // ── Infrastructure ──
   {
     id: 'postgresql',
@@ -121,7 +159,7 @@ const CONNECTORS: ConnectorDef[] = [
   },
 ];
 
-const CATEGORIES = ['LLM', 'Fonte de Dados', 'Comunicação', 'Infraestrutura'];
+const CATEGORIES = ['LLM', 'Fonte de Dados', 'Comunicação', 'Paraguai', 'Infraestrutura'];
 
 type TestStatus = 'idle' | 'testing' | 'ok' | 'error';
 
@@ -375,7 +413,7 @@ export default function ConnectorsPage() {
           const catConnectors = CONNECTORS.filter(c => c.category === cat);
           const configured = catConnectors.filter(c => c.alwaysConnected || c.fields.some(f => config[f.key])).length;
           const icons: Record<string, string> = {
-            'LLM': '🧠', 'Fonte de Dados': '📡', 'Comunicação': '💬', 'Infraestrutura': '🏗️'
+            'LLM': '🧠', 'Fonte de Dados': '📡', 'Comunicação': '💬', 'Paraguai': '🇵🇾', 'Infraestrutura': '🏗️'
           };
           return (
             <button key={cat} onClick={() => setCategory(activeCategory === cat ? 'all' : cat)}

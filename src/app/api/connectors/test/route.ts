@@ -87,6 +87,46 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: false, message: 'ArXiv inacessível' });
       }
 
+      case 'firecrawl': {
+        const key = config['firecrawl_api_key'];
+        if (!key) return NextResponse.json({ ok: false, message: 'API key não configurada' });
+        const res = await fetch('https://api.firecrawl.dev/v1/team/credits', {
+          headers: { Authorization: `Bearer ${key}` },
+        });
+        if (res.ok) {
+          const data = await res.json() as { data?: { credits_used?: number; credits_limit?: number } };
+          const used  = data?.data?.credits_used  ?? '?';
+          const limit = data?.data?.credits_limit ?? '?';
+          return NextResponse.json({ ok: true, message: `Firecrawl OK — ${used}/${limit} créditos usados` });
+        }
+        return NextResponse.json({ ok: false, message: `Erro ${res.status}: key inválida` });
+      }
+
+      case 'openrouter': {
+        const key = config['openrouter_api_key'];
+        if (!key) return NextResponse.json({ ok: false, message: 'API key não configurada' });
+        const res = await fetch('https://openrouter.ai/api/v1/models', {
+          headers: { Authorization: `Bearer ${key}` },
+        });
+        if (res.ok) return NextResponse.json({ ok: true, message: 'OpenRouter API autenticada com sucesso' });
+        return NextResponse.json({ ok: false, message: `Erro ${res.status}: key inválida` });
+      }
+
+      case 'n8n': {
+        const url = config['n8n_url'];
+        const key = config['n8n_api_key'];
+        if (!url || !key) return NextResponse.json({ ok: false, message: 'URL ou API key não configurados' });
+        const res = await fetch(`${url}/api/v1/workflows?limit=1`, {
+          headers: { 'X-N8N-API-KEY': key },
+        });
+        if (res.ok) {
+          const data = await res.json() as { data?: unknown[] };
+          const count = data?.data?.length ?? 0;
+          return NextResponse.json({ ok: true, message: `n8n conectado — ${count} workflow(s) acessíveis` });
+        }
+        return NextResponse.json({ ok: false, message: `Erro ${res.status}: verifique URL e API key` });
+      }
+
       default:
         return NextResponse.json({ ok: false, message: 'Conector desconhecido' });
     }
