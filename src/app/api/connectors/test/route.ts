@@ -90,16 +90,18 @@ export async function POST(req: NextRequest) {
       case 'firecrawl': {
         const key = config['firecrawl_api_key'];
         if (!key) return NextResponse.json({ ok: false, message: 'API key não configurada' });
-        const res = await fetch('https://api.firecrawl.dev/v1/team/credits', {
-          headers: { Authorization: `Bearer ${key}` },
+        // Scrape mínimo para validar a key (robots.txt = 0 tokens, resposta rápida)
+        const res = await fetch('https://api.firecrawl.dev/v1/scrape', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: 'https://firecrawl.dev/robots.txt', formats: ['markdown'] }),
         });
-        if (res.ok) {
-          const data = await res.json() as { data?: { credits_used?: number; credits_limit?: number } };
-          const used  = data?.data?.credits_used  ?? '?';
-          const limit = data?.data?.credits_limit ?? '?';
-          return NextResponse.json({ ok: true, message: `Firecrawl OK — ${used}/${limit} créditos usados` });
+        if (res.status === 401) return NextResponse.json({ ok: false, message: 'API key inválida' });
+        if (res.status === 402) return NextResponse.json({ ok: false, message: 'Sem créditos disponíveis' });
+        if (res.ok || res.status === 200) {
+          return NextResponse.json({ ok: true, message: 'Firecrawl autenticado com sucesso' });
         }
-        return NextResponse.json({ ok: false, message: `Erro ${res.status}: key inválida` });
+        return NextResponse.json({ ok: false, message: `Erro ${res.status}` });
       }
 
       case 'openrouter': {
