@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
-import { Pool } from 'pg';
+import { Pool, types } from 'pg';
+
+// Força o pg a retornar NUMERIC (1700) e BIGINT (20) como números
+types.setTypeParser(1700, (val) => parseFloat(val));
+types.setTypeParser(20, (val) => parseInt(val, 10));
 
 // Connects to the arbitragem database (same postgres instance, different DB)
 const pool = new Pool({
@@ -15,6 +19,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const marca    = searchParams.get('marca') || '';
   const categoria = searchParams.get('categoria') || '';
+  const fornecedor = searchParams.get('fornecedor') || '';
   const has_catalog = searchParams.get('has_catalog');
   const min_margem = parseFloat(searchParams.get('min_margem') || '0') || 0;
   const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 200);
@@ -38,6 +43,10 @@ export async function GET(req: NextRequest) {
     conditions.push(`c.has_catalog = TRUE`);
   } else if (has_catalog === 'false') {
     conditions.push(`(c.has_catalog IS NULL OR c.has_catalog = FALSE)`);
+  }
+  if (fornecedor) {
+    conditions.push(`hp.fornecedor_nome = $${pi++}`);
+    params.push(fornecedor);
   }
 
   const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
@@ -67,47 +76,65 @@ export async function GET(req: NextRequest) {
       FROM historico_precos hp
       WHERE hp.received_at > NOW() - INTERVAL '30 days'
       GROUP BY hp.fingerprint
+    ),
+    history_trend AS (
+      SELECT 
+        fingerprint,
+        json_agg(json_build_object(
+          'date', date_trunc('day', received_at),
+          'min_preco_usd', min_preco
+        ) ORDER BY date_trunc('day', received_at) ASC) as price_history
+      FROM (
+        SELECT fingerprint, received_at, MIN(preco_usd) as min_preco
+        FROM historico_precos
+        WHERE received_at > NOW() - INTERVAL '30 days'
+        GROUP BY fingerprint, date_trunc('day', received_at), received_at
+      ) daily_mins
+      GROUP BY fingerprint
     )
-    SELECT
-      l.fingerprint,
-      COALESCE(pm.titulo_amigavel, l.descricao_original) AS titulo_amigavel,
-      COALESCE(pm.marca, split_part(l.fingerprint, '_', 1)) AS marca,
-      COALESCE(pm.modelo, '') AS modelo,
-      COALESCE(pm.capacidade, '') AS capacidade,
-      COALESCE(pm.categoria, 'outros') AS categoria,
-      l.fornecedor_nome AS melhor_fornecedor,
-      l.preco_usd AS melhor_preco_usd,
-      c.preco_ml_real,
-      c.has_catalog,
-      c.catalog_ids,
-      c.ml_source,
-      s.all_suppliers,
-      s.num_suppliers,
-      l.received_at AS ultima_atualizacao,
-      -- Calcular margem (fx=5.80, impostos=15%, taxa_ml=18%)
-      CASE
-        WHEN c.preco_ml_real IS NOT NULL THEN
-          ROUND(
-            (c.preco_ml_real - l.preco_usd * 5.80 * 1.15 * 1.18) / c.preco_ml_real * 100
-          , 1)
-        ELSE NULL
-      END AS margem_pct,
-      EXISTS(
-        SELECT 1 FROM lista_compras lc
-        WHERE lc.fingerprint = l.fingerprint AND lc.status = 'pendente' AND lc.added_by = $${pi}
-      ) AS no_carrinho,
-      EXISTS(
-        SELECT 1 FROM price_watches pw
-        WHERE pw.fingerprint = l.fingerprint AND pw.username = $${pi} AND pw.active = TRUE
-      ) AS monitorando
-    FROM latest l
-    LEFT JOIN produtos_mestre pm ON pm.fingerprint = l.fingerprint
-    LEFT JOIN preco_ml_cache c ON c.fingerprint = l.fingerprint AND c.expires_at > NOW()
-    LEFT JOIN suppliers s ON s.fingerprint = l.fingerprint
-    HAVING (CASE WHEN c.preco_ml_real IS NOT NULL THEN
-      ROUND((c.preco_ml_real - l.preco_usd * 5.80 * 1.15 * 1.18) / c.preco_ml_real * 100, 1)
-      ELSE NULL END) >= $${pi + 1} OR c.preco_ml_real IS NULL
-    ORDER BY margem_pct DESC NULLS LAST, l.received_at DESC
+    SELECT * FROM (
+      SELECT
+        l.fingerprint,
+        COALESCE(pm.titulo_amigavel, l.descricao_original) AS titulo_amigavel,
+        COALESCE(pm.marca, split_part(l.fingerprint, '_', 1)) AS marca,
+        COALESCE(pm.modelo, '') AS modelo,
+        COALESCE(pm.capacidade, '') AS capacidade,
+        COALESCE(pm.categoria, 'outros') AS categoria,
+        COALESCE(pm.origem, '') AS origem,
+        l.fornecedor_nome AS melhor_fornecedor,
+        l.preco_usd AS melhor_preco_usd,
+        c.preco_ml_real,
+        c.has_catalog,
+        c.catalog_ids,
+        c.ml_source,
+        s.all_suppliers,
+        s.num_suppliers,
+        l.received_at AS ultima_atualizacao,
+        ht.price_history,
+        CASE
+          WHEN c.preco_ml_real IS NOT NULL THEN
+            ROUND(
+              (c.preco_ml_real - l.preco_usd * 5.80 * 1.15 * 1.18) / c.preco_ml_real * 100
+            , 1)
+          ELSE NULL
+        END AS margem_pct,
+        EXISTS(
+          SELECT 1 FROM lista_compras lc
+          WHERE lc.fingerprint = l.fingerprint AND lc.status = 'pendente' AND lc.added_by = $${pi}
+        ) AS no_carrinho,
+        EXISTS(
+          SELECT 1 FROM price_watches pw
+          WHERE pw.fingerprint = l.fingerprint AND pw.username = $${pi} AND pw.active = TRUE
+        ) AS monitorando,
+        l.descricao_original AS descricao_raw
+      FROM latest l
+      LEFT JOIN produtos_mestre pm ON pm.fingerprint = l.fingerprint
+      LEFT JOIN preco_ml_cache c ON c.fingerprint = l.fingerprint AND c.expires_at > NOW()
+      LEFT JOIN suppliers s ON s.fingerprint = l.fingerprint
+      LEFT JOIN history_trend ht ON ht.fingerprint = l.fingerprint
+    ) sub
+    WHERE margem_pct >= $${pi + 1} OR margem_pct IS NULL
+    ORDER BY margem_pct DESC NULLS LAST, ultima_atualizacao DESC
     LIMIT $${pi + 2}
   `;
 
@@ -120,6 +147,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(result.rows);
   } catch (e) {
     console.error('oportunidades query error:', e);
-    return NextResponse.json({ error: 'DB error' }, { status: 500 });
+    // Fallback if 'origem' simply doesn't exist on PM yet, return without it safely
+    try {
+      const fallbackSql = sql.replace("COALESCE(pm.origem, '') AS origem,", "");
+      const resFallback = await pool.query(fallbackSql, params);
+      return NextResponse.json(resFallback.rows);
+    } catch(e2) {
+      console.error('Fallback failed:', e2);
+      return NextResponse.json({ error: 'DB error' }, { status: 500 });
+    }
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -11,6 +11,11 @@ interface Supplier {
   received_at: string;
 }
 
+interface PriceHistory {
+  date: string;
+  min_preco_usd: number;
+}
+
 interface Oportunidade {
   fingerprint: string;
   titulo_amigavel: string;
@@ -18,6 +23,7 @@ interface Oportunidade {
   modelo: string;
   capacidade: string;
   categoria: string;
+  origem: string;
   melhor_fornecedor: string;
   melhor_preco_usd: number;
   preco_ml_real: number | null;
@@ -27,9 +33,11 @@ interface Oportunidade {
   all_suppliers: Supplier[];
   num_suppliers: number;
   ultima_atualizacao: string;
+  price_history: PriceHistory[] | null;
   margem_pct: number | null;
   no_carrinho: boolean;
   monitorando: boolean;
+  descricao_raw: string;
 }
 
 interface CarrinhoItem {
@@ -64,14 +72,24 @@ const CATEGORIA_EMOJI: Record<string, string> = {
   wearable:'⌚', drone:'🛸', console:'🎮', acessorio:'🔌', informatica:'🖥️',
 };
 
-function formatUSD(v: number) { return `$${v.toFixed(2)}`; }
-function formatBRL(v: number) { return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`; }
+function formatUSD(v: any) { 
+  const n = typeof v === 'number' ? v : parseFloat(v);
+  return isNaN(n) ? '$0.00' : `$${n.toFixed(2)}`; 
+}
+function formatBRL(v: any) { 
+  const n = typeof v === 'number' ? v : parseFloat(v);
+  return isNaN(n) ? 'R$ 0,00' : `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`; 
+}
 function margemColor(m: number | null) {
   if (m == null) return 'text-gray-400';
   if (m >= 30) return 'text-emerald-400';
   if (m >= 20) return 'text-green-400';
   if (m >= 10) return 'text-yellow-400';
   return 'text-red-400';
+}
+
+function cn(...inputs: any[]) {
+  return inputs.filter(Boolean).join(' ');
 }
 
 // ─── Components ──────────────────────────────────────────────────────────────
@@ -242,24 +260,43 @@ export default function ParaguaiPage() {
   const [loading, setLoading] = useState(true);
   const [showCarrinho, setShowCarrinho] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
 
   // Filters
   const [filterMarca, setFilterMarca] = useState('');
   const [filterCat, setFilterCat] = useState('');
+  const [filterFornecedor, setFilterFornecedor] = useState('');
   const [filterCatalog, setFilterCatalog] = useState('');
   const [filterMinMargem, setFilterMinMargem] = useState(0);
+  const [fornecedores, setFornecedores] = useState<string[]>([]);
 
   const loadOportunidades = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (filterMarca) params.set('marca', filterMarca);
     if (filterCat) params.set('categoria', filterCat);
+    if (filterFornecedor) params.set('fornecedor', filterFornecedor);
     if (filterCatalog) params.set('has_catalog', filterCatalog);
     if (filterMinMargem > 0) params.set('min_margem', String(filterMinMargem));
-    const data = await fetch(`/api/paraguai/oportunidades?${params}`).then(r => r.json());
-    setItems(Array.isArray(data) ? data : []);
+    
+    try {
+      const data = await fetch(`/api/paraguai/oportunidades?${params}`).then(r => r.json());
+      const list = Array.isArray(data) ? data : [];
+      setItems(list);
+      
+      // Extract unique suppliers for filter
+      const sups = new Set<string>();
+      list.forEach(item => {
+        if (item.melhor_fornecedor) sups.add(item.melhor_fornecedor);
+        item.all_suppliers?.forEach((s: Supplier) => sups.add(s.fornecedor_nome));
+      });
+      setFornecedores(Array.from(sups).sort());
+    } catch(e) {
+      console.error(e);
+    }
     setLoading(false);
-  }, [filterMarca, filterCat, filterCatalog, filterMinMargem]);
+  }, [filterMarca, filterCat, filterFornecedor, filterCatalog, filterMinMargem]);
 
   const loadCarrinho = useCallback(async () => {
     const data = await fetch('/api/paraguai/carrinho').then(r => r.json());
@@ -369,39 +406,64 @@ export default function ParaguaiPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 p-3 bg-gray-900 rounded-xl border border-gray-800">
-        <select value={filterMarca} onChange={e => setFilterMarca(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white">
-          <option value="">Todas as marcas</option>
-          {MARCAS.map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
+      {/* Filters & View Toggle */}
+      <div className="flex flex-col gap-3 p-3 bg-gray-900 rounded-xl border border-gray-800">
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex bg-gray-800 p-1 rounded-lg border border-gray-700 mr-2">
+            <button 
+              onClick={() => setViewMode('cards')}
+              className={cn("p-1.5 rounded-md transition-all", viewMode === 'cards' ? "bg-indigo-600 text-white shadow-lg" : "text-gray-500 hover:text-gray-300")}
+              title="Cards"
+            >
+              📑
+            </button>
+            <button 
+              onClick={() => setViewMode('list')}
+              className={cn("p-1.5 rounded-md transition-all", viewMode === 'list' ? "bg-indigo-600 text-white shadow-lg" : "text-gray-500 hover:text-gray-300")}
+              title="Lista"
+            >
+              ☰
+            </button>
+          </div>
 
-        <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white">
-          <option value="">Todas as categorias</option>
-          {CATEGORIAS.map(c => <option key={c} value={c}>{CATEGORIA_EMOJI[c]} {c}</option>)}
-        </select>
+          <select value={filterMarca} onChange={e => setFilterMarca(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <option value="">Todas as marcas</option>
+            {MARCAS.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
 
-        <select value={filterCatalog} onChange={e => setFilterCatalog(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white">
-          <option value="">Catálogo e estimado</option>
-          <option value="true">✅ Só catálogo ML</option>
-          <option value="false">⚠️ Sem catálogo</option>
-        </select>
+          <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <option value="">Todas as categorias</option>
+            {CATEGORIAS.map(c => <option key={c} value={c}>{CATEGORIA_EMOJI[c]} {c}</option>)}
+          </select>
 
-        <div className="flex items-center gap-2">
-          <span className="text-gray-400 text-xs">Margem mín.</span>
-          <input type="number" min={0} max={100} value={filterMinMargem || ''}
-            onChange={e => setFilterMinMargem(parseInt(e.target.value) || 0)}
-            placeholder="0%"
-            className="w-16 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white text-center" />
+          <select value={filterFornecedor} onChange={e => setFilterFornecedor(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <option value="">Todos os fornecedores</option>
+            {fornecedores.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
+
+          <select value={filterCatalog} onChange={e => setFilterCatalog(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <option value="">Catálogo e estimado</option>
+            <option value="true">✅ Só catálogo ML</option>
+            <option value="false">⚠️ Sem catálogo</option>
+          </select>
+
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400 text-xs font-semibold">Margem mín.</span>
+            <input type="number" min={0} max={100} value={filterMinMargem || ''}
+              onChange={e => setFilterMinMargem(parseInt(e.target.value) || 0)}
+              placeholder="0%"
+              className="w-16 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+          </div>
+
+          <button onClick={loadOportunidades}
+            className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 shadow-md ml-auto">
+            Atualizar
+          </button>
         </div>
-
-        <button onClick={loadOportunidades}
-          className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500 ml-auto">
-          Atualizar
-        </button>
       </div>
 
       {/* Product Grid */}
@@ -417,16 +479,98 @@ export default function ParaguaiPage() {
           <p className="text-gray-400">Nenhuma oportunidade encontrada.</p>
           <p className="text-gray-600 text-sm mt-1">Aguardando listas de fornecedores via WhatsApp.</p>
         </div>
-      ) : (
+      ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {items.map(item => (
             <ProductCard
               key={item.fingerprint}
               item={item}
+              expanded={expandedRow === item.fingerprint}
+              onToggleExpand={() => setExpandedRow(prev => prev === item.fingerprint ? null : item.fingerprint)}
               onAddToCart={() => addToCart(item)}
               onToggleWatch={() => toggleWatch(item)}
             />
           ))}
+        </div>
+      ) : (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-xl">
+          <table className="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr className="bg-gray-800/50 text-gray-400 font-semibold border-b border-gray-700">
+                <th className="px-4 py-3">Produto</th>
+                <th className="px-4 py-3">Fornecedor</th>
+                <th className="px-4 py-3 text-right">Preço PY</th>
+                <th className="px-4 py-3 text-right">Preço ML</th>
+                <th className="px-4 py-3 text-center">Margem</th>
+                <th className="px-4 py-3 text-center">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800">
+              {items.map(item => (
+                <Fragment key={item.fingerprint}>
+                  <tr className="hover:bg-gray-800/30 transition-colors group cursor-pointer" onClick={() => setExpandedRow(prev => prev === item.fingerprint ? null : item.fingerprint)}>
+                    <td className="px-4 py-3 min-w-[200px]">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg flex-shrink-0">{CATEGORIA_EMOJI[item.categoria] || '📦'}</span>
+                        <div className="min-w-0">
+                          <p className="text-white font-medium hover:text-indigo-400 transition-colors line-clamp-1 text-left">
+                            {item.titulo_amigavel}
+                          </p>
+                          <p className="text-gray-500 text-[10px] uppercase">{item.marca} • {item.categoria}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-gray-300">{item.melhor_fornecedor}</span>
+                      {item.num_suppliers > 1 && (
+                        <span className="ml-2 bg-blue-900/40 text-blue-400 text-[10px] px-1.5 py-0.5 rounded">+{item.num_suppliers-1}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right font-bold text-white whitespace-nowrap">
+                      <div>
+                        <span>{formatUSD(item.melhor_preco_usd)}</span>
+                        <p className="text-[10px] text-gray-500 font-normal">≈ {formatBRL(item.melhor_preco_usd * 5.80)}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {item.preco_ml_real ? (
+                        <div>
+                          <span className="text-white">{formatBRL(item.preco_ml_real)}</span>
+                          {item.has_catalog && <span className="ml-1 text-emerald-500 text-[9px] font-bold">CAT</span>}
+                        </div>
+                      ) : (
+                        <span className="text-gray-600">—</span>
+                      )}
+                    </td>
+                    <td className={`px-4 py-3 text-center font-bold ${margemColor(item.margem_pct)}`}>
+                      {item.margem_pct != null ? `${item.margem_pct}%` : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-2" onClick={e => e.stopPropagation()}>
+                         <button onClick={() => toggleWatch(item)} className={cn("p-1.5 rounded transition-colors", item.monitorando ? "text-amber-400 bg-amber-900/30" : "text-gray-500 hover:text-white hover:bg-gray-700")} title="Monitorar">🔔</button>
+                         <button 
+                          onClick={() => addToCart(item)} 
+                          disabled={item.no_carrinho}
+                          className={cn("p-1.5 rounded transition-colors", item.no_carrinho ? "text-gray-700" : "text-emerald-500 hover:bg-emerald-900/30")}
+                          title="Adicionar ao Carrinho"
+                        >
+                          🛒
+                        </button>
+                         <span className="text-gray-500 text-xs ml-2">{expandedRow === item.fingerprint ? '▲' : '▼'}</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {expandedRow === item.fingerprint && (
+                    <tr className="bg-gray-900/50">
+                      <td colSpan={6} className="p-0 border-b border-gray-800">
+                        <ExpandedDetails item={item} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -449,26 +593,29 @@ export default function ParaguaiPage() {
 
 function ProductCard({
   item,
+  expanded,
+  onToggleExpand,
   onAddToCart,
   onToggleWatch,
 }: {
   item: Oportunidade;
+  expanded: boolean;
+  onToggleExpand: () => void;
   onAddToCart: () => void;
   onToggleWatch: () => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const emoji = CATEGORIA_EMOJI[item.categoria] || '📦';
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col gap-3 hover:border-gray-700 transition-colors">
+    <div className={`bg-gray-900 border ${expanded ? 'border-indigo-500 shadow-2xl' : 'border-gray-800'} rounded-xl p-4 flex flex-col gap-3 transition-all group`}>
       {/* Title row */}
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-2 cursor-pointer" onClick={onToggleExpand}>
         <span className="text-2xl mt-0.5">{emoji}</span>
         <div className="flex-1 min-w-0">
-          <p className="text-white font-semibold text-sm leading-tight line-clamp-2">
+          <p className="text-white font-bold text-sm leading-tight line-clamp-2 group-hover:text-indigo-400 transition-colors text-left">
             {item.titulo_amigavel}
           </p>
-          <div className="flex flex-wrap gap-1 mt-1">
+          <div className="flex flex-wrap gap-1 mt-1.5">
             {item.has_catalog && <Badge label="CATÁLOGO" color="bg-emerald-900 text-emerald-300" />}
             {!item.has_catalog && <Badge label="ESTIMADO" color="bg-yellow-900 text-yellow-400" />}
             {item.num_suppliers > 1 && (
@@ -477,70 +624,213 @@ function ProductCard({
             <Badge label={item.categoria} color="bg-gray-800 text-gray-400" />
           </div>
         </div>
+        <button className="text-gray-500 hover:text-white transition-colors p-1">
+          {expanded ? '▲' : '▼'}
+        </button>
       </div>
 
       {/* Prices */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="bg-gray-800 rounded-lg p-2">
-          <p className="text-gray-500 text-[10px] uppercase tracking-wide">Melhor preço PY</p>
-          <p className="text-white font-bold">{formatUSD(item.melhor_preco_usd)}</p>
-          <p className="text-gray-400 text-[11px] truncate">{item.melhor_fornecedor}</p>
+      <div className="grid grid-cols-2 gap-2 mt-1 cursor-pointer" onClick={onToggleExpand}>
+        <div className="bg-gray-800/50 rounded-lg p-2.5 border border-gray-800 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-8 h-8 bg-indigo-500/10 rounded-bl-full flex items-start justify-end p-1">
+             <span className="text-[8px]">🇵🇾</span>
+          </div>
+          <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mb-0.5">Melhor preço PY</p>
+          <p className="text-white font-black text-lg leading-none">{formatUSD(item.melhor_preco_usd)}</p>
+          <p className="text-gray-400 text-[10px] mt-1 truncate italic">≈ {formatBRL(item.melhor_preco_usd * 5.80)}</p>
         </div>
-        <div className="bg-gray-800 rounded-lg p-2">
-          <p className="text-gray-500 text-[10px] uppercase tracking-wide">Preço ML</p>
+        <div className="bg-gray-800/50 rounded-lg p-2.5 border border-gray-800 relative overflow-hidden">
+           <div className="absolute top-0 right-0 w-8 h-8 bg-emerald-500/10 rounded-bl-full flex items-start justify-end p-1">
+             <span className="text-[8px]">🇧🇷</span>
+          </div>
+          <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mb-0.5">Preço ML (BR)</p>
           {item.preco_ml_real ? (
             <>
-              <p className="text-white font-bold">{formatBRL(item.preco_ml_real)}</p>
-              <p className={`text-[11px] font-semibold ${margemColor(item.margem_pct)}`}>
+              <p className="text-white font-black text-lg leading-none">{formatBRL(item.preco_ml_real)}</p>
+              <p className={`text-[11px] font-bold mt-1 ${margemColor(item.margem_pct)}`}>
                 {item.margem_pct != null ? `${item.margem_pct}% margem` : '—'}
               </p>
             </>
           ) : (
-            <p className="text-gray-500 text-sm">Sem dados</p>
+            <p className="text-gray-600 text-sm italic py-1">Sem dados</p>
           )}
         </div>
       </div>
 
-      {/* Suppliers expand */}
-      {item.num_suppliers > 1 && (
-        <button onClick={() => setExpanded(!expanded)}
-          className="text-xs text-gray-500 hover:text-gray-300 text-left">
-          {expanded ? '▲ Ocultar fornecedores' : `▼ Ver todos ${item.num_suppliers} fornecedores`}
-        </button>
-      )}
-      {expanded && item.all_suppliers && (
-        <div className="space-y-1">
-          {item.all_suppliers.map((s, i) => (
-            <div key={i} className="flex justify-between text-xs">
-              <span className="text-gray-400">{s.fornecedor_nome}</span>
-              <span className="text-gray-300 font-medium">{formatUSD(s.preco_usd)}</span>
-            </div>
-          ))}
+      {/* Expanded Content (Accordion) */}
+      {expanded && (
+        <div className="mt-2 pt-4 border-t border-gray-800/50 animate-in fade-in slide-in-from-top-2 duration-200">
+           <ExpandedDetails item={item} />
         </div>
       )}
 
       {/* Actions */}
-      <div className="flex gap-2 mt-auto pt-1">
+      <div className="flex gap-2 mt-auto pt-2">
         <button
           onClick={onAddToCart}
           disabled={item.no_carrinho}
-          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+          className={cn(
+            "flex-1 py-2.5 rounded-xl text-sm font-bold shadow-lg transition-all",
             item.no_carrinho
-              ? 'bg-gray-700 text-gray-500 cursor-default'
-              : 'bg-indigo-600 text-white hover:bg-indigo-500'
-          }`}>
-          {item.no_carrinho ? '✓ No carrinho' : '+ Carrinho'}
+              ? "bg-gray-800 text-gray-600 cursor-default"
+              : "bg-indigo-600 text-white hover:bg-indigo-500 hover:-translate-y-0.5 active:translate-y-0"
+          )}>
+          {item.no_carrinho ? '✓ NO CARRINHO' : '+ CARRINHO'}
         </button>
         <button
           onClick={onToggleWatch}
-          title={item.monitorando ? 'Cancelar monitoramento' : 'Monitorar preço via WhatsApp'}
-          className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+          className={cn(
+            "px-3.5 py-2.5 rounded-xl transition-all shadow-md",
             item.monitorando
-              ? 'bg-amber-700 text-amber-200 hover:bg-amber-600'
-              : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
-          }`}>
+              ? "bg-amber-800 text-amber-200 hover:bg-amber-700"
+              : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white"
+          )}>
           {item.monitorando ? '🔔' : '🔕'}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Expanded Details (Accordion Content) ────────────────────────────────────
+
+function ExpandedDetails({ item }: { item: Oportunidade }) {
+  // Format dates: check if today, else normal string
+  const isToday = (dateString: string) => {
+    const d = new Date(dateString);
+    const today = new Date();
+    return d.getDate() === today.getDate() &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear();
+  };
+
+  const formatRefDate = (dateString: string) => {
+    if (!dateString) return <span className="text-gray-600">—</span>;
+    const d = new Date(dateString);
+    if (isToday(dateString)) {
+      return (
+        <span className="text-emerald-400 font-bold">
+          Hoje às {d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
+        </span>
+      );
+    }
+    return <span className="text-gray-400">{d.toLocaleString('pt-BR')}</span>;
+  };
+
+  // Simple Trend Sparkline calculation (SVG bounds 0-100 x 0-30)
+  const renderTrend = () => {
+    if (!item.price_history || item.price_history.length < 2) {
+      return <div className="text-xs text-gray-600 italic h-[40px] flex items-center justify-center">Sem histórico 30d</div>;
+    }
+    const prices = item.price_history.map(h => h.min_preco_usd);
+    const minP = Math.min(...prices);
+    const maxP = Math.max(...prices);
+    const range = maxP - minP || 1; // avoid div 0
+    
+    // Normalize coordinates
+    const points = item.price_history.map((h, i) => {
+      const x = (i / (item.price_history!.length - 1)) * 100;
+      const y = range === 1 && maxP === minP ? 15 : 30 - (((h.min_preco_usd - minP) / range) * 30);
+      return `${x},${y}`;
+    }).join(' ');
+
+    const trendColor = prices[prices.length - 1] <= prices[0] ? '#10b981' : '#f43f5e'; // green if fell, red if rose
+
+    return (
+      <div className="relative h-[40px] w-full mt-2 group">
+        <svg viewBox="0 0 100 30" className="w-full h-full preserve-aspect-ratio-none overflow-visible">
+          <polyline
+            points={points}
+            fill="none"
+            stroke={trendColor}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="drop-shadow-sm transition-all"
+          />
+        </svg>
+        <div className="absolute top-0 left-0 text-[8px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/80 rounded px-1">${maxP}</div>
+        <div className="absolute bottom-0 right-0 text-[8px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/80 rounded px-1">${minP}</div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4 text-sm mt-2">
+      {/* Informações Gerais & Tendência */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5 flex flex-col justify-end">
+          <div className="flex justify-between border-b border-gray-800 pb-1">
+            <span className="text-gray-500 text-[11px] uppercase">Marca</span>
+            <span className="text-white font-medium text-[11px]">{item.marca}</span>
+          </div>
+          <div className="flex justify-between border-b border-gray-800 pb-1">
+            <span className="text-gray-500 text-[11px] uppercase">Modelo</span>
+            <span className="text-white font-medium text-[11px] truncate max-w-[100px]">{item.modelo || '—'}</span>
+          </div>
+          <div className="flex justify-between border-b border-gray-800 pb-1">
+            <span className="text-gray-500 text-[11px] uppercase">Origem</span>
+            <span className="text-indigo-400 font-bold text-[11px]">{item.origem || '—'}</span>
+          </div>
+          <div className="flex justify-between border-b border-gray-800 pb-1">
+            <span className="text-gray-500 text-[11px] uppercase">Última Ref.</span>
+            <span className="text-right text-[11px]">{formatRefDate(item.ultima_atualizacao)}</span>
+          </div>
+        </div>
+
+        <div className="bg-black/30 rounded-lg p-2 border border-gray-800/80 flex flex-col justify-between">
+          <span className="text-gray-500 text-[9px] uppercase font-bold tracking-widest text-center shadow-sm">Tendência 30 Dias (USD)</span>
+          {renderTrend()}
+        </div>
+      </div>
+
+      {/* Fornecedores (Tabela Compacta) */}
+      <div className="bg-black/30 rounded-lg overflow-hidden border border-gray-800/80">
+        <table className="w-full text-left text-xs">
+          <thead className="bg-gray-800/80 text-gray-400 font-medium">
+            <tr>
+              <th className="px-3 py-1.5 font-normal">Fornecedor</th>
+              <th className="px-3 py-1.5 font-normal text-right">USD</th>
+              <th className="px-3 py-1.5 font-normal text-right">Custo BRL*</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-800/50">
+             {Array.isArray(item.all_suppliers) && item.all_suppliers.map((s, idx) => {
+                const custoBrl = s.preco_usd * 5.80 * 1.15;
+                const isBest = s.fornecedor_nome === item.melhor_fornecedor;
+                return (
+                  <tr key={idx} className={isBest ? "bg-indigo-900/20" : ""}>
+                    <td className="px-3 py-2 text-gray-300 font-medium truncate max-w-[120px] flex items-center gap-1.5">
+                      {s.fornecedor_nome}
+                      {isBest && <span className="bg-indigo-500 text-white text-[8px] font-bold px-1 py-0.5 rounded uppercase">Melhor</span>}
+                    </td>
+                    <td className="px-3 py-2 text-right font-bold text-white">${s.preco_usd}</td>
+                    <td className="px-3 py-2 text-right text-gray-500 italic">R$ {custoBrl.toFixed(2)}</td>
+                  </tr>
+                );
+             })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Descrições Livres */}
+      <div className="space-y-2">
+        <div className="bg-gray-800/30 p-2.5 rounded-lg border border-gray-800/80 relative overflow-hidden">
+           <div className="absolute top-0 right-0 w-8 h-8 bg-blue-500/10 rounded-bl-full flex items-start justify-end p-1">
+             <span className="text-[10px]">✨</span>
+          </div>
+          <p className="text-indigo-400/80 text-[9px] font-black uppercase mb-1 tracking-wider">Produto</p>
+          <p className="text-white font-medium text-xs pr-4">{item.titulo_amigavel}</p>
+        </div>
+        <div className="bg-gray-800/30 p-2.5 rounded-lg border border-gray-800/80 relative overflow-hidden">
+           <div className="absolute top-0 right-0 w-8 h-8 bg-purple-500/10 rounded-bl-full flex items-start justify-end p-1">
+             <span className="text-[10px]">💬</span>
+          </div>
+          <p className="text-indigo-400/80 text-[9px] font-black uppercase mb-1 tracking-wider">Descrição</p>
+          <p className="text-gray-400 font-mono text-[10px] leading-relaxed break-words break-all pr-4">
+            {item.descricao_raw || 'Não capturada.'}
+          </p>
+        </div>
       </div>
     </div>
   );
