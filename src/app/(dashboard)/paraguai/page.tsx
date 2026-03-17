@@ -95,7 +95,7 @@ function cn(...inputs: any[]) {
 // ─── Components ──────────────────────────────────────────────────────────────
 
 function Badge({ label, color }: { label: string; color: string }) {
-  return <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${color}`}>{label}</span>;
+  return <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-semibold", color)}>{label}</span>;
 }
 
 function CarrinhoDrawer({
@@ -139,7 +139,7 @@ function CarrinhoDrawer({
                     <p className="text-xs mt-0.5">
                       ML: {formatBRL(item.preco_ml_real)}
                       {item.has_catalog && <span className="ml-1 text-emerald-400 font-semibold">CATÁLOGO</span>}
-                      {item.margem_pct != null && <span className={`ml-1 ${margemColor(item.margem_pct)}`}>{item.margem_pct}%</span>}
+                      {item.margem_pct != null && <span className={cn("ml-1", margemColor(item.margem_pct))}>{item.margem_pct}%</span>}
                     </p>
                   )}
                 </div>
@@ -157,13 +157,14 @@ function CarrinhoDrawer({
                 <div className="ml-auto flex gap-1">
                   {['pendente','comprado','descartado'].map(s => (
                     <button key={s} onClick={() => onUpdateStatus(item.id, s)}
-                      className={`text-[10px] px-2 py-0.5 rounded font-medium transition-colors ${
+                      className={cn(
+                        "text-[10px] px-2 py-0.5 rounded font-medium transition-colors",
                         item.status === s
                           ? s === 'comprado' ? 'bg-emerald-600 text-white'
                             : s === 'descartado' ? 'bg-red-700 text-white'
                             : 'bg-indigo-600 text-white'
                           : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                      }`}>
+                      )}>
                       {s}
                     </button>
                   ))}
@@ -233,8 +234,8 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
 
         <div className="flex items-center gap-3">
           <button onClick={() => setSettings(s => ({ ...s, whatsapp_alerts_global: !s.whatsapp_alerts_global }))}
-            className={`w-10 h-6 rounded-full transition-colors ${settings.whatsapp_alerts_global ? 'bg-emerald-600' : 'bg-gray-600'}`}>
-            <div className={`w-4 h-4 bg-white rounded-full mx-1 transition-transform ${settings.whatsapp_alerts_global ? 'translate-x-4' : ''}`} />
+            className={cn("w-10 h-6 rounded-full transition-colors", settings.whatsapp_alerts_global ? 'bg-emerald-600' : 'bg-gray-600')}>
+            <div className={cn("w-4 h-4 bg-white rounded-full mx-1 transition-transform", settings.whatsapp_alerts_global ? 'translate-x-4' : '')} />
           </button>
           <span className="text-gray-300 text-sm">Alertas automáticos via WhatsApp</span>
         </div>
@@ -261,7 +262,7 @@ export default function ParaguaiPage() {
   const [showCarrinho, setShowCarrinho] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>('list');
 
   // Filters
   const [filterMarca, setFilterMarca] = useState('');
@@ -499,7 +500,8 @@ export default function ParaguaiPage() {
               <tr className="bg-gray-800/50 text-gray-400 font-semibold border-b border-gray-700">
                 <th className="px-4 py-3">Produto</th>
                 <th className="px-4 py-3">Fornecedor</th>
-                <th className="px-4 py-3 text-right">Preço PY</th>
+                <th className="px-4 py-3 text-right">Preço USD</th>
+                <th className="px-4 py-3 text-right">Preço BRL</th>
                 <th className="px-4 py-3 text-right">Preço ML</th>
                 <th className="px-4 py-3 text-center">Margem</th>
                 <th className="px-4 py-3 text-center">Ações</th>
@@ -508,7 +510,15 @@ export default function ParaguaiPage() {
             <tbody className="divide-y divide-gray-800">
               {items.map(item => (
                 <Fragment key={item.fingerprint}>
-                  <tr className="hover:bg-gray-800/30 transition-colors group cursor-pointer" onClick={() => setExpandedRow(prev => prev === item.fingerprint ? null : item.fingerprint)}>
+                  <tr 
+                    className={cn(
+                      "transition-all group cursor-pointer border-l-4", 
+                      expandedRow === item.fingerprint 
+                        ? "bg-indigo-500/5 border-indigo-500 text-white" 
+                        : "hover:bg-gray-800/30 border-transparent text-gray-400"
+                    )} 
+                    onClick={() => setExpandedRow(prev => prev === item.fingerprint ? null : item.fingerprint)}
+                  >
                     <td className="px-4 py-3 min-w-[200px]">
                       <div className="flex items-center gap-3">
                         <span className="text-lg flex-shrink-0">{CATEGORIA_EMOJI[item.categoria] || '📦'}</span>
@@ -527,10 +537,10 @@ export default function ParaguaiPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right font-bold text-white whitespace-nowrap">
-                      <div>
-                        <span>{formatUSD(item.melhor_preco_usd)}</span>
-                        <p className="text-[10px] text-gray-500 font-normal">≈ {formatBRL(item.melhor_preco_usd * 5.80)}</p>
-                      </div>
+                      {formatUSD(item.melhor_preco_usd)}
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <span className="text-gray-400 text-xs font-medium">{formatBRL(item.melhor_preco_usd * 5.80)}</span>
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {item.preco_ml_real ? (
@@ -542,7 +552,7 @@ export default function ParaguaiPage() {
                         <span className="text-gray-600">—</span>
                       )}
                     </td>
-                    <td className={`px-4 py-3 text-center font-bold ${margemColor(item.margem_pct)}`}>
+                    <td className={cn("px-4 py-3 text-center font-bold", margemColor(item.margem_pct))}>
                       {item.margem_pct != null ? `${item.margem_pct}%` : '—'}
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -555,15 +565,21 @@ export default function ParaguaiPage() {
                           title="Adicionar ao Carrinho"
                         >
                           🛒
-                        </button>
-                         <span className="text-gray-500 text-xs ml-2">{expandedRow === item.fingerprint ? '▲' : '▼'}</span>
+                         </button>
+                         <div className={cn("transition-transform duration-300 ml-2", expandedRow === item.fingerprint ? "rotate-180" : "rotate-0")}>
+                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 group-hover:text-indigo-400">
+                             <polyline points="6 9 12 15 18 9"></polyline>
+                           </svg>
+                         </div>
                       </div>
                     </td>
                   </tr>
                   {expandedRow === item.fingerprint && (
-                    <tr className="bg-gray-900/50">
-                      <td colSpan={6} className="p-0 border-b border-gray-800">
-                        <ExpandedDetails item={item} />
+                    <tr className="bg-indigo-500/5 border-l-4 border-indigo-500">
+                      <td colSpan={7} className="p-0 border-b border-gray-800">
+                        <div className="py-2">
+                          <ExpandedDetails item={item} variant="list" />
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -607,7 +623,7 @@ function ProductCard({
   const emoji = CATEGORIA_EMOJI[item.categoria] || '📦';
 
   return (
-    <div className={`bg-gray-900 border ${expanded ? 'border-indigo-500 shadow-2xl' : 'border-gray-800'} rounded-xl p-4 flex flex-col gap-3 transition-all group`}>
+    <div className={cn("bg-gray-900 border rounded-xl p-4 flex flex-col gap-3 transition-all group", expanded ? 'border-indigo-500 shadow-2xl' : 'border-gray-800')}>
       {/* Title row */}
       <div className="flex items-start gap-2 cursor-pointer" onClick={onToggleExpand}>
         <span className="text-2xl mt-0.5">{emoji}</span>
@@ -624,9 +640,11 @@ function ProductCard({
             <Badge label={item.categoria} color="bg-gray-800 text-gray-400" />
           </div>
         </div>
-        <button className="text-gray-500 hover:text-white transition-colors p-1">
-          {expanded ? '▲' : '▼'}
-        </button>
+        <div className={cn("transition-transform duration-300", expanded ? "rotate-180" : "rotate-0")}>
+           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 group-hover:text-indigo-400">
+             <polyline points="6 9 12 15 18 9"></polyline>
+           </svg>
+        </div>
       </div>
 
       {/* Prices */}
@@ -635,7 +653,7 @@ function ProductCard({
           <div className="absolute top-0 right-0 w-8 h-8 bg-indigo-500/10 rounded-bl-full flex items-start justify-end p-1">
              <span className="text-[8px]">🇵🇾</span>
           </div>
-          <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mb-0.5">Melhor preço PY</p>
+          <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mb-0.5">Melhor preço USD</p>
           <p className="text-white font-black text-lg leading-none">{formatUSD(item.melhor_preco_usd)}</p>
           <p className="text-gray-400 text-[10px] mt-1 truncate italic">≈ {formatBRL(item.melhor_preco_usd * 5.80)}</p>
         </div>
@@ -647,7 +665,7 @@ function ProductCard({
           {item.preco_ml_real ? (
             <>
               <p className="text-white font-black text-lg leading-none">{formatBRL(item.preco_ml_real)}</p>
-              <p className={`text-[11px] font-bold mt-1 ${margemColor(item.margem_pct)}`}>
+              <p className={cn("text-[11px] font-bold mt-1", margemColor(item.margem_pct))}>
                 {item.margem_pct != null ? `${item.margem_pct}% margem` : '—'}
               </p>
             </>
@@ -660,7 +678,7 @@ function ProductCard({
       {/* Expanded Content (Accordion) */}
       {expanded && (
         <div className="mt-2 pt-4 border-t border-gray-800/50 animate-in fade-in slide-in-from-top-2 duration-200">
-           <ExpandedDetails item={item} />
+           <ExpandedDetails item={item} variant="card" />
         </div>
       )}
 
@@ -694,7 +712,7 @@ function ProductCard({
 
 // ─── Expanded Details (Accordion Content) ────────────────────────────────────
 
-function ExpandedDetails({ item }: { item: Oportunidade }) {
+function ExpandedDetails({ item, variant = 'list' }: { item: Oportunidade; variant?: 'card' | 'list' }) {
   // Format dates: check if today, else normal string
   const isToday = (dateString: string) => {
     const d = new Date(dateString);
@@ -756,82 +774,60 @@ function ExpandedDetails({ item }: { item: Oportunidade }) {
   };
 
   return (
-    <div className="space-y-4 text-sm mt-2">
-      {/* Informações Gerais & Tendência */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5 flex flex-col justify-end">
-          <div className="flex justify-between border-b border-gray-800 pb-1">
-            <span className="text-gray-500 text-[11px] uppercase">Marca</span>
-            <span className="text-white font-medium text-[11px]">{item.marca}</span>
+    <div className="space-y-5 text-sm">
+      {/* Informações Gerais */}
+      <div className={cn("grid grid-cols-1 gap-12 px-8 py-4", variant === 'list' ? 'lg:grid-cols-2' : '')}>
+        <div className="space-y-3 flex flex-col justify-start max-w-md">
+          <div className="flex items-center gap-6 border-b border-gray-800/40 pb-2.5">
+            <span className="text-gray-500 text-[10px] uppercase font-black w-24 shrink-0 tracking-widest">Marca</span>
+            <span className="text-white font-semibold text-xs">{item.marca}</span>
           </div>
-          <div className="flex justify-between border-b border-gray-800 pb-1">
-            <span className="text-gray-500 text-[11px] uppercase">Modelo</span>
-            <span className="text-white font-medium text-[11px] truncate max-w-[100px]">{item.modelo || '—'}</span>
+          <div className="flex items-center gap-6 border-b border-gray-800/40 pb-2.5">
+            <span className="text-gray-500 text-[10px] uppercase font-black w-24 shrink-0 tracking-widest">Modelo</span>
+            <span className="text-white font-medium text-xs truncate">{item.modelo || '—'}</span>
           </div>
-          <div className="flex justify-between border-b border-gray-800 pb-1">
-            <span className="text-gray-500 text-[11px] uppercase">Origem</span>
-            <span className="text-indigo-400 font-bold text-[11px]">{item.origem || '—'}</span>
+          <div className="flex items-center gap-6 border-b border-gray-800/40 pb-2.5">
+            <span className="text-gray-500 text-[10px] uppercase font-black w-24 shrink-0 tracking-widest">Origem</span>
+            <span className="text-indigo-400 font-bold text-xs uppercase">{item.origem || '—'}</span>
           </div>
-          <div className="flex justify-between border-b border-gray-800 pb-1">
-            <span className="text-gray-500 text-[11px] uppercase">Última Ref.</span>
-            <span className="text-right text-[11px]">{formatRefDate(item.ultima_atualizacao)}</span>
+          <div className="flex items-center gap-6 border-b border-gray-800/40 pb-2.5">
+            <span className="text-gray-500 text-[10px] uppercase font-black w-24 shrink-0 tracking-widest">Última Ref.</span>
+            <div className="text-xs">{formatRefDate(item.ultima_atualizacao)}</div>
+          </div>
+          <div className="flex items-center gap-6 border-b border-gray-800/40 pb-2.5 pt-2">
+            <span className="text-gray-500 text-[10px] uppercase font-black w-24 shrink-0 tracking-widest">Fornecedor</span>
+            <div className="flex items-center gap-2">
+              <span className="text-white font-bold text-xs">{item.melhor_fornecedor}</span>
+              <span className="bg-amber-500/20 text-amber-400 text-[9px] px-1.5 py-0.5 rounded font-black border border-amber-500/30">BEST PRICE</span>
+            </div>
+          </div>
+          {/* Descrição inline — ambas views */}
+          <div className="flex items-start gap-6 border-b border-gray-800/40 pb-2.5 pt-1">
+            <span className="text-gray-500 text-[10px] uppercase font-black w-24 shrink-0 tracking-widest pt-0.5">Descrição</span>
+            <p className="text-gray-400 font-mono text-[10px] leading-relaxed break-words line-clamp-3">
+              {item.descricao_raw || 'Não capturada.'}
+            </p>
           </div>
         </div>
 
-        <div className="bg-black/30 rounded-lg p-2 border border-gray-800/80 flex flex-col justify-between">
-          <span className="text-gray-500 text-[9px] uppercase font-bold tracking-widest text-center shadow-sm">Tendência 30 Dias (USD)</span>
-          {renderTrend()}
-        </div>
+        {/* Tendência bloco (list — lado direito) */}
+        {variant === 'list' && (
+          <div className="bg-black/40 rounded-xl p-4 border border-gray-800/60 flex flex-col shadow-inner justify-between">
+            <span className="text-gray-500 text-[9px] uppercase font-black tracking-[0.2em] text-center mb-2">Tendência 30 Dias (USD)</span>
+            {renderTrend()}
+          </div>
+        )}
       </div>
 
-      {/* Fornecedores (Tabela Compacta) */}
-      <div className="bg-black/30 rounded-lg overflow-hidden border border-gray-800/80">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-gray-800/80 text-gray-400 font-medium">
-            <tr>
-              <th className="px-3 py-1.5 font-normal">Fornecedor</th>
-              <th className="px-3 py-1.5 font-normal text-right">USD</th>
-              <th className="px-3 py-1.5 font-normal text-right">Custo BRL*</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-800/50">
-             {Array.isArray(item.all_suppliers) && item.all_suppliers.map((s, idx) => {
-                const custoBrl = s.preco_usd * 5.80 * 1.15;
-                const isBest = s.fornecedor_nome === item.melhor_fornecedor;
-                return (
-                  <tr key={idx} className={isBest ? "bg-indigo-900/20" : ""}>
-                    <td className="px-3 py-2 text-gray-300 font-medium truncate max-w-[120px] flex items-center gap-1.5">
-                      {s.fornecedor_nome}
-                      {isBest && <span className="bg-indigo-500 text-white text-[8px] font-bold px-1 py-0.5 rounded uppercase">Melhor</span>}
-                    </td>
-                    <td className="px-3 py-2 text-right font-bold text-white">${s.preco_usd}</td>
-                    <td className="px-3 py-2 text-right text-gray-500 italic">R$ {custoBrl.toFixed(2)}</td>
-                  </tr>
-                );
-             })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Descrições Livres */}
-      <div className="space-y-2">
-        <div className="bg-gray-800/30 p-2.5 rounded-lg border border-gray-800/80 relative overflow-hidden">
-           <div className="absolute top-0 right-0 w-8 h-8 bg-blue-500/10 rounded-bl-full flex items-start justify-end p-1">
-             <span className="text-[10px]">✨</span>
+      {/* Tendência — full width (card only) */}
+      {variant === 'card' && (
+        <div className="px-8 pb-6">
+          <div className="bg-black/40 rounded-xl p-4 border border-gray-800/60 flex flex-col shadow-inner">
+            <span className="text-gray-500 text-[9px] uppercase font-black tracking-[0.2em] text-center mb-2">Tendência 30 Dias (USD)</span>
+            {renderTrend()}
           </div>
-          <p className="text-indigo-400/80 text-[9px] font-black uppercase mb-1 tracking-wider">Produto</p>
-          <p className="text-white font-medium text-xs pr-4">{item.titulo_amigavel}</p>
         </div>
-        <div className="bg-gray-800/30 p-2.5 rounded-lg border border-gray-800/80 relative overflow-hidden">
-           <div className="absolute top-0 right-0 w-8 h-8 bg-purple-500/10 rounded-bl-full flex items-start justify-end p-1">
-             <span className="text-[10px]">💬</span>
-          </div>
-          <p className="text-indigo-400/80 text-[9px] font-black uppercase mb-1 tracking-wider">Descrição</p>
-          <p className="text-gray-400 font-mono text-[10px] leading-relaxed break-words break-all pr-4">
-            {item.descricao_raw || 'Não capturada.'}
-          </p>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
