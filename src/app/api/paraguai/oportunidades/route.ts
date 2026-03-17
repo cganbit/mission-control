@@ -82,10 +82,15 @@ export async function GET(req: NextRequest) {
         fingerprint,
         json_agg(json_build_object(
           'date', date_trunc('day', received_at),
-          'min_preco_usd', min_preco
+          'min_preco_usd', min_preco,
+          'min_preco_ml', min_ml
         ) ORDER BY date_trunc('day', received_at) ASC) as price_history
       FROM (
-        SELECT fingerprint, received_at, MIN(preco_usd) as min_preco
+        SELECT 
+          fingerprint, 
+          received_at, 
+          MIN(preco_usd) as min_preco,
+          MIN(preco_ml_real) as min_ml
         FROM historico_precos
         WHERE received_at > NOW() - INTERVAL '30 days'
         GROUP BY fingerprint, date_trunc('day', received_at), received_at
@@ -104,6 +109,12 @@ export async function GET(req: NextRequest) {
         l.fornecedor_nome AS melhor_fornecedor,
         l.preco_usd AS melhor_preco_usd,
         c.preco_ml_real,
+        c.ml_price_premium,
+        c.ml_price_classic,
+        c.ml_catalogs_json,
+        c.ml_catalog_id,
+        c.ml_catalog_url,
+        c.ml_shipping_type as shipping_type,
         c.has_catalog,
         c.catalog_ids,
         c.ml_source,

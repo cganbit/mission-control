@@ -14,6 +14,15 @@ interface Supplier {
 interface PriceHistory {
   date: string;
   min_preco_usd: number;
+  min_preco_ml: number | null;
+}
+
+interface CatalogOffer {
+  catalog_id: string;
+  url: string;
+  shipping_badge: string;
+  price_premium: number | null;
+  price_classic: number | null;
 }
 
 interface Oportunidade {
@@ -27,6 +36,12 @@ interface Oportunidade {
   melhor_fornecedor: string;
   melhor_preco_usd: number;
   preco_ml_real: number | null;
+  ml_price_premium: number | null;
+  ml_price_classic: number | null;
+  ml_catalogs_json: CatalogOffer[] | null;
+  ml_catalog_id: string | null;
+  ml_catalog_url: string | null;
+  shipping_type: string | null;
   has_catalog: boolean;
   catalog_ids: string[];
   ml_source: string;
@@ -543,7 +558,13 @@ export default function ParaguaiPage() {
                       <span className="text-gray-400 text-xs font-medium">{formatBRL(item.melhor_preco_usd * 5.80)}</span>
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {item.preco_ml_real ? (
+                      {item.ml_price_classic ? (
+                        <div className="flex flex-col items-end">
+                          <span className="text-white font-bold">{formatBRL(item.ml_price_classic)}</span>
+                          {item.ml_price_premium && <span className="text-gray-500 text-[10px]">P: {formatBRL(item.ml_price_premium)}</span>}
+                          {item.has_catalog && <span className="text-emerald-500 text-[9px] font-bold uppercase">Catálogo</span>}
+                        </div>
+                      ) : item.preco_ml_real ? (
                         <div>
                           <span className="text-white">{formatBRL(item.preco_ml_real)}</span>
                           {item.has_catalog && <span className="ml-1 text-emerald-500 text-[9px] font-bold">CAT</span>}
@@ -662,9 +683,14 @@ function ProductCard({
              <span className="text-[8px]">🇧🇷</span>
           </div>
           <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mb-0.5">Preço ML (BR)</p>
-          {item.preco_ml_real ? (
+          {item.ml_price_classic || item.preco_ml_real ? (
             <>
-              <p className="text-white font-black text-lg leading-none">{formatBRL(item.preco_ml_real)}</p>
+              <p className="text-white font-black text-lg leading-none">
+                {formatBRL(item.ml_price_classic || item.preco_ml_real)}
+              </p>
+              {item.ml_price_premium && (
+                <p className="text-gray-400 text-[10px] mt-0.5">Premium: {formatBRL(item.ml_price_premium)}</p>
+              )}
               <p className={cn("text-[11px] font-bold mt-1", margemColor(item.margem_pct))}>
                 {item.margem_pct != null ? `${item.margem_pct}% margem` : '—'}
               </p>
@@ -735,40 +761,77 @@ function ExpandedDetails({ item, variant = 'list' }: { item: Oportunidade; varia
     return <span className="text-gray-400">{d.toLocaleString('pt-BR')}</span>;
   };
 
-  // Simple Trend Sparkline calculation (SVG bounds 0-100 x 0-30)
+  // Dual-line Trend Sparkline (SVG bounds 0-100 x 0-30)
   const renderTrend = () => {
     if (!item.price_history || item.price_history.length < 2) {
       return <div className="text-xs text-gray-600 italic h-[40px] flex items-center justify-center">Sem histórico 30d</div>;
     }
-    const prices = item.price_history.map(h => h.min_preco_usd);
-    const minP = Math.min(...prices);
-    const maxP = Math.max(...prices);
-    const range = maxP - minP || 1; // avoid div 0
-    
-    // Normalize coordinates
-    const points = item.price_history.map((h, i) => {
-      const x = (i / (item.price_history!.length - 1)) * 100;
-      const y = range === 1 && maxP === minP ? 15 : 30 - (((h.min_preco_usd - minP) / range) * 30);
-      return `${x},${y}`;
-    }).join(' ');
 
-    const trendColor = prices[prices.length - 1] <= prices[0] ? '#10b981' : '#f43f5e'; // green if fell, red if rose
+    // Convert all to BRL for comparison
+    const pyPrices = item.price_history.map(h => h.min_preco_usd * 5.80 * 1.15 * 1.18);
+    const mlPrices = item.price_history.map(h => h.min_preco_ml);
+    
+    // Get absolute min/max for scale
+    const allVals = [...pyPrices, ...mlPrices.filter(v => v != null) as number[]];
+    const minP = Math.min(...allVals);
+    const maxP = Math.max(...allVals);
+    const range = maxP - minP || 1;
+    
+    const getX = (i: number) => (i / (item.price_history!.length - 1)) * 100;
+    const getY = (v: number) => 30 - (((v - minP) / range) * 30);
+
+    // Filter points to only draw where we have data
+    const pyPoints = pyPrices.map((v, i) => `${getX(i)},${getY(v)}`).join(' ');
+    
+    // For ML, we might have gaps
+    const mlPoints = item.price_history
+      .map((h, i) => h.min_preco_ml ? `${getX(i)},${getY(h.min_preco_ml)}` : null)
+      .filter(p => p !== null)
+      .join(' ');
 
     return (
-      <div className="relative h-[40px] w-full mt-2 group">
-        <svg viewBox="0 0 100 30" className="w-full h-full preserve-aspect-ratio-none overflow-visible">
+      <div className="relative h-[60px] w-full mt-2 group">
+        <svg viewBox="0 0 100 30" className="w-full h-full preserve-aspect-ratio-none overflow-visible" preserveAspectRatio="none">
+          {/* Legend helper lines */}
+          <line x1="0" y1={getY(minP)} x2="100" y2={getY(minP)} stroke="#333" strokeWidth="0.5" strokeDasharray="2,2" />
+          <line x1="0" y1={getY(maxP)} x2="100" y2={getY(maxP)} stroke="#333" strokeWidth="0.5" strokeDasharray="2,2" />
+          
+          {/* Paraguai Cost Line (Indigo) */}
           <polyline
-            points={points}
+            points={pyPoints}
             fill="none"
-            stroke={trendColor}
+            stroke="#6366f1"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="drop-shadow-sm transition-all"
+            className="drop-shadow-sm opacity-80"
           />
+          
+          {/* ML Sale Price Line (Emerald) */}
+          {mlPoints && (
+            <polyline
+              points={mlPoints}
+              fill="none"
+              stroke="#10b981"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="drop-shadow-sm"
+            />
+          )}
         </svg>
-        <div className="absolute top-0 left-0 text-[8px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/80 rounded px-1">${maxP}</div>
-        <div className="absolute bottom-0 right-0 text-[8px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/80 rounded px-1">${minP}</div>
+        <div className="flex justify-between mt-1 text-[8px] uppercase tracking-tighter">
+          <div className="flex items-center gap-1">
+             <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+             <span className="text-gray-400">Custo PY</span>
+          </div>
+          <div className="flex items-center gap-1">
+             <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+             <span className="text-gray-400">Venda ML</span>
+          </div>
+        </div>
+        <div className="absolute -top-4 left-0 text-[8px] text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/80 rounded px-1">Máx: {formatBRL(maxP)}</div>
+        <div className="absolute -bottom-1 left-0 text-[8px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/80 rounded px-1">Mín: {formatBRL(minP)}</div>
       </div>
     );
   };
@@ -818,6 +881,56 @@ function ExpandedDetails({ item, variant = 'list' }: { item: Oportunidade; varia
           </div>
         )}
       </div>
+
+      {/* Catalogs Table */}
+      {item.ml_catalogs_json && item.ml_catalogs_json.length > 0 && (
+        <div className="px-8 pb-6">
+          <div className="bg-black/20 rounded-xl border border-gray-800/60 overflow-hidden">
+             <div className="bg-gray-800/40 px-4 py-2 border-b border-gray-800/60 flex justify-between items-center text-[10px] uppercase font-bold tracking-widest">
+                <span className="text-gray-400">📈 Comparação de Catálogos ML (Novos)</span>
+                <span className="text-emerald-500">{item.ml_catalogs_json.length} catálogos encontrados</span>
+             </div>
+             <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="text-gray-500 border-b border-gray-800/40">
+                    <th className="px-4 py-2">ID</th>
+                    <th className="px-4 py-2">Frete</th>
+                    <th className="px-4 py-2 text-right">Premium (Total)</th>
+                    <th className="px-4 py-2 text-right">Clássico (Total)</th>
+                    <th className="px-4 py-2 text-center">Link</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800/40">
+                  {item.ml_catalogs_json.map((c, i) => (
+                    <tr key={c.catalog_id} className={cn("hover:bg-white/5", c.catalog_id === item.ml_catalog_id ? "bg-indigo-500/5" : "")}>
+                      <td className="px-4 py-2 font-mono text-gray-400">
+                        {c.catalog_id}
+                        {c.catalog_id === item.ml_catalog_id && <span className="ml-2 text-[9px] bg-indigo-600 text-white px-1 rounded">Vencedor</span>}
+                      </td>
+                      <td className="px-4 py-2 uppercase font-bold text-[10px]">
+                        <span className={cn(
+                          c.shipping_badge === 'FULL' ? 'text-yellow-500' : 
+                          c.shipping_badge === 'FLEX' ? 'text-indigo-400' : 'text-gray-500'
+                        )}>
+                          {c.shipping_badge}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-right font-bold text-white">
+                        {c.price_premium ? formatBRL(c.price_premium) : '—'}
+                      </td>
+                      <td className="px-4 py-2 text-right text-gray-300">
+                        {c.price_classic ? formatBRL(c.price_classic) : '—'}
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <a href={c.url} target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300">🔗</a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+             </table>
+          </div>
+        </div>
+      )}
 
       {/* Tendência — full width (card only) */}
       {variant === 'card' && (
