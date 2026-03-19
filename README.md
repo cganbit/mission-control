@@ -2,19 +2,31 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+First, install dependencies:
+```bash
+npm install
+```
 
+Then, run the development server:
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+### 🛠️ Next.js 16 Configuration (Proxy)
+Este projeto utiliza Next.js 16 (Turbopack). A convenção `middleware.ts` foi substituída por `src/proxy.ts`.
+Certifique-se de que `src/proxy.ts` exporta uma função chamada `proxy`:
+```typescript
+export async function proxy(req: NextRequest) { ... }
+```
+
+### 🗄️ Database Connectivity
+Para rodar localmente e conectar ao banco da VPS, certifique-se de que a porta 5432 está acessível ou utilize um túnel SSH:
+```bash
+ssh -L 5432:localhost:5432 root@187.77.43.141
+```
+No `.env`, use `DATABASE_URL=postgresql://user:pass@localhost:5432/mission_control`.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
