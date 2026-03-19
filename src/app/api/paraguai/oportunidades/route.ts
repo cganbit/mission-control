@@ -21,8 +21,9 @@ export async function GET(req: NextRequest) {
   const categoria = searchParams.get('categoria') || '';
   const fornecedor = searchParams.get('fornecedor') || '';
   const has_catalog = searchParams.get('has_catalog');
-  const min_margem = parseFloat(searchParams.get('min_margem') || '0') || 0;
-  const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 200);
+  const min_margem = parseFloat(searchParams.get('min_margem') || '-100') || -100;
+  const search = searchParams.get('search') || '';
+  const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 500);
 
   // Get the latest price for each fingerprint from historico_precos
   // Join with preco_ml_cache to get ML prices
@@ -32,8 +33,8 @@ export async function GET(req: NextRequest) {
   let pi = 1;
 
   if (marca) {
-    conditions.push(`UPPER(hp.fingerprint) LIKE $${pi++}`);
-    params.push(`${marca.toUpperCase()}%`);
+    conditions.push(`hp.fingerprint IN (SELECT fingerprint FROM produtos_mestre WHERE marca ILIKE $${pi++})`);
+    params.push(marca);
   }
   if (categoria) {
     conditions.push(`hp.fingerprint IN (SELECT fingerprint FROM produtos_mestre WHERE categoria = $${pi++})`);
@@ -47,6 +48,15 @@ export async function GET(req: NextRequest) {
   if (fornecedor) {
     conditions.push(`hp.fornecedor_nome = $${pi++}`);
     params.push(fornecedor);
+  }
+  if (search) {
+    // Busca flexível no título, marca ou descrição original
+    conditions.push(`(
+      hp.descricao_original ILIKE $${pi} OR 
+      hp.fingerprint IN (SELECT fingerprint FROM produtos_mestre WHERE titulo_amigavel ILIKE $${pi} OR marca ILIKE $${pi})
+    )`);
+    params.push(`%${search}%`);
+    pi++;
   }
 
   const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
@@ -123,12 +133,30 @@ export async function GET(req: NextRequest) {
         l.received_at AS ultima_atualizacao,
         ht.price_history,
         CASE
-          WHEN c.preco_ml_real IS NOT NULL THEN
-            ROUND(
-              (c.preco_ml_real - l.preco_usd * 5.80 * 1.15 * 1.18) / c.preco_ml_real * 100
-            , 1)
+          WHEN c.ml_price_premium IS NOT NULL AND c.ml_price_premium > 0 THEN
+            ROUND((c.ml_price_premium * 0.82) - (l.preco_usd * 5.8), 2)
           ELSE NULL
-        END AS margem_pct,
+        END AS lucro_premium,
+        CASE
+          WHEN c.ml_price_premium IS NOT NULL AND c.ml_price_premium > 0 THEN
+            ROUND((( (c.ml_price_premium * 0.82) - (l.preco_usd * 5.8) ) / c.ml_price_premium) * 100, 1)
+          ELSE 0
+        END AS margem_premium,
+        CASE
+          WHEN c.ml_price_classic IS NOT NULL AND c.ml_price_classic > 0 THEN
+            ROUND((c.ml_price_classic * 0.84) - (l.preco_usd * 5.8), 2)
+          ELSE NULL
+        END AS lucro_classico,
+        CASE
+          WHEN c.ml_price_classic IS NOT NULL AND c.ml_price_classic > 0 THEN
+            ROUND((( (c.ml_price_classic * 0.84) - (l.preco_usd * 5.8) ) / c.ml_price_classic) * 100, 1)
+          ELSE 0
+        END AS margem_classico,
+        -- Mantemos margem_pct para compatibilidade de ordenação/filtro (usando o maior)
+        GREATEST(
+          CASE WHEN c.ml_price_premium > 0 THEN ROUND((((c.ml_price_premium*0.82)-(l.preco_usd*5.8))/c.ml_price_premium)*100,1) ELSE -100 END,
+          CASE WHEN c.ml_price_classic > 0 THEN ROUND((((c.ml_price_classic*0.84)-(l.preco_usd*5.8))/c.ml_price_classic)*100,1) ELSE -100 END
+        ) AS margem_pct,
         EXISTS(
           SELECT 1 FROM lista_compras lc
           WHERE lc.fingerprint = l.fingerprint AND lc.status = 'pendente' AND lc.added_by = $${pi}
@@ -144,7 +172,7 @@ export async function GET(req: NextRequest) {
       LEFT JOIN suppliers s ON s.fingerprint = l.fingerprint
       LEFT JOIN history_trend ht ON ht.fingerprint = l.fingerprint
     ) sub
-    WHERE margem_pct >= $${pi + 1} OR margem_pct IS NULL
+    WHERE (margem_pct >= $${pi + 1} OR margem_pct IS NULL OR $${pi + 1} = 0)
     ORDER BY margem_pct DESC NULLS LAST, ultima_atualizacao DESC
     LIMIT $${pi + 2}
   `;

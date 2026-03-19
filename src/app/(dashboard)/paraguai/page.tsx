@@ -49,6 +49,10 @@ interface Oportunidade {
   num_suppliers: number;
   ultima_atualizacao: string;
   price_history: PriceHistory[] | null;
+  margem_premium: number | null;
+  lucro_premium: number | null;
+  margem_classico: number | null;
+  lucro_classico: number | null;
   margem_pct: number | null;
   no_carrinho: boolean;
   monitorando: boolean;
@@ -278,6 +282,9 @@ export default function ParaguaiPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'list'>('list');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
 
   // Filters
   const [filterMarca, setFilterMarca] = useState('');
@@ -287,6 +294,12 @@ export default function ParaguaiPage() {
   const [filterMinMargem, setFilterMinMargem] = useState(0);
   const [fornecedores, setFornecedores] = useState<string[]>([]);
 
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const loadOportunidades = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
@@ -295,6 +308,7 @@ export default function ParaguaiPage() {
     if (filterFornecedor) params.set('fornecedor', filterFornecedor);
     if (filterCatalog) params.set('has_catalog', filterCatalog);
     if (filterMinMargem > 0) params.set('min_margem', String(filterMinMargem));
+    if (debouncedSearch) params.set('search', debouncedSearch);
     
     try {
       const data = await fetch(`/api/paraguai/oportunidades?${params}`).then(r => r.json());
@@ -312,7 +326,29 @@ export default function ParaguaiPage() {
       console.error(e);
     }
     setLoading(false);
-  }, [filterMarca, filterCat, filterFornecedor, filterCatalog, filterMinMargem]);
+  }, [filterMarca, filterCat, filterFornecedor, filterCatalog, filterMinMargem, debouncedSearch]);
+
+  const refreshCatalog = async (fingerprint: string) => {
+    try {
+      setRefreshingId(fingerprint);
+      const res = await fetch('/api/paraguai/catalogo/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprint })
+      });
+      const data = await res.json();
+      if (data.success) {
+        await loadOportunidades();
+      } else {
+        alert('Erro ao atualizar catálogo: ' + (data.error || 'Erro desconhecido'));
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erro na requisição de atualização');
+    } finally {
+      setRefreshingId(null);
+    }
+  };
 
   const loadCarrinho = useCallback(async () => {
     const data = await fetch('/api/paraguai/carrinho').then(r => r.json());
@@ -425,7 +461,18 @@ export default function ParaguaiPage() {
       {/* Filters & View Toggle */}
       <div className="flex flex-col gap-3 p-3 bg-gray-900 rounded-xl border border-gray-800">
         <div className="flex flex-wrap gap-2 items-center">
-          <div className="flex bg-gray-800 p-1 rounded-lg border border-gray-700 mr-2">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">🔍</span>
+            <input 
+              type="text" 
+              placeholder="Pesquisar produto, marca ou categoria..." 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-9 pr-4 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 placeholder:text-gray-600"
+            />
+          </div>
+
+          <div className="flex bg-gray-800 p-1 rounded-lg border border-gray-700 mx-2">
             <button 
               onClick={() => setViewMode('cards')}
               className={cn("p-1.5 rounded-md transition-all", viewMode === 'cards' ? "bg-indigo-600 text-white shadow-lg" : "text-gray-500 hover:text-gray-300")}
@@ -469,7 +516,7 @@ export default function ParaguaiPage() {
 
           <div className="flex items-center gap-2">
             <span className="text-gray-400 text-xs font-semibold">Margem mín.</span>
-            <input type="number" min={0} max={100} value={filterMinMargem || ''}
+            <input type="number" min={0} max={100} value={filterMinMargem}
               onChange={e => setFilterMinMargem(parseInt(e.target.value) || 0)}
               placeholder="0%"
               className="w-16 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
@@ -512,13 +559,14 @@ export default function ParaguaiPage() {
         <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-xl">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
-              <tr className="bg-gray-800/50 text-gray-400 font-semibold border-b border-gray-700">
-                <th className="px-4 py-3">Produto</th>
-                <th className="px-4 py-3">Fornecedor</th>
+              <tr className="bg-gray-800/50 text-gray-400 font-semibold border-b border-gray-700 uppercase text-[11px] tracking-wider">
+                <th className="px-4 py-3 text-left">Produto</th>
+                <th className="px-4 py-3 text-left">Fornecedor</th>
                 <th className="px-4 py-3 text-right">Preço USD</th>
                 <th className="px-4 py-3 text-right">Preço BRL</th>
                 <th className="px-4 py-3 text-right">Preço ML</th>
-                <th className="px-4 py-3 text-center">Margem</th>
+                <th className="px-4 py-3 text-right">Margem</th>
+                <th className="px-4 py-3 text-right">Lucro</th>
                 <th className="px-4 py-3 text-center">Ações</th>
               </tr>
             </thead>
@@ -545,59 +593,87 @@ export default function ParaguaiPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="text-gray-300">{item.melhor_fornecedor}</span>
-                      {item.num_suppliers > 1 && (
-                        <span className="ml-2 bg-blue-900/40 text-blue-400 text-[10px] px-1.5 py-0.5 rounded">+{item.num_suppliers-1}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right font-bold text-white whitespace-nowrap">
-                      {formatUSD(item.melhor_preco_usd)}
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <span className="text-gray-400 text-xs font-medium">{formatBRL(item.melhor_preco_usd * 5.80)}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {item.ml_price_classic ? (
-                        <div className="flex flex-col items-end">
-                          <span className="text-white font-bold">{formatBRL(item.ml_price_classic)}</span>
-                          {item.ml_price_premium && <span className="text-gray-500 text-[10px]">P: {formatBRL(item.ml_price_premium)}</span>}
-                          {item.has_catalog && <span className="text-emerald-500 text-[9px] font-bold uppercase">Catálogo</span>}
-                        </div>
-                      ) : item.preco_ml_real ? (
-                        <div>
-                          <span className="text-white">{formatBRL(item.preco_ml_real)}</span>
-                          {item.has_catalog && <span className="ml-1 text-emerald-500 text-[9px] font-bold">CAT</span>}
-                        </div>
-                      ) : (
-                        <span className="text-gray-600">—</span>
-                      )}
-                    </td>
-                    <td className={cn("px-4 py-3 text-center font-bold", margemColor(item.margem_pct))}>
-                      {item.margem_pct != null ? `${item.margem_pct}%` : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-2" onClick={e => e.stopPropagation()}>
-                         <button onClick={() => toggleWatch(item)} className={cn("p-1.5 rounded transition-colors", item.monitorando ? "text-amber-400 bg-amber-900/30" : "text-gray-500 hover:text-white hover:bg-gray-700")} title="Monitorar">🔔</button>
-                         <button 
-                          onClick={() => addToCart(item)} 
-                          disabled={item.no_carrinho}
-                          className={cn("p-1.5 rounded transition-colors", item.no_carrinho ? "text-gray-700" : "text-emerald-500 hover:bg-emerald-900/30")}
-                          title="Adicionar ao Carrinho"
-                        >
-                          🛒
-                         </button>
-                         <div className={cn("transition-transform duration-300 ml-2", expandedRow === item.fingerprint ? "rotate-180" : "rotate-0")}>
-                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 group-hover:text-indigo-400">
-                             <polyline points="6 9 12 15 18 9"></polyline>
-                           </svg>
+                     <td className="px-4 py-3 align-middle">
+                       <span className="text-gray-300 text-[13px]">{item.melhor_fornecedor}</span>
+                       {item.num_suppliers > 1 && (
+                         <span className="ml-2 bg-blue-900/40 text-blue-400 text-[10px] px-1.5 py-0.5 rounded">+{item.num_suppliers-1}</span>
+                       )}
+                     </td>
+                     <td className="px-4 py-3 text-right text-gray-300 text-[13px] align-middle whitespace-nowrap">
+                       {formatUSD(item.melhor_preco_usd)}
+                     </td>
+                     <td className="px-4 py-3 text-right align-middle whitespace-nowrap">
+                       <span className="text-gray-300 text-[13px]">{formatBRL(item.melhor_preco_usd * 5.80)}</span>
+                     </td>
+                     <td className="px-4 py-3 text-right align-middle whitespace-nowrap">
+                       <div className="flex flex-col leading-[1.5]">
+                         <div className="flex items-center justify-end gap-1.5 py-1">
+                           <span className="text-[10px]" title="Premium">👑</span>
+                           <span className="text-gray-300 text-[13px]">{item.ml_price_premium ? formatBRL(item.ml_price_premium) : '—'}</span>
                          </div>
-                      </div>
-                    </td>
+                         <div className="border-t border-gray-700/20 flex items-center justify-end gap-1.5 py-1">
+                           <span className="text-[10px]" title="Clássico">🏷️</span>
+                           <span className="text-gray-300 text-[13px]">{item.ml_price_classic ? formatBRL(item.ml_price_classic) : formatBRL(item.preco_ml_real || 0)}</span>
+                         </div>
+                       </div>
+                     </td>
+                     <td className="px-4 py-3 text-right align-middle">
+                       <div className="flex flex-col leading-[1.5]">
+                         <div className="py-1">
+                           <span className={cn("text-[13px]", margemColor(item.margem_premium))}>
+                             {item.margem_premium != null ? `${item.margem_premium}%` : '—'}
+                           </span>
+                         </div>
+                         <div className="border-t border-gray-700/20 py-1">
+                           <span className={cn("text-[13px]", margemColor(item.margem_classico))}>
+                             {item.margem_classico != null ? `${item.margem_classico}%` : '—'}
+                           </span>
+                         </div>
+                       </div>
+                     </td>
+                     <td className="px-4 py-3 text-right align-middle">
+                       <div className="flex flex-col leading-[1.5]">
+                         <div className="py-1">
+                            <span className={cn("text-[13px]", (item.lucro_premium ?? 0) >= 0 ? "text-emerald-400" : "text-red-400")}>
+                              {item.lucro_premium != null ? formatBRL(item.lucro_premium) : '—'}
+                            </span>
+                         </div>
+                         <div className="border-t border-gray-700/20 py-1">
+                            <span className={cn("text-[13px]", (item.lucro_classico ?? 0) >= 0 ? "text-emerald-500" : "text-red-400")}>
+                              {item.lucro_classico != null ? formatBRL(item.lucro_classico) : '—'}
+                            </span>
+                         </div>
+                       </div>
+                     </td>
+                     <td className="px-4 py-3 text-center align-middle">
+                        <div className="flex items-center justify-center gap-2" onClick={e => e.stopPropagation()}>
+                           <button 
+                             onClick={() => refreshCatalog(item.fingerprint)} 
+                             className="p-1.5 rounded text-indigo-400 hover:text-white hover:bg-indigo-600 transition-colors" 
+                             title="Atualizar Catálogo (Real-Time)"
+                           >
+                             ⚡
+                           </button>
+                           <button onClick={() => toggleWatch(item)} className={cn("p-1.5 rounded transition-colors", item.monitorando ? "text-amber-400 bg-amber-900/30" : "text-gray-500 hover:text-white hover:bg-gray-700")} title="Monitorar">🔔</button>
+                           <button 
+                            onClick={() => addToCart(item)} 
+                            disabled={item.no_carrinho}
+                            className={cn("p-1.5 rounded transition-colors", item.no_carrinho ? "text-emerald-500 bg-emerald-900/30 cursor-not-allowed" : "text-gray-500 hover:text-white hover:bg-gray-700")} 
+                            title={item.no_carrinho ? "Já no carrinho" : "Adicionar ao Carrinho"}
+                           >
+                             🛒
+                           </button>
+                           <div className={cn("transition-transform duration-300 ml-2", expandedRow === item.fingerprint ? "rotate-180" : "rotate-0")}>
+                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 group-hover:text-indigo-400">
+                               <polyline points="6 9 12 15 18 9"></polyline>
+                             </svg>
+                           </div>
+                        </div>
+                      </td>
                   </tr>
                   {expandedRow === item.fingerprint && (
                     <tr className="bg-indigo-500/5 border-l-4 border-indigo-500">
-                      <td colSpan={7} className="p-0 border-b border-gray-800">
+                      <td colSpan={8} className="p-0 border-b border-gray-800">
                         <div className="py-2">
                           <ExpandedDetails item={item} variant="list" />
                         </div>
@@ -682,21 +758,49 @@ function ProductCard({
            <div className="absolute top-0 right-0 w-8 h-8 bg-emerald-500/10 rounded-bl-full flex items-start justify-end p-1">
              <span className="text-[8px]">🇧🇷</span>
           </div>
-          <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mb-0.5">Preço ML (BR)</p>
-          {item.ml_price_classic || item.preco_ml_real ? (
-            <>
-              <p className="text-white font-black text-lg leading-none">
-                {formatBRL(item.ml_price_classic || item.preco_ml_real)}
-              </p>
-              {item.ml_price_premium && (
-                <p className="text-gray-400 text-[10px] mt-0.5">Premium: {formatBRL(item.ml_price_premium)}</p>
-              )}
-              <p className={cn("text-[11px] font-bold mt-1", margemColor(item.margem_pct))}>
-                {item.margem_pct != null ? `${item.margem_pct}% margem` : '—'}
-              </p>
-            </>
+          <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mb-1">Canais Mercado Livre</p>
+          {item.ml_price_premium || item.ml_price_classic || item.preco_ml_real ? (
+              <div className="flex flex-col leading-[1.5]">
+               {/* Premium row */}
+               <div className="flex items-center justify-between py-2">
+                 <div className="flex flex-col text-left">
+                   <div className="flex items-center gap-1.5">
+                     <span className="text-gray-300 text-[13px]">{formatBRL(item.ml_price_premium || item.preco_ml_real || 0)}</span>
+                     <span className="text-xs" title="Premium">👑</span>
+                   </div>
+                 </div>
+                 <div className="flex flex-col items-end">
+                   <span className={cn("text-[13px]", margemColor(item.margem_premium))}>
+                     {item.margem_premium != null ? `${item.margem_premium}%` : '—'}
+                   </span>
+                   <span className={cn("text-[11px] mt-0.5", (item.lucro_premium ?? 0) >= 0 ? "text-emerald-400" : "text-red-400")}>
+                     {item.lucro_premium != null ? formatBRL(item.lucro_premium) : '—'}
+                   </span>
+                 </div>
+               </div>
+               
+               {/* Classic row */}
+               <div className="flex items-center justify-between py-2 border-t border-gray-700/20">
+                 <div className="flex flex-col text-left">
+                   <div className="flex items-center gap-1.5">
+                     <span className="text-gray-300 text-[13px]">{formatBRL(item.ml_price_classic || item.preco_ml_real || 0)}</span>
+                     <span className="text-xs" title="Clássico">🏷️</span>
+                   </div>
+                 </div>
+                 <div className="flex flex-col items-end">
+                   <span className={cn("text-[13px]", margemColor(item.margem_classico))}>
+                     {item.margem_classico != null ? `${item.margem_classico}%` : '—'}
+                   </span>
+                   <span className={cn("text-[11px] mt-0.5", (item.lucro_classico ?? 0) >= 0 ? "text-emerald-500/80" : "text-red-400/80")}>
+                     {item.lucro_classico != null ? formatBRL(item.lucro_classico) : '—'}
+                   </span>
+                 </div>
+               </div>
+             </div>
           ) : (
-            <p className="text-gray-600 text-sm italic py-1">Sem dados</p>
+            <div className="bg-gray-900/30 rounded p-4 border border-dashed border-gray-800 text-center">
+              <p className="text-gray-600 text-xs italic">Nenhum dado do Mercado Livre disponível</p>
+            </div>
           )}
         </div>
       </div>
@@ -895,8 +999,8 @@ function ExpandedDetails({ item, variant = 'list' }: { item: Oportunidade; varia
                   <tr className="text-gray-500 border-b border-gray-800/40">
                     <th className="px-4 py-2">ID</th>
                     <th className="px-4 py-2">Frete</th>
-                    <th className="px-4 py-2 text-right">Premium (Total)</th>
-                    <th className="px-4 py-2 text-right">Clássico (Total)</th>
+                    <th className="px-4 py-2 text-right">Premium (Lucro)</th>
+                    <th className="px-4 py-2 text-right">Clássico (Lucro)</th>
                     <th className="px-4 py-2 text-center">Link</th>
                   </tr>
                 </thead>
@@ -915,11 +1019,25 @@ function ExpandedDetails({ item, variant = 'list' }: { item: Oportunidade; varia
                           {c.shipping_badge}
                         </span>
                       </td>
-                      <td className="px-4 py-2 text-right font-bold text-white">
-                        {c.price_premium ? formatBRL(c.price_premium) : '—'}
+                      <td className="px-4 py-2 text-right">
+                        <div className="flex flex-col items-end">
+                           <span className="font-bold text-white">{c.price_premium ? formatBRL(c.price_premium) : '—'}</span>
+                           {c.price_premium && (
+                             <span className={cn("text-[9px]", ((c.price_premium * 0.82) - (item.melhor_preco_usd * 6 * 1.6)) >= 0 ? "text-emerald-400" : "text-red-400")}>
+                               Lucro: {formatBRL((c.price_premium * 0.82) - (item.melhor_preco_usd * 6 * 1.6))}
+                             </span>
+                           )}
+                        </div>
                       </td>
-                      <td className="px-4 py-2 text-right text-gray-300">
-                        {c.price_classic ? formatBRL(c.price_classic) : '—'}
+                      <td className="px-4 py-2 text-right">
+                        <div className="flex flex-col items-end">
+                           <span className="text-gray-300">{c.price_classic ? formatBRL(c.price_classic) : '—'}</span>
+                           {c.price_classic && (
+                             <span className={cn("text-[9px]", ((c.price_classic * 0.84) - (item.melhor_preco_usd * 6 * 1.6)) >= 0 ? "text-emerald-500" : "text-red-500")}>
+                               Lucro: {formatBRL((c.price_classic * 0.84) - (item.melhor_preco_usd * 6 * 1.6))}
+                             </span>
+                           )}
+                        </div>
                       </td>
                       <td className="px-4 py-2 text-center">
                         <a href={c.url} target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300">🔗</a>

@@ -35,6 +35,7 @@ const NAV: NavItem[] = [
 
 const APPS: AppItem[] = [
   { href: '/paraguai', label: 'Oportunidades PY', icon: '🇵🇾', minRole: 'member' },
+  { href: '/mercado-livre', label: 'Mercado Livre', icon: '🛍️', minRole: 'member' },
 ];
 
 const ROLE_LEVEL: Record<string, number> = { admin: 3, member: 2, viewer: 1 };

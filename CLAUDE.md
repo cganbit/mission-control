@@ -7,9 +7,9 @@ Next.js 16 (App Router) + PostgreSQL. Deployado no VPS como container Docker.
 
 **URL:** http://187.77.43.141:3001
 **Login padrão:** admin / REDACTED_ADMIN_PASS (criado automaticamente no primeiro acesso)
-**Projeto local:** `C:\Users\Bolota\Desktop\paraguai\mission-control\`
-**Script de deploy:** `C:\Users\Bolota\Desktop\paraguai\deploy_mc.py`
-**Contexto completo do projeto pai:** `C:\Users\Bolota\Desktop\paraguai\CLAUDE.md`
+**Projeto local:** `C:\Users\Bolota\Desktop\Wingx\Paraguai\mission-control\`
+**Script de deploy:** `C:\Users\Bolota\Desktop\Wingx\Paraguai\deploy_mc.py`
+**Contexto completo do projeto pai:** `C:\Users\Bolota\Desktop\Wingx\Paraguai\CLAUDE.md`
 
 ---
 
@@ -87,6 +87,7 @@ src/
 │       ├── memories/[id]/route.ts       → DELETE
 │       ├── documents/route.ts           → GET (busca, filtro tipo/squad), POST create
 │       ├── documents/[id]/route.ts      → GET (conteúdo completo), DELETE
+│       ├── paraguai/catalogo/refresh/route.ts → POST { fingerprint } refresca catálogo nativo (Firecrawl v1)
 │       └── tokens/route.ts              → GET (por agente/squad/período), POST registrar uso
 ├── components/
 │   └── Sidebar.tsx                      → navegação lateral com filtro por role (minRole por rota)
@@ -226,7 +227,7 @@ Script: `C:\Users\Bolota\Desktop\paraguai\deploy_mc.py`
 ```python
 import paramiko, tarfile, os, io
 
-project_dir = r'C:\Users\Bolota\Desktop\paraguai\mission-control'
+project_dir = r'C:\Users\Bolota\Desktop\Wingx\Paraguai\mission-control'
 exclude = {'node_modules', '.next', '.git'}
 
 buf = io.BytesIO()
