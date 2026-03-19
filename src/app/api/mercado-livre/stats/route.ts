@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
 import fs from "fs";
 import path from "path";
-import axios from "axios";
 
 export async function GET(req: NextRequest) {
   const session = await getSessionFromRequest(req);
@@ -25,28 +24,33 @@ export async function GET(req: NextRequest) {
         // Obter vendas do dia para o dashboard
         const dateFrom = new Date();
         dateFrom.setHours(0, 0, 0, 0);
-        
-        const response = await axios.get(`https://api.mercadolibre.com/orders/search`, {
-          params: { 
-            seller: acc.seller_id,
-            "order.date_created_from": dateFrom.toISOString(),
-            limit: 5
-          },
+
+        const ordersUrl = new URL("https://api.mercadolibre.com/orders/search");
+        ordersUrl.searchParams.set("seller", String(acc.seller_id));
+        ordersUrl.searchParams.set("order.date_created_from", dateFrom.toISOString());
+        ordersUrl.searchParams.set("limit", "5");
+
+        const ordersRes = await fetch(ordersUrl.toString(), {
           headers: { Authorization: `Bearer ${acc.access_token}` }
         });
+        const ordersData = await ordersRes.json();
 
         // Obter perguntas pendentes
-        const questionsResponse = await axios.get(`https://api.mercadolibre.com/questions/search`, {
-          params: { seller_id: acc.seller_id, status: "UNANSWERED" },
+        const questionsUrl = new URL("https://api.mercadolibre.com/questions/search");
+        questionsUrl.searchParams.set("seller_id", String(acc.seller_id));
+        questionsUrl.searchParams.set("status", "UNANSWERED");
+
+        const questionsRes = await fetch(questionsUrl.toString(), {
           headers: { Authorization: `Bearer ${acc.access_token}` }
         });
+        const questionsData = await questionsRes.json();
 
         results.push({
           nickname: acc.nickname,
           seller_id: acc.seller_id,
-          sales_today: response.data.results.length,
-          total_amount: response.data.results.reduce((acc: number, o: any) => acc + o.total_amount, 0),
-          pending_questions: questionsResponse.data.questions.length,
+          sales_today: ordersData.results?.length || 0,
+          total_amount: ordersData.results?.reduce((sum: number, o: any) => sum + (o.total_amount || 0), 0) || 0,
+          pending_questions: questionsData.questions?.length || 0,
           status: "active"
         });
       } catch (e: any) {
@@ -54,7 +58,7 @@ export async function GET(req: NextRequest) {
           nickname: acc.nickname,
           seller_id: acc.seller_id,
           status: "error",
-          error: e.response?.data?.message || e.message
+          error: e.message || "Unknown error"
         });
       }
     }
