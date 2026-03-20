@@ -1,9 +1,17 @@
+# Secrets — NUNCA commitar
 .env
 .env.local
+.env.production
+.env.*.local
 *.env
+!.env.example
+
+# Build
 node_modules/
 .next/
 .npm/
+
+# OS / IDE
 __pycache__/
 *.log
 *.tmp

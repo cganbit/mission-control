@@ -7,7 +7,7 @@ const pool = new Pool({
   max: 5,
 });
 
-const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API_KEY || "REDACTED_FIRECRAWL_KEY";
+const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API_KEY ?? '';
 
 function generateSlug(text: string) {
   return text
@@ -150,6 +150,7 @@ async function scrapeWithFirecrawl(url: string) {
 export async function POST(req: NextRequest) {
   const session = await getSessionFromRequest(req);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!FIRECRAWL_API_KEY) return NextResponse.json({ error: 'FIRECRAWL_API_KEY não configurada' }, { status: 503 });
 
   try {
     const { fingerprint } = await req.json();

@@ -8,8 +8,7 @@ const pool = new Pool({
   max: 3,
 });
 
-const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY
-  || 'REDACTED_OPENROUTER_KEY';
+const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY ?? '';
 
 const PROMPT = (descricao: string) => `Você é um especialista em eletrônicos da América Latina. Analise a descrição bruta de um produto e extraia informações estruturadas.
 
@@ -41,6 +40,10 @@ export async function POST(req: NextRequest) {
 
   if (fingerprints.length === 0) {
     return NextResponse.json({ error: 'Forneça fingerprint ou fingerprints' }, { status: 400 });
+  }
+
+  if (!OPENROUTER_KEY) {
+    return NextResponse.json({ error: 'OPENROUTER_API_KEY não configurada no servidor' }, { status: 503 });
   }
 
   const results: { fingerprint: string; success: boolean; updated?: object; error?: string }[] = [];
