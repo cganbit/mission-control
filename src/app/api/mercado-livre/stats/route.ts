@@ -3,6 +3,38 @@ import { getSessionFromRequest } from "@/lib/auth";
 import fs from "fs";
 import path from "path";
 
+async function mlFetch(url: string, token: string) {
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  return res.json();
+}
+
+async function getMonthRevenue(sellerId: number, token: string): Promise<number> {
+  const firstDay = new Date();
+  firstDay.setDate(1);
+  firstDay.setHours(0, 0, 0, 0);
+
+  let total = 0;
+  let offset = 0;
+
+  while (true) {
+    const url = new URL("https://api.mercadolibre.com/orders/search");
+    url.searchParams.set("seller", String(sellerId));
+    url.searchParams.set("order.date_created_from", firstDay.toISOString());
+    url.searchParams.set("limit", "50");
+    url.searchParams.set("offset", String(offset));
+
+    const data = await mlFetch(url.toString(), token);
+    const results = data.results ?? [];
+
+    for (const o of results) total += o.total_amount || 0;
+
+    if (results.length < 50) break;
+    offset += 50;
+  }
+
+  return total;
+}
+
 export async function GET(req: NextRequest) {
   const session = await getSessionFromRequest(req);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -21,49 +53,44 @@ export async function GET(req: NextRequest) {
 
     for (const acc of accounts) {
       try {
-        // Obter vendas do dia para o dashboard
-        const dateFrom = new Date();
-        dateFrom.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-        const ordersUrl = new URL("https://api.mercadolibre.com/orders/search");
-        ordersUrl.searchParams.set("seller", String(acc.seller_id));
-        ordersUrl.searchParams.set("order.date_created_from", dateFrom.toISOString());
-        ordersUrl.searchParams.set("limit", "50");
+        const todayUrl = new URL("https://api.mercadolibre.com/orders/search");
+        todayUrl.searchParams.set("seller", String(acc.seller_id));
+        todayUrl.searchParams.set("order.date_created_from", today.toISOString());
+        todayUrl.searchParams.set("limit", "1");
 
-        const ordersRes = await fetch(ordersUrl.toString(), {
-          headers: { Authorization: `Bearer ${acc.access_token}` }
-        });
-        const ordersData = await ordersRes.json();
+        const totalUrl = new URL("https://api.mercadolibre.com/orders/search");
+        totalUrl.searchParams.set("seller", String(acc.seller_id));
+        totalUrl.searchParams.set("limit", "1");
 
-        // Obter perguntas pendentes
         const questionsUrl = new URL("https://api.mercadolibre.com/questions/search");
         questionsUrl.searchParams.set("seller_id", String(acc.seller_id));
         questionsUrl.searchParams.set("status", "UNANSWERED");
 
-        const questionsRes = await fetch(questionsUrl.toString(), {
-          headers: { Authorization: `Bearer ${acc.access_token}` }
-        });
-        const questionsData = await questionsRes.json();
-
-        // paging.total = total real de vendas (sem limite de paginação)
-        const salesTotal = ordersData.paging?.total ?? ordersData.results?.length ?? 0;
-        const totalAmount = ordersData.results?.reduce((sum: number, o: any) => sum + (o.total_amount || 0), 0) || 0;
-        const pendingQuestions = questionsData.paging?.total ?? questionsData.questions?.length ?? 0;
+        const [todayData, totalData, questionsData, monthRevenue] = await Promise.all([
+          mlFetch(todayUrl.toString(), acc.access_token),
+          mlFetch(totalUrl.toString(), acc.access_token),
+          mlFetch(questionsUrl.toString(), acc.access_token),
+          getMonthRevenue(acc.seller_id, acc.access_token),
+        ]);
 
         results.push({
           nickname: acc.nickname,
           seller_id: acc.seller_id,
-          sales_today: salesTotal,
-          total_amount: totalAmount,
-          pending_questions: pendingQuestions,
-          status: "active"
+          status: "active",
+          sales_today: todayData.paging?.total ?? 0,
+          sales_total: totalData.paging?.total ?? 0,
+          month_revenue: monthRevenue,
+          pending_questions: questionsData.paging?.total ?? questionsData.questions?.length ?? 0,
         });
       } catch (e: any) {
         results.push({
           nickname: acc.nickname,
           seller_id: acc.seller_id,
           status: "error",
-          error: e.message || "Unknown error"
+          error: e.message || "Unknown error",
         });
       }
     }
