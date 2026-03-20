@@ -285,6 +285,9 @@ export default function ParaguaiPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [normalizingId, setNormalizingId] = useState<string | null>(null);
+  const [selectedForNormalize, setSelectedForNormalize] = useState<Set<string>>(new Set());
+  const [batchNormalizing, setBatchNormalizing] = useState(false);
 
   // Filters
   const [filterMarca, setFilterMarca] = useState('');
@@ -348,6 +351,57 @@ export default function ParaguaiPage() {
     } finally {
       setRefreshingId(null);
     }
+  };
+
+  const normalizeItem = async (item: Oportunidade) => {
+    try {
+      setNormalizingId(item.fingerprint);
+      const res = await fetch('/api/paraguai/normalizar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprint: item.fingerprint, descricao_raw: item.descricao_raw }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        await loadOportunidades();
+      } else {
+        alert('Erro ao normalizar: ' + (data.results?.[0]?.error || 'Erro desconhecido'));
+      }
+    } catch {
+      alert('Erro na requisição de normalização');
+    } finally {
+      setNormalizingId(null);
+    }
+  };
+
+  const batchNormalize = async () => {
+    setBatchNormalizing(true);
+    const fingerprints = Array.from(selectedForNormalize);
+    try {
+      const res = await fetch('/api/paraguai/normalizar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprints }),
+      });
+      const data = await res.json();
+      const failed = data.results?.filter((r: any) => !r.success).length || 0;
+      if (failed > 0) alert(`${fingerprints.length - failed} normalizados. ${failed} falharam.`);
+      setSelectedForNormalize(new Set());
+      await loadOportunidades();
+    } catch {
+      alert('Erro na normalização em lote');
+    } finally {
+      setBatchNormalizing(false);
+    }
+  };
+
+  const toggleSelectNormalize = (fingerprint: string) => {
+    setSelectedForNormalize(prev => {
+      const next = new Set(prev);
+      if (next.has(fingerprint)) next.delete(fingerprint);
+      else next.add(fingerprint);
+      return next;
+    });
   };
 
   const loadCarrinho = useCallback(async () => {
@@ -522,6 +576,15 @@ export default function ParaguaiPage() {
               className="w-16 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
           </div>
 
+          {selectedForNormalize.size > 0 && (
+            <button
+              onClick={batchNormalize}
+              disabled={batchNormalizing}
+              className="px-4 py-1.5 rounded-lg bg-amber-600 text-white text-sm font-semibold hover:bg-amber-500 shadow-md disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {batchNormalizing ? '⏳' : '🤖'} Normalizar ({selectedForNormalize.size})
+            </button>
+          )}
           <button onClick={loadOportunidades}
             className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 shadow-md ml-auto">
             Atualizar
@@ -552,14 +615,24 @@ export default function ParaguaiPage() {
               onToggleExpand={() => setExpandedRow(prev => prev === item.fingerprint ? null : item.fingerprint)}
               onAddToCart={() => addToCart(item)}
               onToggleWatch={() => toggleWatch(item)}
+              onNormalize={() => normalizeItem(item)}
+              normalizing={normalizingId === item.fingerprint}
             />
           ))}
         </div>
       ) : (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-xl">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-x-auto shadow-xl">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
               <tr className="bg-gray-800/50 text-gray-400 font-semibold border-b border-gray-700 uppercase text-[11px] tracking-wider">
+                <th className="px-3 py-3 text-center w-8">
+                  <input
+                    type="checkbox"
+                    checked={selectedForNormalize.size === items.length && items.length > 0}
+                    onChange={e => setSelectedForNormalize(e.target.checked ? new Set(items.map(i => i.fingerprint)) : new Set())}
+                    className="accent-amber-500"
+                  />
+                </th>
                 <th className="px-4 py-3 text-left">Produto</th>
                 <th className="px-4 py-3 text-left">Fornecedor</th>
                 <th className="px-4 py-3 text-right">Preço USD</th>
@@ -573,15 +646,23 @@ export default function ParaguaiPage() {
             <tbody className="divide-y divide-gray-800">
               {items.map(item => (
                 <Fragment key={item.fingerprint}>
-                  <tr 
+                  <tr
                     className={cn(
-                      "transition-all group cursor-pointer border-l-4", 
-                      expandedRow === item.fingerprint 
-                        ? "bg-indigo-500/5 border-indigo-500 text-white" 
+                      "transition-all group cursor-pointer border-l-4",
+                      expandedRow === item.fingerprint
+                        ? "bg-indigo-500/5 border-indigo-500 text-white"
                         : "hover:bg-gray-800/30 border-transparent text-gray-400"
-                    )} 
+                    )}
                     onClick={() => setExpandedRow(prev => prev === item.fingerprint ? null : item.fingerprint)}
                   >
+                    <td className="px-3 py-3 text-center align-middle" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedForNormalize.has(item.fingerprint)}
+                        onChange={() => toggleSelectNormalize(item.fingerprint)}
+                        className="accent-amber-500"
+                      />
+                    </td>
                     <td className="px-4 py-3 min-w-[200px]">
                       <div className="flex items-center gap-3">
                         <span className="text-lg flex-shrink-0">{CATEGORIA_EMOJI[item.categoria] || '📦'}</span>
@@ -647,9 +728,17 @@ export default function ParaguaiPage() {
                      </td>
                      <td className="px-4 py-3 text-center align-middle">
                         <div className="flex items-center justify-center gap-2" onClick={e => e.stopPropagation()}>
-                           <button 
-                             onClick={() => refreshCatalog(item.fingerprint)} 
-                             className="p-1.5 rounded text-indigo-400 hover:text-white hover:bg-indigo-600 transition-colors" 
+                           <button
+                             onClick={() => normalizeItem(item)}
+                             disabled={normalizingId === item.fingerprint}
+                             className={cn("p-1.5 rounded transition-colors", normalizingId === item.fingerprint ? "text-amber-400 bg-amber-900/30 animate-pulse" : "text-gray-500 hover:text-white hover:bg-amber-700")}
+                             title="Normalizar com IA"
+                           >
+                             🤖
+                           </button>
+                           <button
+                             onClick={() => refreshCatalog(item.fingerprint)}
+                             className="p-1.5 rounded text-indigo-400 hover:text-white hover:bg-indigo-600 transition-colors"
                              title="Atualizar Catálogo (Real-Time)"
                            >
                              ⚡
@@ -673,7 +762,7 @@ export default function ParaguaiPage() {
                   </tr>
                   {expandedRow === item.fingerprint && (
                     <tr className="bg-indigo-500/5 border-l-4 border-indigo-500">
-                      <td colSpan={8} className="p-0 border-b border-gray-800">
+                      <td colSpan={9} className="p-0 border-b border-gray-800">
                         <div className="py-2">
                           <ExpandedDetails item={item} variant="list" />
                         </div>
@@ -710,12 +799,16 @@ function ProductCard({
   onToggleExpand,
   onAddToCart,
   onToggleWatch,
+  onNormalize,
+  normalizing,
 }: {
   item: Oportunidade;
   expanded: boolean;
   onToggleExpand: () => void;
   onAddToCart: () => void;
   onToggleWatch: () => void;
+  onNormalize: () => void;
+  normalizing: boolean;
 }) {
   const emoji = CATEGORIA_EMOJI[item.categoria] || '📦';
 
@@ -824,6 +917,16 @@ function ProductCard({
               : "bg-indigo-600 text-white hover:bg-indigo-500 hover:-translate-y-0.5 active:translate-y-0"
           )}>
           {item.no_carrinho ? '✓ NO CARRINHO' : '+ CARRINHO'}
+        </button>
+        <button
+          onClick={onNormalize}
+          disabled={normalizing}
+          className={cn(
+            "px-3.5 py-2.5 rounded-xl transition-all shadow-md",
+            normalizing ? "bg-amber-900 text-amber-300 animate-pulse" : "bg-gray-800 text-gray-400 hover:bg-amber-700 hover:text-white"
+          )}
+          title="Normalizar com IA">
+          🤖
         </button>
         <button
           onClick={onToggleWatch}
@@ -989,7 +1092,7 @@ function ExpandedDetails({ item, variant = 'list' }: { item: Oportunidade; varia
       {/* Catalogs Table */}
       {item.ml_catalogs_json && item.ml_catalogs_json.length > 0 && (
         <div className="px-8 pb-6">
-          <div className="bg-black/20 rounded-xl border border-gray-800/60 overflow-hidden">
+          <div className="bg-black/20 rounded-xl border border-gray-800/60 overflow-x-auto">
              <div className="bg-gray-800/40 px-4 py-2 border-b border-gray-800/60 flex justify-between items-center text-[10px] uppercase font-bold tracking-widest">
                 <span className="text-gray-400">📈 Comparação de Catálogos ML (Novos)</span>
                 <span className="text-emerald-500">{item.ml_catalogs_json.length} catálogos encontrados</span>
