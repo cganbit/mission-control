@@ -64,6 +64,8 @@ export async function GET(req: NextRequest) {
         const totalUrl = new URL("https://api.mercadolibre.com/orders/search");
         totalUrl.searchParams.set("seller", String(acc.seller_id));
         totalUrl.searchParams.set("limit", "1");
+        totalUrl.searchParams.set("sort", "date_desc");
+        totalUrl.searchParams.set("order.status", "paid");
 
         const questionsUrl = new URL("https://api.mercadolibre.com/questions/search");
         questionsUrl.searchParams.set("seller_id", String(acc.seller_id));
