@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
         const ordersUrl = new URL("https://api.mercadolibre.com/orders/search");
         ordersUrl.searchParams.set("seller", String(acc.seller_id));
         ordersUrl.searchParams.set("order.date_created_from", dateFrom.toISOString());
-        ordersUrl.searchParams.set("limit", "5");
+        ordersUrl.searchParams.set("limit", "50");
 
         const ordersRes = await fetch(ordersUrl.toString(), {
           headers: { Authorization: `Bearer ${acc.access_token}` }
@@ -45,12 +45,17 @@ export async function GET(req: NextRequest) {
         });
         const questionsData = await questionsRes.json();
 
+        // paging.total = total real de vendas (sem limite de paginação)
+        const salesTotal = ordersData.paging?.total ?? ordersData.results?.length ?? 0;
+        const totalAmount = ordersData.results?.reduce((sum: number, o: any) => sum + (o.total_amount || 0), 0) || 0;
+        const pendingQuestions = questionsData.paging?.total ?? questionsData.questions?.length ?? 0;
+
         results.push({
           nickname: acc.nickname,
           seller_id: acc.seller_id,
-          sales_today: ordersData.results?.length || 0,
-          total_amount: ordersData.results?.reduce((sum: number, o: any) => sum + (o.total_amount || 0), 0) || 0,
-          pending_questions: questionsData.questions?.length || 0,
+          sales_today: salesTotal,
+          total_amount: totalAmount,
+          pending_questions: pendingQuestions,
           status: "active"
         });
       } catch (e: any) {
