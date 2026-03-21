@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
-import { Pool, types } from 'pg';
+import { types } from 'pg';
+import { getArbitragemPool } from '@/lib/db';
 
 // Força o pg a retornar NUMERIC (1700) e BIGINT (20) como números
 types.setTypeParser(1700, (val) => parseFloat(val));
 types.setTypeParser(20, (val) => parseInt(val, 10));
-
-// Connects to the arbitragem database (same postgres instance, different DB)
-const pool = new Pool({
-  connectionString: (process.env.DATABASE_URL ?? '').replace('/mission_control', '/arbitragem'),
-  max: 5,
-});
 
 export async function GET(req: NextRequest) {
   const session = await getSessionFromRequest(req);
@@ -128,6 +123,7 @@ export async function GET(req: NextRequest) {
         c.has_catalog,
         c.catalog_ids,
         c.ml_source,
+        c.ml_enriched_json,
         s.all_suppliers,
         s.num_suppliers,
         l.received_at AS ultima_atualizacao,
@@ -182,14 +178,14 @@ export async function GET(req: NextRequest) {
   params.push(limit);
 
   try {
-    const result = await pool.query(sql, params);
+    const result = await getArbitragemPool().query(sql, params);
     return NextResponse.json(result.rows);
   } catch (e) {
     console.error('oportunidades query error:', e);
     // Fallback if 'origem' simply doesn't exist on PM yet, return without it safely
     try {
-      const fallbackSql = sql.replace("COALESCE(pm.origem, '') AS origem,", "");
-      const resFallback = await pool.query(fallbackSql, params);
+      const fallbackSql = sql.replace("COALESCE(pm.origem, '') AS origem,", "").replace("c.ml_enriched_json,", "NULL::jsonb AS ml_enriched_json,");
+      const resFallback = await getArbitragemPool().query(fallbackSql, params);
       return NextResponse.json(resFallback.rows);
     } catch(e2) {
       console.error('Fallback failed:', e2);

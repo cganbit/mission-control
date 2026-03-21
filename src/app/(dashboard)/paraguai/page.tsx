@@ -19,10 +19,16 @@ interface PriceHistory {
 
 interface CatalogOffer {
   catalog_id: string;
+  title?: string;
   url: string;
-  shipping_badge: string;
+  shipping_badge?: string;
   price_premium: number | null;
   price_classic: number | null;
+  is_winner?: boolean;
+  seller_count?: number;
+  sold_quantity?: number;
+  available_quantity?: number;
+  updated_at?: string;
 }
 
 interface Oportunidade {
@@ -57,6 +63,14 @@ interface Oportunidade {
   no_carrinho: boolean;
   monitorando: boolean;
   descricao_raw: string;
+  ml_enriched_json: {
+    sold_quantity?: number | null;
+    rating?: string | null;
+    ranking_position?: number | null;
+    ranking_category?: string | null;
+    best_price_seller?: string | null;
+    winner_seller?: string | null;
+  } | null;
 }
 
 interface CarrinhoItem {
@@ -79,6 +93,41 @@ interface Settings {
   whatsapp_number: string;
   whatsapp_alerts_global: boolean;
   min_margem: number;
+}
+
+// ─── Catalog Proxy (roda localmente na máquina do usuário — sem bloqueio de IP) ──
+
+const CATALOG_PROXY = 'http://localhost:3099';
+
+async function proxyHealth(): Promise<boolean> {
+  try {
+    const res = await fetch(`${CATALOG_PROXY}/health`, { signal: AbortSignal.timeout(2000) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function proxySearchCatalog(q: string): Promise<{ catalog_id: string; title: string; price: number; url: string }[]> {
+  const res = await fetch(`${CATALOG_PROXY}/search?q=${encodeURIComponent(q)}`, {
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`Proxy ${res.status}: ${await res.text()}`);
+  const { catalogs } = await res.json();
+  return catalogs;
+}
+
+async function proxyGetCatalogPrices(catalogId: string, minPrice = 0): Promise<{
+  catalog_id: string; title: string;
+  price_premium: number | null; price_classic: number | null;
+  seller_count: number; sold_quantity: number; available_quantity: number;
+  seller_nickname: string; url: string; updated_at: string;
+}> {
+  const res = await fetch(`${CATALOG_PROXY}/prices?id=${catalogId}&min=${minPrice}`, {
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`Proxy ${res.status}: ${await res.text()}`);
+  return res.json();
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -272,6 +321,87 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+function NovoProdutoModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [titulo, setTitulo] = useState('');
+  const [precoUsd, setPrecoUsd] = useState('');
+  const [fornecedor, setFornecedor] = useState('Manual');
+  const [categoria, setCategoria] = useState('smartphone');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const fingerprint = titulo.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+  async function save() {
+    if (!titulo.trim() || !precoUsd) { setError('Preencha título e preço.'); return; }
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch('/api/paraguai/produto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titulo: titulo.trim(), preco_usd: parseFloat(precoUsd), fornecedor, categoria }),
+      });
+      const data = await res.json();
+      if (data.ok) { onSaved(); }
+      else { setError(data.error || 'Erro ao salvar.'); }
+    } catch { setError('Erro na requisição.'); }
+    finally { setSaving(false); }
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className="relative z-10 bg-gray-900 border border-gray-700 rounded-xl w-[440px] p-6 space-y-4">
+        <h2 className="text-white font-bold text-lg">+ Novo Produto</h2>
+
+        <div>
+          <label className="text-gray-400 text-xs mb-1 block">Título do produto</label>
+          <input value={titulo} onChange={e => setTitulo(e.target.value)}
+            className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+            placeholder="Apple AirPods Pro 3rd Generation" />
+          {titulo && (
+            <p className="text-gray-600 text-[10px] mt-1 font-mono">fingerprint: {fingerprint}</p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-gray-400 text-xs mb-1 block">Preço USD</label>
+            <input type="number" min={0} step={0.01} value={precoUsd} onChange={e => setPrecoUsd(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+              placeholder="150.00" />
+          </div>
+          <div>
+            <label className="text-gray-400 text-xs mb-1 block">Fornecedor</label>
+            <input value={fornecedor} onChange={e => setFornecedor(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+              placeholder="Manual" />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-gray-400 text-xs mb-1 block">Categoria</label>
+          <select value={categoria} onChange={e => setCategoria(e.target.value)}
+            className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+            {CATEGORIAS.map(c => <option key={c} value={c}>{CATEGORIA_EMOJI[c]} {c}</option>)}
+          </select>
+        </div>
+
+        {error && <p className="text-red-400 text-xs">{error}</p>}
+
+        <div className="flex gap-3 pt-2">
+          <button onClick={onClose} className="flex-1 px-4 py-2 rounded-lg bg-gray-700 text-gray-300 text-sm hover:bg-gray-600">Cancelar</button>
+          <button onClick={save} disabled={saving}
+            className="flex-1 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-500 disabled:opacity-50">
+            {saving ? 'Salvando...' : 'Cadastrar'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ParaguaiPage() {
@@ -285,9 +415,13 @@ export default function ParaguaiPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [enrichingId, setEnrichingId] = useState<string | null>(null);
   const [normalizingId, setNormalizingId] = useState<string | null>(null);
   const [selectedForNormalize, setSelectedForNormalize] = useState<Set<string>>(new Set());
   const [batchNormalizing, setBatchNormalizing] = useState(false);
+  const [batchRefreshing, setBatchRefreshing] = useState(false);
+  const [batchDeleting, setBatchDeleting] = useState(false);
+  const [showNovoProduto, setShowNovoProduto] = useState(false);
 
   // Filters
   const [filterMarca, setFilterMarca] = useState('');
@@ -334,22 +468,73 @@ export default function ParaguaiPage() {
   const refreshCatalog = async (fingerprint: string) => {
     try {
       setRefreshingId(fingerprint);
-      const res = await fetch('/api/paraguai/catalogo/refresh', {
+
+      const item = items.find(i => i.fingerprint === fingerprint);
+      const productName = item?.titulo_amigavel
+        ?? fingerprint.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+      const minPrice = (item?.melhor_preco_usd ?? 0) * 4.0;
+
+      // 1. Enqueue job on VPS
+      const enqueueRes = await fetch('/api/paraguai/catalogo/queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fingerprint })
+        body: JSON.stringify({ fingerprint, product_name: productName, min_price: minPrice }),
       });
-      const data = await res.json();
-      if (data.success) {
-        await loadOportunidades();
-      } else {
-        alert('Erro ao atualizar catálogo: ' + (data.error || 'Erro desconhecido'));
+      if (!enqueueRes.ok) {
+        alert('Erro ao criar job de refresh: ' + (await enqueueRes.text()));
+        return;
       }
-    } catch (e) {
+
+      // 2. Poll for completion (up to 90s, check every 3s)
+      for (let i = 0; i < 30; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const statusRes = await fetch(`/api/paraguai/catalogo/queue?fingerprint=${fingerprint}`);
+        if (statusRes.ok) {
+          const { status } = await statusRes.json();
+          if (status === 'done') {
+            await loadOportunidades();
+            return;
+          }
+          if (status === 'error') {
+            alert('Worker reportou erro ao buscar catálogo. Verifique o terminal do proxy.');
+            return;
+          }
+        }
+      }
+
+      alert(
+        '⏳ Timeout: worker não respondeu em 90s.\n\n' +
+        'Certifique-se que o worker está rodando:\n\n' +
+        '  cd C:\\Users\\Bolota\\Desktop\\Wingx\\Paraguai\n' +
+        '  node catalog-proxy.mjs\n\n' +
+        'O worker processa automaticamente. Tente novamente.'
+      );
+    } catch (e: any) {
       console.error(e);
-      alert('Erro na requisição de atualização');
+      alert('Erro: ' + (e.message || 'Erro desconhecido'));
     } finally {
       setRefreshingId(null);
+    }
+  };
+
+  const enrichCatalog = async (fingerprint: string) => {
+    setEnrichingId(fingerprint);
+    try {
+      const res = await fetch('/api/paraguai/catalogo/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprint }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        await loadOportunidades();
+      } else {
+        alert('Erro ao enriquecer: ' + (data.error || 'Erro desconhecido'));
+      }
+    } catch (e: any) {
+      alert('Erro: ' + e.message);
+    } finally {
+      setEnrichingId(null);
     }
   };
 
@@ -392,6 +577,46 @@ export default function ParaguaiPage() {
       alert('Erro na normalização em lote');
     } finally {
       setBatchNormalizing(false);
+    }
+  };
+
+  const batchRefreshCatalogs = async () => {
+    setBatchRefreshing(true);
+    const fingerprints = Array.from(selectedForNormalize);
+    let ok = 0;
+    for (const fp of fingerprints) {
+      try {
+        await refreshCatalog(fp);
+        ok++;
+      } catch { /* continue */ }
+    }
+    alert(`Catálogos atualizados: ${ok}/${fingerprints.length}`);
+    setSelectedForNormalize(new Set());
+    setBatchRefreshing(false);
+  };
+
+  const batchDelete = async () => {
+    const fingerprints = Array.from(selectedForNormalize);
+    if (!confirm(`Deletar ${fingerprints.length} produto(s)? Esta ação não pode ser desfeita.`)) return;
+    setBatchDeleting(true);
+    try {
+      const res = await fetch('/api/paraguai/produto', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprints }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setSelectedForNormalize(new Set());
+        await loadOportunidades();
+        await loadCarrinho();
+      } else {
+        alert('Erro ao deletar: ' + data.error);
+      }
+    } catch {
+      alert('Erro na requisição de delete');
+    } finally {
+      setBatchDeleting(false);
     }
   };
 
@@ -496,6 +721,10 @@ export default function ParaguaiPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <button onClick={() => setShowNovoProduto(true)}
+            className="px-3 py-2 rounded-lg bg-emerald-700 text-white text-sm hover:bg-emerald-600 flex items-center gap-2">
+            + Produto
+          </button>
           <button onClick={() => setShowSettings(true)}
             className="px-3 py-2 rounded-lg bg-gray-800 text-gray-300 text-sm hover:bg-gray-700 flex items-center gap-2">
             ⚙️ Alertas
@@ -577,13 +806,40 @@ export default function ParaguaiPage() {
           </div>
 
           {selectedForNormalize.size > 0 && (
-            <button
-              onClick={batchNormalize}
-              disabled={batchNormalizing}
-              className="px-4 py-1.5 rounded-lg bg-amber-600 text-white text-sm font-semibold hover:bg-amber-500 shadow-md disabled:opacity-50 flex items-center gap-1.5"
-            >
-              {batchNormalizing ? '⏳' : '🤖'} Normalizar ({selectedForNormalize.size})
-            </button>
+            <div className="flex items-center gap-2 pl-2 border-l border-gray-700">
+              <span className="text-gray-500 text-xs font-semibold">{selectedForNormalize.size} selecionado(s)</span>
+              <button
+                onClick={batchNormalize}
+                disabled={batchNormalizing}
+                className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-500 shadow-md disabled:opacity-50 flex items-center gap-1"
+                title="Normalizar com IA"
+              >
+                {batchNormalizing ? '⏳' : '🤖'} Normalizar
+              </button>
+              <button
+                onClick={batchRefreshCatalogs}
+                disabled={batchRefreshing}
+                className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-500 shadow-md disabled:opacity-50 flex items-center gap-1"
+                title="Buscar catálogos ML"
+              >
+                {batchRefreshing ? '⏳' : '⚡'} Catálogos
+              </button>
+              <button
+                onClick={batchDelete}
+                disabled={batchDeleting}
+                className="px-3 py-1.5 rounded-lg bg-red-700 text-white text-xs font-semibold hover:bg-red-600 shadow-md disabled:opacity-50 flex items-center gap-1"
+                title="Deletar produtos selecionados"
+              >
+                {batchDeleting ? '⏳' : '🗑'} Deletar
+              </button>
+              <button
+                onClick={() => setSelectedForNormalize(new Set())}
+                className="text-gray-500 hover:text-gray-300 text-xs px-1"
+                title="Limpar seleção"
+              >
+                ✕
+              </button>
+            </div>
           )}
           <button onClick={loadOportunidades}
             className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 shadow-md ml-auto">
@@ -687,16 +943,23 @@ export default function ParaguaiPage() {
                        <span className="text-gray-300 text-[13px]">{formatBRL(item.melhor_preco_usd * 5.80)}</span>
                      </td>
                      <td className="px-4 py-3 text-right align-middle whitespace-nowrap">
-                       <div className="flex flex-col leading-[1.5]">
-                         <div className="flex items-center justify-end gap-1.5 py-1">
-                           <span className="text-[10px]" title="Premium">👑</span>
-                           <span className="text-gray-300 text-[13px]">{item.ml_price_premium ? formatBRL(item.ml_price_premium) : '—'}</span>
-                         </div>
-                         <div className="border-t border-gray-700/20 flex items-center justify-end gap-1.5 py-1">
-                           <span className="text-[10px]" title="Clássico">🏷️</span>
-                           <span className="text-gray-300 text-[13px]">{item.ml_price_classic ? formatBRL(item.ml_price_classic) : formatBRL(item.preco_ml_real || 0)}</span>
-                         </div>
-                       </div>
+                       {(() => {
+                         const cats = item.ml_catalogs_json;
+                         const bestP = cats?.length ? Math.min(...cats.map(c => c.price_premium).filter((v): v is number => v != null)) : (item.ml_price_premium ?? null);
+                         const bestC = cats?.length ? Math.min(...cats.map(c => c.price_classic).filter((v): v is number => v != null)) : (item.ml_price_classic ?? null);
+                         return (
+                           <div className="flex flex-col leading-[1.5]">
+                             <div className="flex items-center justify-end gap-1.5 py-1">
+                               <span className="text-[10px]" title="Premium">👑</span>
+                               <span className="text-gray-300 text-[13px]">{bestP && isFinite(bestP) ? formatBRL(bestP) : '—'}</span>
+                             </div>
+                             <div className="border-t border-gray-700/20 flex items-center justify-end gap-1.5 py-1">
+                               <span className="text-[10px]" title="Clássico">🏷️</span>
+                               <span className="text-gray-300 text-[13px]">{bestC && isFinite(bestC) ? formatBRL(bestC) : formatBRL(item.preco_ml_real || 0)}</span>
+                             </div>
+                           </div>
+                         );
+                       })()}
                      </td>
                      <td className="px-4 py-3 text-right align-middle">
                        <div className="flex flex-col leading-[1.5]">
@@ -738,10 +1001,19 @@ export default function ParaguaiPage() {
                            </button>
                            <button
                              onClick={() => refreshCatalog(item.fingerprint)}
-                             className="p-1.5 rounded text-indigo-400 hover:text-white hover:bg-indigo-600 transition-colors"
+                             disabled={refreshingId === item.fingerprint}
+                             className={cn("p-1.5 rounded transition-colors", refreshingId === item.fingerprint ? "text-indigo-400 animate-pulse" : "text-indigo-400 hover:text-white hover:bg-indigo-600")}
                              title="Atualizar Catálogo (Real-Time)"
                            >
                              ⚡
+                           </button>
+                           <button
+                             onClick={() => enrichCatalog(item.fingerprint)}
+                             disabled={enrichingId === item.fingerprint || !item.ml_catalog_id}
+                             className="p-1.5 rounded text-purple-400 hover:text-white hover:bg-purple-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                             title="Enriquecer com Firecrawl (sold_quantity, rating, sellers)"
+                           >
+                             {enrichingId === item.fingerprint ? '⏳' : '✨'}
                            </button>
                            <button onClick={() => toggleWatch(item)} className={cn("p-1.5 rounded transition-colors", item.monitorando ? "text-amber-400 bg-amber-900/30" : "text-gray-500 hover:text-white hover:bg-gray-700")} title="Monitorar">🔔</button>
                            <button 
@@ -787,6 +1059,12 @@ export default function ParaguaiPage() {
       )}
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {showNovoProduto && (
+        <NovoProdutoModal
+          onClose={() => setShowNovoProduto(false)}
+          onSaved={() => { setShowNovoProduto(false); loadOportunidades(); }}
+        />
+      )}
     </div>
   );
 }
@@ -811,6 +1089,11 @@ function ProductCard({
   normalizing: boolean;
 }) {
   const emoji = CATEGORIA_EMOJI[item.categoria] || '📦';
+  const cats = item.ml_catalogs_json;
+  const bestP = cats?.length ? Math.min(...cats.map(c => c.price_premium).filter((v): v is number => v != null)) : (item.ml_price_premium ?? null);
+  const bestC = cats?.length ? Math.min(...cats.map(c => c.price_classic).filter((v): v is number => v != null)) : (item.ml_price_classic ?? null);
+  const bestPSafe = bestP != null && isFinite(bestP) ? bestP : null;
+  const bestCSafe = bestC != null && isFinite(bestC) ? bestC : null;
 
   return (
     <div className={cn("bg-gray-900 border rounded-xl p-4 flex flex-col gap-3 transition-all group", expanded ? 'border-indigo-500 shadow-2xl' : 'border-gray-800')}>
@@ -824,6 +1107,9 @@ function ProductCard({
           <div className="flex flex-wrap gap-1 mt-1.5">
             {item.has_catalog && <Badge label="CATÁLOGO" color="bg-emerald-900 text-emerald-300" />}
             {!item.has_catalog && <Badge label="ESTIMADO" color="bg-yellow-900 text-yellow-400" />}
+            {item.ml_catalogs_json && item.ml_catalogs_json.length > 1 && (
+              <Badge label={`${item.ml_catalogs_json.length} catálogos`} color="bg-indigo-900 text-indigo-300" />
+            )}
             {item.num_suppliers > 1 && (
               <Badge label={`${item.num_suppliers} fornecedores`} color="bg-blue-900 text-blue-300" />
             )}
@@ -852,13 +1138,13 @@ function ProductCard({
              <span className="text-[8px]">🇧🇷</span>
           </div>
           <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mb-1">Canais Mercado Livre</p>
-          {item.ml_price_premium || item.ml_price_classic || item.preco_ml_real ? (
+          {(item.ml_price_premium || item.ml_price_classic || item.preco_ml_real || item.ml_catalogs_json?.length) ? (
               <div className="flex flex-col leading-[1.5]">
                {/* Premium row */}
                <div className="flex items-center justify-between py-2">
                  <div className="flex flex-col text-left">
                    <div className="flex items-center gap-1.5">
-                     <span className="text-gray-300 text-[13px]">{formatBRL(item.ml_price_premium || item.preco_ml_real || 0)}</span>
+                     <span className="text-gray-300 text-[13px]">{formatBRL(bestPSafe ?? item.preco_ml_real ?? 0)}</span>
                      <span className="text-xs" title="Premium">👑</span>
                    </div>
                  </div>
@@ -871,12 +1157,12 @@ function ProductCard({
                    </span>
                  </div>
                </div>
-               
+
                {/* Classic row */}
                <div className="flex items-center justify-between py-2 border-t border-gray-700/20">
                  <div className="flex flex-col text-left">
                    <div className="flex items-center gap-1.5">
-                     <span className="text-gray-300 text-[13px]">{formatBRL(item.ml_price_classic || item.preco_ml_real || 0)}</span>
+                     <span className="text-gray-300 text-[13px]">{formatBRL(bestCSafe ?? item.preco_ml_real ?? 0)}</span>
                      <span className="text-xs" title="Clássico">🏷️</span>
                    </div>
                  </div>
@@ -946,6 +1232,8 @@ function ProductCard({
 // ─── Expanded Details (Accordion Content) ────────────────────────────────────
 
 function ExpandedDetails({ item, variant = 'list' }: { item: Oportunidade; variant?: 'card' | 'list' }) {
+  const [chartCurrency, setChartCurrency] = useState<'BRL' | 'USD'>('BRL');
+
   // Format dates: check if today, else normal string
   const isToday = (dateString: string) => {
     const d = new Date(dateString);
@@ -968,77 +1256,107 @@ function ExpandedDetails({ item, variant = 'list' }: { item: Oportunidade; varia
     return <span className="text-gray-400">{d.toLocaleString('pt-BR')}</span>;
   };
 
-  // Dual-line Trend Sparkline (SVG bounds 0-100 x 0-30)
+  // Trend Sparkline — custo histórico + referências ML horizontais (só quando catálogo buscado)
   const renderTrend = () => {
     if (!item.price_history || item.price_history.length < 2) {
       return <div className="text-xs text-gray-600 italic h-[40px] flex items-center justify-center">Sem histórico 30d</div>;
     }
 
-    // Convert all to BRL for comparison
-    const pyPrices = item.price_history.map(h => h.min_preco_usd * 5.80 * 1.15 * 1.18);
-    const mlPrices = item.price_history.map(h => h.min_preco_ml);
-    
-    // Get absolute min/max for scale
-    const allVals = [...pyPrices, ...mlPrices.filter(v => v != null) as number[]];
+    const cambio = 5.80;
+    const isBRL = chartCurrency === 'BRL';
+    const fmt = isBRL ? formatBRL : (v: any) => `$${parseFloat(v).toFixed(2)}`;
+
+    // Apenas custo do fornecedor como linha histórica
+    const pyPrices = item.price_history.map(h =>
+      isBRL ? h.min_preco_usd * cambio * 1.15 * 1.18 : h.min_preco_usd
+    );
+
+    // Referências ML horizontais — só se catálogo foi buscado (has_catalog = true)
+    const hasCatalog = item.has_catalog;
+    const cats = item.ml_catalogs_json;
+    const rawClassic = hasCatalog
+      ? (cats?.length ? Math.min(...cats.map(c => c.price_classic).filter((v): v is number => v != null && isFinite(v))) : (item.ml_price_classic ?? null))
+      : null;
+    const rawPremium = hasCatalog
+      ? (cats?.length ? Math.min(...cats.map(c => c.price_premium).filter((v): v is number => v != null && isFinite(v))) : (item.ml_price_premium ?? null))
+      : null;
+    const classicRef = rawClassic != null && isFinite(rawClassic) ? (isBRL ? rawClassic : rawClassic / cambio) : null;
+    const premiumRef = rawPremium != null && isFinite(rawPremium) ? (isBRL ? rawPremium : rawPremium / cambio) : null;
+
+    // Escala incluindo referências ML se existirem
+    const allVals = [
+      ...pyPrices,
+      ...(classicRef != null ? [classicRef] : []),
+      ...(premiumRef != null ? [premiumRef] : []),
+    ];
     const minP = Math.min(...allVals);
     const maxP = Math.max(...allVals);
     const range = maxP - minP || 1;
-    
+
     const getX = (i: number) => (i / (item.price_history!.length - 1)) * 100;
     const getY = (v: number) => 30 - (((v - minP) / range) * 30);
 
-    // Filter points to only draw where we have data
     const pyPoints = pyPrices.map((v, i) => `${getX(i)},${getY(v)}`).join(' ');
-    
-    // For ML, we might have gaps
-    const mlPoints = item.price_history
-      .map((h, i) => h.min_preco_ml ? `${getX(i)},${getY(h.min_preco_ml)}` : null)
-      .filter(p => p !== null)
-      .join(' ');
 
     return (
-      <div className="relative h-[60px] w-full mt-2 group">
-        <svg viewBox="0 0 100 30" className="w-full h-full preserve-aspect-ratio-none overflow-visible" preserveAspectRatio="none">
-          {/* Legend helper lines */}
-          <line x1="0" y1={getY(minP)} x2="100" y2={getY(minP)} stroke="#333" strokeWidth="0.5" strokeDasharray="2,2" />
-          <line x1="0" y1={getY(maxP)} x2="100" y2={getY(maxP)} stroke="#333" strokeWidth="0.5" strokeDasharray="2,2" />
-          
-          {/* Paraguai Cost Line (Indigo) */}
-          <polyline
-            points={pyPoints}
-            fill="none"
-            stroke="#6366f1"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="drop-shadow-sm opacity-80"
-          />
-          
-          {/* ML Sale Price Line (Emerald) */}
-          {mlPoints && (
-            <polyline
-              points={mlPoints}
-              fill="none"
-              stroke="#10b981"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="drop-shadow-sm"
-            />
-          )}
-        </svg>
-        <div className="flex justify-between mt-1 text-[8px] uppercase tracking-tighter">
-          <div className="flex items-center gap-1">
-             <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
-             <span className="text-gray-400">Custo PY</span>
-          </div>
-          <div className="flex items-center gap-1">
-             <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-             <span className="text-gray-400">Venda ML</span>
+      <div>
+        <div className="flex justify-end mb-1">
+          <div className="flex bg-gray-800 rounded-md p-0.5 border border-gray-700">
+            {(['BRL', 'USD'] as const).map(cur => (
+              <button key={cur} onClick={() => setChartCurrency(cur)}
+                className={cn("text-[9px] font-bold px-2 py-0.5 rounded transition-colors",
+                  chartCurrency === cur ? "bg-indigo-600 text-white" : "text-gray-500 hover:text-gray-300")}>
+                {cur}
+              </button>
+            ))}
           </div>
         </div>
-        <div className="absolute -top-4 left-0 text-[8px] text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/80 rounded px-1">Máx: {formatBRL(maxP)}</div>
-        <div className="absolute -bottom-1 left-0 text-[8px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/80 rounded px-1">Mín: {formatBRL(minP)}</div>
+        <div className="relative h-[60px] w-full group">
+          <svg viewBox="0 0 100 30" className="w-full h-full overflow-visible" preserveAspectRatio="none">
+            {/* Grid lines */}
+            <line x1="0" y1={getY(minP)} x2="100" y2={getY(minP)} stroke="#2a2a2a" strokeWidth="0.4" strokeDasharray="2,2" />
+            <line x1="0" y1={getY(maxP)} x2="100" y2={getY(maxP)} stroke="#2a2a2a" strokeWidth="0.4" strokeDasharray="2,2" />
+
+            {/* ML Clássico — referência horizontal (Emerald), só se catálogo buscado */}
+            {classicRef != null && (
+              <line x1="0" y1={getY(classicRef)} x2="100" y2={getY(classicRef)}
+                stroke="#10b981" strokeWidth="1" strokeDasharray="4,2" opacity="0.7" />
+            )}
+            {/* ML Premium — referência horizontal (Amber), só se catálogo buscado */}
+            {premiumRef != null && (
+              <line x1="0" y1={getY(premiumRef)} x2="100" y2={getY(premiumRef)}
+                stroke="#f59e0b" strokeWidth="1" strokeDasharray="4,2" opacity="0.7" />
+            )}
+
+            {/* Custo Fornecedor — linha histórica (Indigo) */}
+            <polyline points={pyPoints} fill="none" stroke="#6366f1" strokeWidth="1.5"
+              strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+          </svg>
+
+          <div className="flex gap-3 mt-1 text-[8px] uppercase tracking-tighter">
+            <div className="flex items-center gap-1">
+              <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+              <span className="text-gray-400">Custo PY</span>
+            </div>
+            {classicRef != null && (
+              <div className="flex items-center gap-1">
+                <div className="w-3 border-t border-dashed border-emerald-500" />
+                <span className="text-gray-400">ML Clássico {fmt(classicRef)}</span>
+              </div>
+            )}
+            {premiumRef != null && (
+              <div className="flex items-center gap-1">
+                <div className="w-3 border-t border-dashed border-amber-500" />
+                <span className="text-gray-400">ML Premium {fmt(premiumRef)}</span>
+              </div>
+            )}
+          </div>
+          <div className="absolute -top-4 left-0 text-[8px] text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/80 rounded px-1">Máx: {fmt(maxP)}</div>
+          <div className="absolute -bottom-1 left-0 text-[8px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/80 rounded px-1">Mín: {fmt(minP)}</div>
+        </div>
+        {!hasCatalog && (
+          <p className="text-[9px] text-gray-600 italic text-center mt-1">Clique ⚡ para ver referências ML no gráfico</p>
+        )}
       </div>
     );
   };
@@ -1100,55 +1418,103 @@ function ExpandedDetails({ item, variant = 'list' }: { item: Oportunidade; varia
              <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="text-gray-500 border-b border-gray-800/40">
-                    <th className="px-4 py-2">ID</th>
+                    <th className="px-4 py-2">Catálogo</th>
                     <th className="px-4 py-2">Frete</th>
-                    <th className="px-4 py-2 text-right">Premium (Lucro)</th>
-                    <th className="px-4 py-2 text-right">Clássico (Lucro)</th>
+                    <th className="px-4 py-2 text-right">Premium 👑 (Lucro)</th>
+                    <th className="px-4 py-2 text-right">Clássico 🏷️ (Lucro)</th>
+                    <th className="px-4 py-2 text-right">Vendedores</th>
+                    <th className="px-4 py-2 text-right">Vendidos</th>
+                    <th className="px-4 py-2 text-center">Atualizado</th>
                     <th className="px-4 py-2 text-center">Link</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800/40">
-                  {item.ml_catalogs_json.map((c, i) => (
-                    <tr key={c.catalog_id} className={cn("hover:bg-white/5", c.catalog_id === item.ml_catalog_id ? "bg-indigo-500/5" : "")}>
-                      <td className="px-4 py-2 font-mono text-gray-400">
-                        {c.catalog_id}
-                        {c.catalog_id === item.ml_catalog_id && <span className="ml-2 text-[9px] bg-indigo-600 text-white px-1 rounded">Vencedor</span>}
-                      </td>
-                      <td className="px-4 py-2 uppercase font-bold text-[10px]">
-                        <span className={cn(
-                          c.shipping_badge === 'FULL' ? 'text-yellow-500' : 
-                          c.shipping_badge === 'FLEX' ? 'text-indigo-400' : 'text-gray-500'
-                        )}>
-                          {c.shipping_badge}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        <div className="flex flex-col items-end">
-                           <span className="font-bold text-white">{c.price_premium ? formatBRL(c.price_premium) : '—'}</span>
-                           {c.price_premium && (
-                             <span className={cn("text-[9px]", ((c.price_premium * 0.82) - (item.melhor_preco_usd * 6 * 1.6)) >= 0 ? "text-emerald-400" : "text-red-400")}>
-                               Lucro: {formatBRL((c.price_premium * 0.82) - (item.melhor_preco_usd * 6 * 1.6))}
-                             </span>
-                           )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        <div className="flex flex-col items-end">
-                           <span className="text-gray-300">{c.price_classic ? formatBRL(c.price_classic) : '—'}</span>
-                           {c.price_classic && (
-                             <span className={cn("text-[9px]", ((c.price_classic * 0.84) - (item.melhor_preco_usd * 6 * 1.6)) >= 0 ? "text-emerald-500" : "text-red-500")}>
-                               Lucro: {formatBRL((c.price_classic * 0.84) - (item.melhor_preco_usd * 6 * 1.6))}
-                             </span>
-                           )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 text-center">
-                        <a href={c.url} target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300">🔗</a>
-                      </td>
-                    </tr>
-                  ))}
+                  {item.ml_catalogs_json.map((c) => {
+                    const isWinner = c.is_winner || c.catalog_id === item.ml_catalog_id;
+                    const isFull = isWinner && c.price_premium != null;
+                    const updatedDaysAgo = c.updated_at
+                      ? Math.floor((Date.now() - new Date(c.updated_at).getTime()) / 86400000)
+                      : null;
+                    return (
+                      <tr key={c.catalog_id} className={cn("hover:bg-white/5", isWinner ? "bg-indigo-500/5" : "")}>
+                        <td className="px-4 py-2 max-w-[180px]">
+                          <div className="flex flex-col gap-0.5">
+                            {c.title && <span className="text-white text-[11px] line-clamp-1">{c.title}</span>}
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-gray-500 text-[9px]">{c.catalog_id}</span>
+                              {isWinner && <span className="text-[8px] bg-indigo-600 text-white px-1 py-0.5 rounded font-bold">PRINCIPAL</span>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 uppercase font-bold text-[10px]">
+                          <span className={isFull ? 'text-yellow-400' : 'text-gray-500'}>
+                            {isFull ? 'FULL' : 'NORMAL'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          <div className="flex flex-col items-end">
+                             <span className="font-bold text-white">{c.price_premium ? formatBRL(c.price_premium) : '—'}</span>
+                             {c.price_premium && (
+                               <span className={cn("text-[9px]", ((c.price_premium * 0.82) - (item.melhor_preco_usd * 6 * 1.6)) >= 0 ? "text-emerald-400" : "text-red-400")}>
+                                 {formatBRL((c.price_premium * 0.82) - (item.melhor_preco_usd * 6 * 1.6))}
+                               </span>
+                             )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          <div className="flex flex-col items-end">
+                             <span className="text-gray-300">{c.price_classic ? formatBRL(c.price_classic) : '—'}</span>
+                             {c.price_classic && (
+                               <span className={cn("text-[9px]", ((c.price_classic * 0.84) - (item.melhor_preco_usd * 6 * 1.6)) >= 0 ? "text-emerald-500" : "text-red-500")}>
+                                 {formatBRL((c.price_classic * 0.84) - (item.melhor_preco_usd * 6 * 1.6))}
+                               </span>
+                             )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 text-right text-gray-400">
+                          {c.seller_count != null ? c.seller_count : '—'}
+                        </td>
+                        <td className="px-4 py-2 text-right text-gray-400">
+                          {c.sold_quantity != null ? c.sold_quantity.toLocaleString('pt-BR') : '—'}
+                        </td>
+                        <td className="px-4 py-2 text-center text-[10px]">
+                          {updatedDaysAgo === 0
+                            ? <span className="text-emerald-400">Hoje</span>
+                            : updatedDaysAgo != null
+                            ? <span className="text-gray-500">{updatedDaysAgo}d atrás</span>
+                            : <span className="text-gray-700">—</span>}
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          <a href={c.url} target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300">🔗</a>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
              </table>
+          </div>
+        </div>
+      )}
+
+      {/* Enriched Data (Firecrawl) */}
+      {item.ml_enriched_json && (
+        <div className="px-8 pb-2">
+          <div className="flex gap-4 text-xs text-gray-400 flex-wrap">
+            {item.ml_enriched_json.sold_quantity != null && (
+              <span>📦 {item.ml_enriched_json.sold_quantity.toLocaleString('pt-BR')}+ vendidos</span>
+            )}
+            {item.ml_enriched_json.rating && (
+              <span>⭐ {item.ml_enriched_json.rating}</span>
+            )}
+            {item.ml_enriched_json.ranking_position != null && (
+              <span>🏆 {item.ml_enriched_json.ranking_position}º em {item.ml_enriched_json.ranking_category}</span>
+            )}
+            {item.ml_enriched_json.best_price_seller && (
+              <span>💰 Melhor preço: {item.ml_enriched_json.best_price_seller}</span>
+            )}
+            {item.ml_enriched_json.winner_seller && item.ml_enriched_json.winner_seller !== item.ml_enriched_json.best_price_seller && (
+              <span>🥇 Winner: {item.ml_enriched_json.winner_seller}</span>
+            )}
           </div>
         </div>
       )}

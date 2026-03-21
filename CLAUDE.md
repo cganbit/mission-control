@@ -87,7 +87,10 @@ src/
 │       ├── memories/[id]/route.ts       → DELETE
 │       ├── documents/route.ts           → GET (busca, filtro tipo/squad), POST create
 │       ├── documents/[id]/route.ts      → GET (conteúdo completo), DELETE
-│       ├── paraguai/catalogo/refresh/route.ts → POST { fingerprint } refresca catálogo nativo (Firecrawl v1)
+│       ├── paraguai/catalogo/queue/route.ts  → POST enqueue job | GET ?fingerprint=X (status + processa inline via ML API no VPS)
+│       ├── paraguai/catalogo/refresh/route.ts → POST { fingerprint, catalogs[] } salva resultado no preco_ml_cache (usado pelo worker local)
+│       ├── paraguai/catalogo/enrich/route.ts  → POST { fingerprint } Firecrawl proxy:stealth → sold_qty, rating, ranking, sellers → ml_enriched_json
+│       ├── paraguai/produto/route.ts        → POST { titulo, preco_usd, fornecedor, categoria } cadastro manual de produto
 │       └── tokens/route.ts              → GET (por agente/squad/período), POST registrar uso
 ├── components/
 │   └── Sidebar.tsx                      → navegação lateral com filtro por role (minRole por rota)
