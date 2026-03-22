@@ -6,20 +6,12 @@ const ML_API = 'https://api.mercadolibre.com';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function getTokens(): Array<{ seller_id: number; nickname: string; access_token: string }> {
-  const db = getPool();
-  // Tokens are in connector_configs, read synchronously via cached pool
-  // (same pattern as ml-token-refresh — we re-read here to avoid coupling)
-  return []; // populated async in handler below
-}
-
 async function getTokensAsync(): Promise<Array<{ seller_id: number; nickname: string; access_token: string }>> {
   const db = getPool();
   const row = await db.query(`SELECT value FROM connector_configs WHERE key = 'ml_tokens_json' LIMIT 1`);
   if (!row.rows[0]) return [];
   const parsed = JSON.parse(row.rows[0].value);
-  const accounts = Array.isArray(parsed) ? parsed : (parsed.accounts ?? []);
-  return accounts;
+  return Array.isArray(parsed) ? parsed : (parsed.accounts ?? []);
 }
 
 async function mlGet(url: string, token: string) {
@@ -31,29 +23,106 @@ async function mlGet(url: string, token: string) {
   return res.json();
 }
 
-function formatSaleMessage(order: any, nickname: string): string {
-  const item = order.order_items?.[0];
-  const title = item?.item?.title ?? 'Produto';
-  const qty = item?.quantity ?? 1;
+// ─── Salvar cliente e pedido no banco ────────────────────────────────────────
+
+async function saveClienteAndPedido(order: any, shipment: any, sellerNickname: string) {
+  const db = getPool();
+  const buyer = order.buyer ?? {};
+
+  // Montar dados do cliente
+  const ml_buyer_id = buyer.id;
+  if (!ml_buyer_id) return;
+
+  const nome = [buyer.first_name, buyer.last_name].filter(Boolean).join(' ') || buyer.nickname || null;
+  const cpf = buyer.billing_info?.tax_payer_id ?? null;
+  const phone = buyer.phone;
+  const telefone = phone
+    ? `+55${phone.area_code ?? ''}${phone.number ?? ''}`.replace(/\s/g, '')
+    : null;
+  const endereco = shipment?.receiver_address ?? null;
+
+  // Detectar se é lead de bateria
+  const isBateriaLead = (order.order_items ?? []).some((i: any) =>
+    /bateria/i.test(i.item?.title ?? '')
+  );
+
+  // Upsert cliente
+  await db.query(
+    `INSERT INTO ml_clientes (ml_buyer_id, nome, cpf, telefone, endereco_json, lead, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, NOW())
+     ON CONFLICT (ml_buyer_id) DO UPDATE SET
+       nome = COALESCE(EXCLUDED.nome, ml_clientes.nome),
+       cpf = COALESCE(EXCLUDED.cpf, ml_clientes.cpf),
+       telefone = COALESCE(EXCLUDED.telefone, ml_clientes.telefone),
+       endereco_json = COALESCE(EXCLUDED.endereco_json, ml_clientes.endereco_json),
+       lead = ml_clientes.lead OR EXCLUDED.lead,
+       updated_at = NOW()`,
+    [ml_buyer_id, nome, cpf, telefone, endereco ? JSON.stringify(endereco) : null, isBateriaLead]
+  );
+
+  // Montar itens do pedido
+  const items = (order.order_items ?? []).map((i: any) => ({
+    title: i.item?.title,
+    quantity: i.quantity,
+    unit_price: i.unit_price,
+  }));
+
+  // Insert pedido (ignora se já existe — idempotente)
+  await db.query(
+    `INSERT INTO ml_pedidos (ml_order_id, ml_buyer_id, seller_nickname, items_json, total, status, shipment_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (ml_order_id) DO NOTHING`,
+    [order.id, ml_buyer_id, sellerNickname, JSON.stringify(items), order.total_amount ?? 0, order.status, shipment?.id ?? null]
+  );
+}
+
+// ─── Formatar mensagem WhatsApp ───────────────────────────────────────────────
+
+function formatSaleMessage(order: any, shipment: any, nickname: string): string {
+  // Produtos
+  const items = order.order_items ?? [];
+  const itemLines = items.map((i: any) => `  • ${i.quantity}x ${i.item?.title ?? 'Produto'}`).join('\n');
+
+  // Valores
   const total = order.total_amount ?? 0;
-  const buyer = order.buyer?.nickname ?? order.buyer?.first_name ?? 'Comprador';
   const orderId = order.id;
-  const shipping = order.shipping?.logistic_type === 'fulfillment' ? 'Full' : 'Clássico';
+
+  // Comprador
+  const buyer = order.buyer ?? {};
+  const nome = [buyer.first_name, buyer.last_name].filter(Boolean).join(' ') || buyer.nickname || 'Comprador';
+  const cpf = buyer.billing_info?.tax_payer_id ?? null;
+  const phone = buyer.phone;
+  const telefone = phone ? `(${phone.area_code}) ${phone.number}` : null;
+
+  // Envio
+  const logisticType = shipment?.logistic_type ?? order.shipping?.logistic_type ?? '';
+  const shippingLabel = logisticType === 'fulfillment' ? 'Full' : logisticType === 'self_service' ? 'Clássico' : 'Correios';
+  const addr = shipment?.receiver_address;
+  const addressLine = addr
+    ? `${addr.street_name ?? ''}, ${addr.street_number ?? ''}${addr.comment ? ` (${addr.comment})` : ''}`.trim()
+    : null;
+  const cityLine = addr ? `${addr.city?.name ?? ''} - ${addr.state?.name ?? ''}, CEP ${addr.zip_code ?? ''}` : null;
 
   return [
     `🛍️ *Nova Venda — ${nickname}*`,
     ``,
-    `📦 ${qty}x ${title}`,
-    `👤 Comprador: ${buyer}`,
-    `💰 Total: R$ ${Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-    `🚚 Envio: Mercado Envios ${shipping}`,
-    `📋 Pedido: #${orderId}`,
-  ].join('\n');
+    `📦 *Produto(s):*`,
+    itemLines,
+    ``,
+    `💰 *Total:* R$ ${Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+    `📋 *Pedido:* #${orderId}`,
+    ``,
+    `👤 *Comprador:* ${nome}`,
+    cpf ? `🪪 *CPF:* ${cpf}` : null,
+    telefone ? `📱 *Telefone:* ${telefone}` : null,
+    ``,
+    `🚚 *Envio:* Mercado Envios ${shippingLabel}`,
+    addressLine ? `📍 ${addressLine}` : null,
+    cityLine ? `    ${cityLine}` : null,
+  ].filter(l => l !== null).join('\n');
 }
 
 // ─── POST — ML notification receiver ─────────────────────────────────────────
-// ML sends: { resource: "/orders/123", user_id: 456, topic: "orders_v2", ... }
-// Must respond 200 immediately — ML retries on non-200.
 
 export async function POST(req: NextRequest) {
   let body: any;
@@ -63,11 +132,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
-  // Acknowledge immediately (ML requires fast 200)
-  // Processing happens in the same tick — Next.js serverless will wait for the promise
   const { topic, resource, user_id } = body ?? {};
 
-  // Only process paid orders
   if (topic !== 'orders_v2' || !resource || !user_id) {
     return NextResponse.json({ ok: true, skipped: true });
   }
@@ -77,31 +143,42 @@ export async function POST(req: NextRequest) {
     const account = accounts.find(a => a.seller_id === Number(user_id));
     if (!account) return NextResponse.json({ ok: true, skipped: true, reason: 'account not found' });
 
-    // Fetch full order from ML API
     const orderUrl = resource.startsWith('http') ? resource : `${ML_API}${resource}`;
     const order = await mlGet(orderUrl, account.access_token);
 
-    // Only notify on paid orders
     if (order.status !== 'paid') {
       return NextResponse.json({ ok: true, skipped: true, reason: `status=${order.status}` });
     }
 
-    const message = formatSaleMessage(order, account.nickname);
-    await sendWhatsApp(message);
+    // Buscar dados do envio (endereço, tipo de frete)
+    let shipment: any = null;
+    const shipmentId = order.shipping?.id;
+    if (shipmentId) {
+      try {
+        shipment = await mlGet(`${ML_API}/shipments/${shipmentId}`, account.access_token);
+      } catch { /* opcional */ }
+    }
+
+    // Salvar cliente e pedido no banco (em paralelo com o envio do WhatsApp)
+    await Promise.all([
+      saveClienteAndPedido(order, shipment, account.nickname).catch(e =>
+        console.error('[ML Webhook] Erro ao salvar cliente:', e.message)
+      ),
+      sendWhatsApp(formatSaleMessage(order, shipment, account.nickname)),
+    ]);
 
     return NextResponse.json({ ok: true, order_id: order.id });
   } catch (e: any) {
-    // Log error but still return 200 so ML doesn't retry forever
-    console.error('[ML Webhook] Error processing notification:', e.message);
+    console.error('[ML Webhook] Error:', e.message);
     return NextResponse.json({ ok: true, error: e.message });
   }
 }
 
-// ─── GET — health check / last received notification ─────────────────────────
+// ─── GET — health check ───────────────────────────────────────────────────────
 export async function GET() {
   return NextResponse.json({
     ok: true,
     endpoint: '/api/mercado-livre/webhook',
-    info: 'ML webhook receiver. Handles: orders_v2 (paid). Sends WhatsApp via Evolution API.',
+    info: 'ML webhook receiver. Handles: orders_v2 (paid). Saves to ml_clientes + ml_pedidos.',
   });
 }

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   ShoppingCart, TrendingUp, MessageSquare, AlertCircle, CheckCircle2,
   RefreshCw, Package, DollarSign, ChevronDown, Send, Loader2, Edit2,
-  Bell, BellOff, ExternalLink,
+  Bell, BellOff, ExternalLink, Users, ChevronRight, ChevronDown as ChevronDownIcon,
 } from 'lucide-react';
 
 function cn(...inputs: any[]) { return inputs.filter(Boolean).join(' '); }
@@ -595,9 +595,157 @@ function NotificacoesCard() {
   );
 }
 
+// ─── Clientes Tab ───────────────────────────────────────────────────────────────
+
+interface Pedido {
+  order_id: number; seller: string; items: { title: string; quantity: number; unit_price: number }[];
+  total: number; status: string; data: string;
+}
+interface Cliente {
+  id: number; ml_buyer_id: number; nome: string; cpf: string; telefone: string;
+  endereco_json: any; lead: boolean; total_pedidos: number; total_gasto: number;
+  ultima_compra: string; primeira_compra: string; pedidos: Pedido[];
+}
+
+function ClientesTab() {
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  const fetchClientes = (q = '') => {
+    setLoading(true);
+    fetch(`/api/mercado-livre/clientes?limit=50&q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(d => { setClientes(d.clientes ?? []); setTotal(d.total ?? 0); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchClientes(); }, []);
+
+  return (
+    <div className="space-y-4">
+      {/* Header + busca */}
+      <div className="flex items-center gap-3">
+        <input
+          type="text" value={search}
+          onChange={e => setSearch(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && fetchClientes(search)}
+          placeholder="Buscar por nome, CPF ou telefone…"
+          className="flex-1 bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:border-indigo-500 outline-none placeholder:text-slate-600"
+        />
+        <button onClick={() => fetchClientes(search)}
+          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 border border-slate-700 hover:border-slate-600 px-3 py-2 rounded-lg transition-all">
+          <RefreshCw className="h-3.5 w-3.5" /> Buscar
+        </button>
+        <span className="text-xs text-slate-600 flex-shrink-0">{total} cliente(s)</span>
+      </div>
+
+      {loading && (
+        <div className="flex items-center gap-2 text-slate-500 text-sm p-4">
+          <Loader2 className="h-4 w-4 animate-spin" /> Carregando clientes…
+        </div>
+      )}
+
+      {!loading && clientes.length === 0 && (
+        <div className="text-slate-600 text-sm p-12 text-center border border-dashed border-slate-800 rounded-xl">
+          <Users className="h-8 w-8 mx-auto mb-3 opacity-30" />
+          Nenhum cliente ainda. Os compradores aparecem aqui automaticamente após a primeira venda.
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {clientes.map(c => (
+          <div key={c.id} className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+            {/* Linha principal */}
+            <button
+              onClick={() => setExpanded(expanded === c.id ? null : c.id)}
+              className="w-full px-5 py-3.5 flex items-center gap-4 hover:bg-slate-800/30 transition-colors text-left"
+            >
+              <div className="w-8 h-8 rounded-full bg-indigo-900/50 border border-indigo-800/50 flex items-center justify-center flex-shrink-0">
+                <span className="text-indigo-400 text-xs font-bold">{(c.nome ?? '?')[0]?.toUpperCase()}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-slate-200 font-medium text-sm truncate">{c.nome ?? 'Sem nome'}</p>
+                  {c.lead && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-amber-900/40 text-amber-400 border border-amber-800/50 flex-shrink-0">
+                      🔋 Lead
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                  {c.telefone && <span className="text-slate-500 text-xs">📱 {c.telefone}</span>}
+                  {c.cpf && <span className="text-slate-500 text-xs">🪪 {c.cpf}</span>}
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0 space-y-0.5">
+                <p className="text-emerald-400 font-bold text-sm">
+                  R$ {Number(c.total_gasto ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                </p>
+                <p className="text-slate-600 text-[10px]">{c.total_pedidos} pedido(s)</p>
+              </div>
+              <div className="text-slate-600 text-[10px] text-right flex-shrink-0 hidden md:block w-24">
+                {c.ultima_compra ? new Date(c.ultima_compra).toLocaleDateString('pt-BR') : '—'}
+              </div>
+              {expanded === c.id
+                ? <ChevronDownIcon className="h-4 w-4 text-slate-500 flex-shrink-0" />
+                : <ChevronRight className="h-4 w-4 text-slate-500 flex-shrink-0" />}
+            </button>
+
+            {/* Histórico expandido */}
+            {expanded === c.id && (
+              <div className="border-t border-slate-800 px-5 py-4 space-y-3">
+                {/* Endereço */}
+                {c.endereco_json && (
+                  <div className="text-xs text-slate-500 flex items-start gap-1.5">
+                    <span>📍</span>
+                    <span>
+                      {c.endereco_json.street_name}, {c.endereco_json.street_number}
+                      {c.endereco_json.comment ? ` (${c.endereco_json.comment})` : ''} —{' '}
+                      {c.endereco_json.city?.name} / {c.endereco_json.state?.name}, CEP {c.endereco_json.zip_code}
+                    </span>
+                  </div>
+                )}
+
+                {/* Pedidos */}
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Histórico de Pedidos</p>
+                <div className="space-y-2">
+                  {(c.pedidos ?? []).map((p, i) => (
+                    <div key={p.order_id ?? i} className="bg-slate-800/50 rounded-lg px-4 py-3 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400 font-medium">Pedido #{p.order_id}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-slate-600">{p.seller}</span>
+                          <span className="text-emerald-400 font-bold text-xs">
+                            R$ {Number(p.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+                      {(p.items ?? []).map((item, j) => (
+                        <p key={j} className="text-xs text-slate-500">
+                          • {item.quantity}x {item.title}
+                        </p>
+                      ))}
+                      <p className="text-[10px] text-slate-700">
+                        {p.data ? new Date(p.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ──────────────────────────────────────────────────────────────────
 
-type Tab = 'overview' | 'anuncios' | 'perguntas' | 'financeiro';
+type Tab = 'overview' | 'anuncios' | 'perguntas' | 'financeiro' | 'clientes';
 
 export default function MercadoLivrePage() {
   const [tab, setTab] = useState<Tab>('overview');
@@ -625,6 +773,7 @@ export default function MercadoLivrePage() {
     { id: 'anuncios' as Tab, label: 'Anúncios', icon: Package },
     { id: 'perguntas' as Tab, label: 'Perguntas', icon: MessageSquare, badge: totalPerguntas || null },
     { id: 'financeiro' as Tab, label: 'Financeiro', icon: DollarSign },
+    { id: 'clientes' as Tab, label: 'Clientes', icon: Users },
   ];
 
   if (loading && !stats.length) {
@@ -714,6 +863,7 @@ export default function MercadoLivrePage() {
       {tab === 'anuncios' && <ListingsTab accounts={stats} />}
       {tab === 'perguntas' && <QuestionsTab accounts={stats} />}
       {tab === 'financeiro' && <FinanceiroTab />}
+      {tab === 'clientes' && <ClientesTab />}
     </div>
   );
 }
