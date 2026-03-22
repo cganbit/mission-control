@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
-import { sendWhatsApp } from '@/lib/whatsapp';
+import { sendWhatsApp, sendWhatsAppMedia } from '@/lib/whatsapp';
 
 const ML_API = 'https://api.mercadolibre.com';
 
@@ -78,6 +78,13 @@ async function saveClienteAndPedido(order: any, shipment: any, sellerNickname: s
 
 // ─── Formatar mensagem WhatsApp ───────────────────────────────────────────────
 
+function formatAddr(addr: any): { line1: string; line2: string } | null {
+  if (!addr) return null;
+  const line1 = `${addr.street_name ?? ''}, ${addr.street_number ?? ''}${addr.comment ? ` (${addr.comment})` : ''}`.trim();
+  const line2 = `${addr.city?.name ?? ''} - ${addr.state?.name ?? ''}, CEP ${addr.zip_code ?? ''}`;
+  return { line1, line2 };
+}
+
 function formatSaleMessage(order: any, shipment: any, nickname: string): string {
   // Produtos
   const items = order.order_items ?? [];
@@ -90,18 +97,18 @@ function formatSaleMessage(order: any, shipment: any, nickname: string): string 
   // Comprador
   const buyer = order.buyer ?? {};
   const nome = [buyer.first_name, buyer.last_name].filter(Boolean).join(' ') || buyer.nickname || 'Comprador';
-  const cpf = buyer.billing_info?.tax_payer_id ?? null;
+  const cpf = buyer.billing_info?.tax_payer_id ?? order.billing_info?.cpf ?? null;
   const phone = buyer.phone;
   const telefone = phone ? `(${phone.area_code}) ${phone.number}` : null;
+
+  // Endereços
+  const entrega = formatAddr(shipment?.receiver_address);
+  const fiscal = formatAddr(order.billing_info?.billing_address ?? buyer.billing_info?.address);
+  const enderecosDiferentes = entrega && fiscal && entrega.line1 !== fiscal.line1;
 
   // Envio
   const logisticType = shipment?.logistic_type ?? order.shipping?.logistic_type ?? '';
   const shippingLabel = logisticType === 'fulfillment' ? 'Full' : logisticType === 'self_service' ? 'Clássico' : 'Correios';
-  const addr = shipment?.receiver_address;
-  const addressLine = addr
-    ? `${addr.street_name ?? ''}, ${addr.street_number ?? ''}${addr.comment ? ` (${addr.comment})` : ''}`.trim()
-    : null;
-  const cityLine = addr ? `${addr.city?.name ?? ''} - ${addr.state?.name ?? ''}, CEP ${addr.zip_code ?? ''}` : null;
 
   return [
     `🛍️ *Nova Venda — ${nickname}*`,
@@ -117,9 +124,15 @@ function formatSaleMessage(order: any, shipment: any, nickname: string): string 
     telefone ? `📱 *Telefone:* ${telefone}` : null,
     ``,
     `🚚 *Envio:* Mercado Envios ${shippingLabel}`,
-    addressLine ? `📍 ${addressLine}` : null,
-    cityLine ? `    ${cityLine}` : null,
+    entrega ? `📍 *Entrega:* ${entrega.line1}` : null,
+    entrega ? `    ${entrega.line2}` : null,
+    enderecosDiferentes && fiscal ? `🧾 *Nota Fiscal:* ${fiscal.line1}` : null,
+    enderecosDiferentes && fiscal ? `    ${fiscal.line2}` : null,
   ].filter(l => l !== null).join('\n');
+}
+
+function getThumbnail(order: any): string | null {
+  return order.order_items?.[0]?.item?.thumbnail ?? null;
 }
 
 // ─── POST — ML notification receiver ─────────────────────────────────────────
@@ -159,12 +172,15 @@ export async function POST(req: NextRequest) {
       } catch { /* opcional */ }
     }
 
+    const message = formatSaleMessage(order, shipment, account.nickname);
+    const thumbnail = getThumbnail(order);
+
     // Salvar cliente e pedido no banco (em paralelo com o envio do WhatsApp)
     await Promise.all([
       saveClienteAndPedido(order, shipment, account.nickname).catch(e =>
         console.error('[ML Webhook] Erro ao salvar cliente:', e.message)
       ),
-      sendWhatsApp(formatSaleMessage(order, shipment, account.nickname)),
+      thumbnail ? sendWhatsAppMedia(thumbnail, message) : sendWhatsApp(message),
     ]);
 
     return NextResponse.json({ ok: true, order_id: order.id });

@@ -1,21 +1,24 @@
 import { getPool } from '@/lib/db';
 
+async function getEvoCfg(): Promise<Record<string, string> | null> {
+  const db = getPool();
+  const cfgs = await db.query(
+    `SELECT key, value FROM connector_configs WHERE key IN ('evolution_url','evolution_api_key','whatsapp_number')`
+  );
+  const cfg: Record<string, string> = {};
+  for (const r of cfgs.rows) cfg[r.key] = r.value.trim();
+  if (!cfg['evolution_url'] || !cfg['evolution_api_key'] || !cfg['whatsapp_number']) return null;
+  return cfg;
+}
+
 /**
- * Sends a WhatsApp message via Evolution API.
- * Reads credentials from connector_configs (evolution_url, evolution_api_key, whatsapp_number).
- * Never throws — alert failure must not break the caller.
+ * Envia mensagem de texto via Evolution API.
+ * Nunca lança erro — falha de alerta não deve quebrar o caller.
  */
 export async function sendWhatsApp(message: string): Promise<void> {
   try {
-    const db = getPool();
-    const cfgs = await db.query(
-      `SELECT key, value FROM connector_configs WHERE key IN ('evolution_url','evolution_api_key','whatsapp_number')`
-    );
-    const cfg: Record<string, string> = {};
-    for (const r of cfgs.rows) cfg[r.key] = r.value.trim();
-
-    if (!cfg['evolution_url'] || !cfg['evolution_api_key'] || !cfg['whatsapp_number']) return;
-
+    const cfg = await getEvoCfg();
+    if (!cfg) return;
     await fetch(`${cfg['evolution_url']}/message/sendText/Cleiton`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: cfg['evolution_api_key'] },
@@ -23,4 +26,31 @@ export async function sendWhatsApp(message: string): Promise<void> {
       signal: AbortSignal.timeout(8000),
     });
   } catch { /* never break the caller */ }
+}
+
+/**
+ * Envia imagem com legenda via Evolution API.
+ * Se falhar, cai para envio de texto simples.
+ */
+export async function sendWhatsAppMedia(imageUrl: string, caption: string): Promise<void> {
+  try {
+    const cfg = await getEvoCfg();
+    if (!cfg) return;
+    const res = await fetch(`${cfg['evolution_url']}/message/sendMedia/Cleiton`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: cfg['evolution_api_key'] },
+      body: JSON.stringify({
+        number: cfg['whatsapp_number'],
+        mediatype: 'image',
+        mimetype: 'image/jpeg',
+        media: imageUrl,
+        caption,
+      }),
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) throw new Error(`Evolution ${res.status}`);
+  } catch {
+    // Fallback para texto se a imagem falhar
+    await sendWhatsApp(caption);
+  }
 }
