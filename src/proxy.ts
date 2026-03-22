@@ -15,7 +15,10 @@ export async function proxy(req: NextRequest) {
     pathname.includes('.') || // arquivos estáticos
     pathname.startsWith('/_next') || // internals do Next.js
     pathname === '/login' ||
-    pathname === '/api/auth/login'
+    pathname === '/api/auth/login' ||
+    pathname.startsWith('/api/paraguai/catalogo/vps-test') ||
+    pathname.startsWith('/api/paraguai/ml-token-refresh') || // worker cron — auth via x-worker-key
+    pathname === '/api/mercado-livre/webhook' // ML webhook — autenticado por topic/user_id, não por sessão
   ) {
     return NextResponse.next();
   }
