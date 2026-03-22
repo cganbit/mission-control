@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { getPool } from '@/lib/db';
 import { logAudit } from '@/lib/audit';
+import { sendWhatsApp } from '@/lib/whatsapp';
 
 const ML_API = 'https://api.mercadolibre.com';
 const WORKER_KEY = process.env.WORKER_KEY || 'catalogo-worker-2026';
@@ -104,25 +105,6 @@ async function refreshAccount(
   }
 }
 
-async function sendWhatsAppAlert(message: string): Promise<void> {
-  try {
-    const db = getPool();
-    const cfgs = await db.query(
-      `SELECT key, value FROM connector_configs WHERE key IN ('evolution_url','evolution_api_key','whatsapp_number')`
-    );
-    const cfg: Record<string, string> = {};
-    for (const r of cfgs.rows) cfg[r.key] = r.value.trim();
-
-    if (!cfg['evolution_url'] || !cfg['evolution_api_key'] || !cfg['whatsapp_number']) return;
-
-    await fetch(`${cfg['evolution_url']}/message/sendText/Cleiton`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: cfg['evolution_api_key'] },
-      body: JSON.stringify({ number: cfg['whatsapp_number'], text: message }),
-      signal: AbortSignal.timeout(8000),
-    });
-  } catch { /* alert failure should never break the worker */ }
-}
 
 // ─── POST — refresh all ML tokens ────────────────────────────────────────────
 // Auth: JWT session (dashboard) OR x-worker-key header (cron)
@@ -162,7 +144,7 @@ export async function POST(req: NextRequest) {
     if (failed.length > 0) {
       const msg = `⚠️ ML Token Refresh — ${failed.length} conta(s) com erro:\n`
         + failed.map(r => `• ${r.account.nickname}: ${r.error}`).join('\n');
-      await sendWhatsAppAlert(msg);
+      await sendWhatsApp(msg);
       await logAudit('worker', 'ml_token_refresh_parcial', null, { summary, failed: failed.length });
     } else {
       const refreshed = results.filter(r => r.refreshed).length;
@@ -181,7 +163,7 @@ export async function POST(req: NextRequest) {
 
   } catch (e: any) {
     const msg = `🚨 ML Token Refresh — erro crítico: ${e.message}`;
-    await sendWhatsAppAlert(msg);
+    await sendWhatsApp(msg);
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
   }
 }

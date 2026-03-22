@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   ShoppingCart, TrendingUp, MessageSquare, AlertCircle, CheckCircle2,
   RefreshCw, Package, DollarSign, ChevronDown, Send, Loader2, Edit2,
+  Bell, BellOff, ExternalLink,
 } from 'lucide-react';
 
 function cn(...inputs: any[]) { return inputs.filter(Boolean).join(' '); }
@@ -475,6 +476,125 @@ function FinanceiroTab() {
   );
 }
 
+// ─── Notificações (webhook) ──────────────────────────────────────────────────
+
+function NotificacoesCard() {
+  const [subs, setSubs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [callbackUrl, setCallbackUrl] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
+  const fetchSubs = () => {
+    setLoading(true);
+    fetch('/api/mercado-livre/webhook/register')
+      .then(r => r.json())
+      .then(d => { setSubs(Array.isArray(d) ? d : (d.subscriptions ?? [])); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchSubs(); }, []);
+
+  const register = async () => {
+    if (!callbackUrl.trim()) return;
+    setSaving(true);
+    const res = await fetch('/api/mercado-livre/webhook/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callback_url: callbackUrl.trim() }),
+    }).then(r => r.json());
+    setSaving(false);
+    if (res.ok) {
+      setMsg({ text: 'Webhook registrado!', ok: true });
+      setCallbackUrl('');
+      fetchSubs();
+    } else {
+      setMsg({ text: res.error ?? 'Erro ao registrar', ok: false });
+    }
+    setTimeout(() => setMsg(null), 5000);
+  };
+
+  const remove = async (id: string) => {
+    await fetch('/api/mercado-livre/webhook/register', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription_id: id }),
+    });
+    fetchSubs();
+  };
+
+  const activeSubs = subs.filter(s => s.active !== false);
+  const hasActive = activeSubs.length > 0;
+
+  return (
+    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="px-5 py-3.5 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {hasActive
+            ? <Bell className="h-4 w-4 text-emerald-400" />
+            : <BellOff className="h-4 w-4 text-slate-500" />}
+          <h3 className="font-bold text-sm text-slate-100">Notificações de Venda</h3>
+        </div>
+        {hasActive && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-emerald-900/30 text-emerald-400 border border-emerald-800/50">
+            {activeSubs.length} ativo(s)
+          </span>
+        )}
+      </div>
+
+      <div className="p-5 space-y-4">
+        {loading ? (
+          <div className="flex items-center gap-2 text-slate-500 text-xs">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Verificando webhooks…
+          </div>
+        ) : activeSubs.length > 0 ? (
+          <div className="space-y-2">
+            {activeSubs.map((s, i) => (
+              <div key={s.id ?? i} className="flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
+                  <span className="text-slate-400 truncate">{s.callback_url ?? s.callbackUrl ?? 'orders_v2'}</span>
+                </div>
+                <button onClick={() => remove(s.id)}
+                  className="text-rose-500 hover:text-rose-400 text-[10px] flex-shrink-0 px-2 py-0.5 border border-rose-900/50 hover:border-rose-700 rounded transition-colors">
+                  Remover
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-slate-600 text-xs">Nenhum webhook ativo. Registre abaixo para receber notificações de venda no WhatsApp.</p>
+        )}
+
+        <div className="space-y-2 pt-2 border-t border-slate-800">
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Registrar Webhook</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="url"
+              value={callbackUrl}
+              onChange={e => setCallbackUrl(e.target.value)}
+              placeholder="https://seu-dominio.com/api/mercado-livre/webhook"
+              className="flex-1 bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-2 focus:border-indigo-500 outline-none placeholder:text-slate-600"
+            />
+            <button onClick={register} disabled={saving || !callbackUrl.trim()}
+              className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg font-bold disabled:opacity-50 transition-colors flex-shrink-0">
+              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />}
+              Ativar
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-600 flex items-center gap-1">
+            <ExternalLink className="h-3 w-3" />
+            ML exige HTTPS. Use um domínio com SSL ou configure Nginx + Let&apos;s Encrypt no VPS.
+          </p>
+          {msg && (
+            <p className={cn("text-xs", msg.ok ? "text-emerald-400" : "text-rose-400")}>{msg.text}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ──────────────────────────────────────────────────────────────────
 
 type Tab = 'overview' | 'anuncios' | 'perguntas' | 'financeiro';
@@ -587,6 +707,7 @@ export default function MercadoLivrePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {stats.map(store => <StoreCard key={store.seller_id} store={store} />)}
           </div>
+          <NotificacoesCard />
         </div>
       )}
 
