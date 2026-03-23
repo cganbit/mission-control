@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 
 let pool: Pool | null = null;
+let arbitragemPool: Pool | null = null;
 
 export function getPool(): Pool {
   if (!pool) {
@@ -11,6 +12,18 @@ export function getPool(): Pool {
     });
   }
   return pool;
+}
+
+export function getArbitragemPool(): Pool {
+  if (!arbitragemPool) {
+    const url = (process.env.DATABASE_URL ?? '').replace('/mission_control', '/arbitragem');
+    arbitragemPool = new Pool({
+      connectionString: url,
+      ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+      max: 5,
+    });
+  }
+  return arbitragemPool;
 }
 
 export async function query<T = Record<string, unknown>>(

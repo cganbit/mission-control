@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-  connectionString: (process.env.DATABASE_URL ?? '').replace('/mission_control', '/arbitragem'),
-  max: 5,
-});
+import { getArbitragemPool } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
   const session = await getSessionFromRequest(req);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const result = await pool.query(
+  const result = await getArbitragemPool().query(
     'SELECT * FROM notification_settings WHERE username = $1',
     [session.username]
   );
@@ -32,7 +27,7 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json();
   const { whatsapp_number, whatsapp_alerts_global, min_margem, marcas_filtro } = body;
 
-  const result = await pool.query(
+  const result = await getArbitragemPool().query(
     `INSERT INTO notification_settings (username, whatsapp_number, whatsapp_alerts_global, min_margem, marcas_filtro)
      VALUES ($1,$2,$3,$4,$5)
      ON CONFLICT (username) DO UPDATE SET

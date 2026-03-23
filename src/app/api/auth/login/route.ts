@@ -98,6 +98,7 @@ export async function POST(req: NextRequest) {
   res.cookies.set('mc_token', token, {
     httpOnly: true,
     secure: false,
+    sameSite: 'lax',
     maxAge: SESSION_HOURS * 60 * 60,
     path: '/',
   });

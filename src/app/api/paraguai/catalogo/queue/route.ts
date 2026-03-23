@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { getArbitragemPool, getPool } from '@/lib/db';
+import { logAudit } from '@/lib/audit';
 
 const WORKER_KEY = process.env.WORKER_KEY || 'catalogo-worker-2026';
 const ML_API = 'https://api.mercadolibre.com';
@@ -15,14 +16,17 @@ async function ensureTable(db: any) {
       status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'done', 'error')),
       requested_at TIMESTAMP DEFAULT NOW(),
       processed_at TIMESTAMP,
+      error_detail TEXT,
       UNIQUE(fingerprint)
     )
   `);
+  // Add error_detail if table already exists without it
+  await db.query(`ALTER TABLE catalog_refresh_queue ADD COLUMN IF NOT EXISTS error_detail TEXT`).catch(() => {});
 }
 
 // ─── ML Token helpers (reads from connector_configs or env) ──────────────────
 
-async function getMlTokenFromDb(): Promise<{ access_token: string; refresh_token: string; expires_at: number } | null> {
+async function getMlTokenFromDb(): Promise<{ seller_id?: number; access_token: string; refresh_token: string; expires_at: number } | null> {
   try {
     const db = getPool();
     const row = await db.query(`SELECT value FROM connector_configs WHERE key = 'ml_tokens_json' LIMIT 1`);
@@ -36,17 +40,19 @@ async function getMlTokenFromDb(): Promise<{ access_token: string; refresh_token
   }
 }
 
-async function saveMlTokenToDb(account: { access_token: string; refresh_token: string; expires_at: number }) {
+async function saveMlTokenToDb(
+  updated: { access_token: string; refresh_token: string; expires_at: number },
+  sellerId?: number
+) {
   try {
     const db = getPool();
-    // Read current value, update first account
     const row = await db.query(`SELECT value FROM connector_configs WHERE key = 'ml_tokens_json' LIMIT 1`);
     if (!row.rows[0]) return;
     const arr = JSON.parse(row.rows[0].value);
-    const accounts = Array.isArray(arr) ? arr : (arr.accounts ?? []);
-    if (accounts.length) {
-      accounts[0] = { ...accounts[0], ...account };
-    }
+    const accounts: any[] = Array.isArray(arr) ? arr : (arr.accounts ?? []);
+    // Update matching account by seller_id, fallback to index 0
+    const idx = sellerId ? accounts.findIndex(a => a.seller_id === sellerId) : 0;
+    if (idx >= 0) accounts[idx] = { ...accounts[idx], ...updated };
     const newValue = Array.isArray(arr) ? JSON.stringify(accounts) : JSON.stringify({ ...arr, accounts });
     await db.query(
       `UPDATE connector_configs SET value = $1, updated_at = NOW() WHERE key = 'ml_tokens_json'`,
@@ -98,7 +104,7 @@ async function getValidMlToken(): Promise<string> {
     refresh_token: token.refresh_token,
     expires_at: Date.now() + token.expires_in * 1000,
   };
-  await saveMlTokenToDb(updated);
+  await saveMlTokenToDb(updated, account.seller_id);
   return updated.access_token;
 }
 
@@ -126,43 +132,95 @@ interface CatalogResult {
   updated_at: string;
 }
 
-async function buildCatalogsViaApi(productName: string, token: string): Promise<CatalogResult[]> {
-  const searchData = await mlGet(
-    `/products/search?site_id=MLB&q=${encodeURIComponent(productName)}&limit=15`,
-    token
-  );
+async function buildCatalogsViaApi(productName: string, token: string, pinnedId: string | null = null): Promise<CatalogResult[]> {
+  // Normalize: merge numbers with their units ("16 gb"→"16gb", "256 gb"→"256gb")
+  const normalize = (s: string) => s.toLowerCase()
+    .replace(/(\d+)\s+(gb|tb|mb|ssd|ram|cpu|gpu|ghz)/gi, '$1$2');
 
-  const queryWords = productName.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
+  const normName = normalize(productName);
+  const allWords = normName.split(/\s+/).filter((w: string) => w.length > 1);
+
+  // Core words = no digits (brand/model family, e.g. "apple mac mini")
+  // Spec words = with digits (generation/capacity, e.g. "m4", "16gb", "256gb")
+  const coreWords = allWords.filter((w: string) => !/\d/.test(w));
+  const specWords = allWords.filter((w: string) => /\d/.test(w));
+
+  // Two parallel searches:
+  // 1. Full product name → high relevance for the exact variant
+  // 2. Core words only → broader coverage sorted by most sold
+  const coreQuery = coreWords.slice(0, 4).join(' ');
+  const [fullData, broadData] = await Promise.all([
+    mlGet(`/products/search?site_id=MLB&q=${encodeURIComponent(productName)}&limit=20`, token),
+    coreQuery !== normName
+      ? mlGet(`/products/search?site_id=MLB&q=${encodeURIComponent(coreQuery)}&limit=30&sort=sold_quantity_desc`, token)
+      : Promise.resolve({ results: [] }),
+  ]);
+
+  // Merge: full-query results first (higher relevance), then broad results (by sales)
+  const seen = new Set<string>();
+  const merged: any[] = [];
+  for (const item of [...(fullData.results || []), ...(broadData.results || [])]) {
+    if (!seen.has(item.id)) { seen.add(item.id); merged.push(item); }
+  }
+
   const ACESSORIO = /\b(capa|case|capinha|p[eé]l[ií]cula|protetor|suporte|carregador|cabo|adaptador|fone)\b/i;
   const discovered: { catalog_id: string; title: string }[] = [];
 
-  for (const item of (searchData.results || [])) {
-    if (discovered.length >= 5) break;
-    const name = (item.name || '').toLowerCase();
+  for (const item of merged) {
+    if (discovered.length >= 8) break;
+    const name = normalize(item.name || '');
     if (ACESSORIO.test(name)) continue;
-    const matchCount = queryWords.filter((w: string) => name.includes(w)).length;
-    if (matchCount >= Math.ceil(queryWords.length * 0.6)) {
-      discovered.push({ catalog_id: item.id, title: item.name });
+
+    // All core words must be present
+    if (!coreWords.every((w: string) => name.includes(w))) continue;
+
+    // At least 1 spec word must match (or no specs = accept all core matches)
+    if (specWords.length > 0) {
+      const specMatched = specWords.filter((w: string) => name.includes(w)).length;
+      if (specMatched === 0) continue;
     }
+
+    discovered.push({ catalog_id: item.id, title: item.name });
+  }
+
+  // If user pinned a catalog manually and it wasn't found by search, prepend it
+  if (pinnedId && !discovered.find(d => d.catalog_id === pinnedId)) {
+    discovered.unshift({ catalog_id: pinnedId, title: pinnedId });
   }
 
   const catalogs = await Promise.all(
     discovered.map(async (cat, idx) => {
       try {
+        // Ordem natural do ML (sem sort) — primeiro item de cada tipo = winner daquele tipo
         const itemsData = await mlGet(
-          `/products/${cat.catalog_id}/items?limit=50&sort=price_asc`,
+          `/products/${cat.catalog_id}/items?limit=50`,
           token
         );
         const items: any[] = itemsData.results || [];
-        const fullItems = items.filter((i: any) => i.shipping?.logistic_type === 'fulfillment');
-        const classicItems = items.filter((i: any) => i.shipping?.logistic_type !== 'fulfillment');
+
+        // gold_special = Premium | gold_pro = Clássico
+        // Ignorar CBT (Cross Border Trade) — vendedores internacionais, não representam preço local
+        // Ignorar gold_pro + fulfillment — aparecem como Premium na página, não como Clássico
+        const isCbt = (i: any) => Array.isArray(i.tags) && i.tags.includes('cbt_item');
+        const premiumItems  = items.filter((i: any) => i.listing_type_id === 'gold_special' && !isCbt(i));
+        const catalogItems  = items.filter((i: any) =>
+          i.listing_type_id === 'gold_pro' &&
+          i.shipping?.logistic_type !== 'fulfillment' &&
+          !isCbt(i)
+        );
+
+        const premiumPrices = premiumItems.map((i: any) => i.price).filter(Boolean);
+        const catalogPrices = catalogItems.map((i: any) => i.price).filter(Boolean);
+
+        const hasFull = items.some((i: any) => i.shipping?.logistic_type === 'fulfillment');
 
         return {
           catalog_id: cat.catalog_id,
           title: cat.title,
           url: `https://www.mercadolivre.com.br/p/${cat.catalog_id}#offers`,
-          price_premium: fullItems.length ? fullItems[0].price : null,
-          price_classic: classicItems.length ? classicItems[0].price : null,
+          price_premium: premiumPrices.length ? Math.min(...premiumPrices) : null,
+          price_classic: catalogPrices.length  ? Math.min(...catalogPrices)  : null,
+          has_full: hasFull,
           is_winner: idx === 0,
           seller_count: itemsData.paging?.total || 0,
           sold_quantity: 0,
@@ -202,7 +260,20 @@ async function processJobInline(job: { id: number; fingerprint: string; product_
     );
 
     const token = await getValidMlToken();
-    const catalogs = await buildCatalogsViaApi(job.product_name, token);
+
+    // Check if there's a pinned catalog_id the user set manually
+    const pinnedRow = await db.query(
+      `SELECT ml_catalog_id FROM preco_ml_cache WHERE fingerprint = $1`,
+      [job.fingerprint]
+    );
+    const pinnedId: string | null = pinnedRow.rows[0]?.ml_catalog_id ?? null;
+
+    const allCatalogs = await buildCatalogsViaApi(job.product_name, token, pinnedId);
+
+    // Remove catalogs with no sellers AND no prices — noise from broad ML search
+    const catalogs = allCatalogs.filter(c =>
+      c.seller_count > 0 || c.price_premium !== null || c.price_classic !== null
+    );
 
     if (!catalogs.length) {
       await db.query(
@@ -213,32 +284,55 @@ async function processJobInline(job: { id: number; fingerprint: string; product_
     }
 
     // Save to preco_ml_cache
-    const primary = catalogs.find(c => c.is_winner) ?? catalogs[0];
+    // Pick primary = catalog with prices (most sellers), fallback to first
+    // Pick primary = catalog with prices (most sellers), fallback to first
+    const withPrices = catalogs.filter(c => c.price_premium !== null || c.price_classic !== null);
+    const primary = withPrices.sort((a, b) => (b.seller_count ?? 0) - (a.seller_count ?? 0))[0]
+      ?? catalogs[0];
+    // Mark is_winner correctly in the array
+    catalogs.forEach(c => { c.is_winner = c.catalog_id === primary.catalog_id; });
     const premium = primary.price_premium ?? null;
     const classic = primary.price_classic ?? null;
 
+    // Ensure extra columns exist (idempotent — safe to run repeatedly)
+    await db.query(`
+      ALTER TABLE preco_ml_cache
+        ADD COLUMN IF NOT EXISTS ml_catalog_id    TEXT,
+        ADD COLUMN IF NOT EXISTS ml_catalog_url   TEXT,
+        ADD COLUMN IF NOT EXISTS ml_catalogs_json JSONB,
+        ADD COLUMN IF NOT EXISTS ml_price_premium NUMERIC(10,2),
+        ADD COLUMN IF NOT EXISTS ml_price_classic NUMERIC(10,2),
+        ADD COLUMN IF NOT EXISTS ml_shipping_type TEXT
+    `).catch(() => {}); // ignore if ALTER is not supported (no perms) — columns probably already exist
+
     await db.query(
-      `UPDATE preco_ml_cache
-       SET ml_catalog_id   = $1,
-           catalog_ids     = $2,
-           ml_catalogs_json = $3,
-           has_catalog     = TRUE,
-           ml_price_premium = $4,
-           ml_price_classic = $5,
-           preco_ml_real   = $6,
-           ml_shipping_type = $7,
-           updated_at      = NOW(),
-           expires_at      = NOW() + INTERVAL '12 hours'
-       WHERE fingerprint = $8`,
+      `INSERT INTO preco_ml_cache
+         (fingerprint, ml_catalog_id, ml_catalog_url, catalog_ids, ml_catalogs_json,
+          has_catalog, ml_price_premium, ml_price_classic, preco_ml_real, ml_shipping_type,
+          updated_at, expires_at)
+       VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7, $8, $9, NOW(), NOW() + INTERVAL '12 hours')
+       ON CONFLICT (fingerprint) DO UPDATE
+         SET ml_catalog_id    = EXCLUDED.ml_catalog_id,
+             ml_catalog_url   = EXCLUDED.ml_catalog_url,
+             catalog_ids      = EXCLUDED.catalog_ids,
+             ml_catalogs_json = EXCLUDED.ml_catalogs_json,
+             has_catalog      = TRUE,
+             ml_price_premium = EXCLUDED.ml_price_premium,
+             ml_price_classic = EXCLUDED.ml_price_classic,
+             preco_ml_real    = EXCLUDED.preco_ml_real,
+             ml_shipping_type = EXCLUDED.ml_shipping_type,
+             updated_at       = NOW(),
+             expires_at       = NOW() + INTERVAL '12 hours'`,
       [
+        job.fingerprint,
         primary.catalog_id,
+        `https://www.mercadolivre.com.br/p/${primary.catalog_id}#offers`,
         catalogs.map(c => c.catalog_id),
         JSON.stringify(catalogs),
         premium,
         classic,
         classic ?? premium,
         premium !== null ? 'FULL' : 'NORMAL',
-        job.fingerprint,
       ]
     );
 
@@ -249,10 +343,11 @@ async function processJobInline(job: { id: number; fingerprint: string; product_
 
     console.log(`[QUEUE] Inline done: ${job.fingerprint} — ${catalogs.length} catálogos`);
   } catch (e: any) {
-    console.error(`[QUEUE] Inline error for ${job.fingerprint}:`, e.message);
+    const msg = e?.message ?? String(e);
+    console.error(`[QUEUE] Inline error for ${job.fingerprint}:`, msg);
     await db.query(
-      `UPDATE catalog_refresh_queue SET status = 'error', processed_at = NOW() WHERE id = $1`,
-      [job.id]
+      `UPDATE catalog_refresh_queue SET status = 'error', processed_at = NOW(), error_detail = $2 WHERE id = $1`,
+      [job.id, msg.slice(0, 500)]
     ).catch(() => {});
   }
 }
@@ -279,6 +374,7 @@ export async function POST(req: NextRequest) {
     [fingerprint, product_name, min_price]
   );
 
+  await logAudit(session.username, 'catalogo_refresh_solicitado', fingerprint, { product_name, min_price });
   return NextResponse.json({ ok: true, fingerprint });
 }
 
@@ -300,7 +396,7 @@ export async function GET(req: NextRequest) {
     }
 
     const row = await db.query(
-      'SELECT id, status, product_name, processed_at FROM catalog_refresh_queue WHERE fingerprint = $1',
+      'SELECT id, status, product_name, processed_at, error_detail FROM catalog_refresh_queue WHERE fingerprint = $1',
       [fingerprint]
     );
 
@@ -313,21 +409,18 @@ export async function GET(req: NextRequest) {
 
     // If pending → process inline (VPS has ML token access)
     if (status === 'pending') {
-      // Fire-and-forget with a 25s timeout budget
       const job = { id: record.id, fingerprint, product_name: record.product_name };
+      await processJobInline(job);
 
-      // Run inline processing — we await it so the browser gets 'done' immediately
-      // Use AbortSignal timeout to cap at 25s
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 25000);
-      try {
-        await processJobInline(job);
-        clearTimeout(timeout);
-        return NextResponse.json({ fingerprint, status: 'done' });
-      } catch {
-        clearTimeout(timeout);
-        return NextResponse.json({ fingerprint, status: 'error' });
-      }
+      // Re-read actual status — processJobInline catches its own errors internally
+      const updated = await db.query(
+        'SELECT status, processed_at FROM catalog_refresh_queue WHERE id = $1',
+        [record.id]
+      );
+      const finalRow = updated.rows[0];
+      const finalStatus = finalRow?.status ?? 'error';
+      const errorDetail = finalRow?.error_detail ?? null;
+      return NextResponse.json({ fingerprint, status: finalStatus, error: errorDetail });
     }
 
     return NextResponse.json({ fingerprint, status });

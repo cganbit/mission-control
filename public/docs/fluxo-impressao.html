@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>WingX — Fluxo de Impressão</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  h1 { font-size: 22px; font-weight: 700; color: #f1f5f9; margin-bottom: 6px; letter-spacing: -0.5px; }
+  .subtitle { font-size: 13px; color: #64748b; margin-bottom: 48px; }
+
+  .flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 680px;
+    gap: 0;
+  }
+
+  /* ── Etapa ── */
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    width: 100%;
+    position: relative;
+  }
+
+  .step-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    width: 56px;
+  }
+
+  .icon-bubble {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+    border: 2px solid transparent;
+  }
+
+  .connector {
+    width: 2px;
+    height: 40px;
+    background: linear-gradient(to bottom, #334155, transparent);
+    margin: 0 auto;
+  }
+  .connector.solid { background: #334155; }
+
+  .step-body {
+    flex: 1;
+    padding: 16px 20px;
+    border-radius: 12px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    margin-bottom: 40px;
+    position: relative;
+  }
+  .step-body.highlight {
+    border-color: #6366f1;
+    background: #1e1b4b;
+  }
+
+  .step-number {
+    font-size: 10px;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+  }
+  .step-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 6px;
+  }
+  .step-desc {
+    font-size: 13px;
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 8px;
+    margin-right: 4px;
+  }
+  .tag-green  { background: #14532d; color: #86efac; }
+  .tag-blue   { background: #1e3a5f; color: #93c5fd; }
+  .tag-purple { background: #2e1065; color: #c4b5fd; }
+  .tag-orange { background: #431407; color: #fdba74; }
+
+  /* ── Grupos ── */
+  .group-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #475569;
+    align-self: flex-start;
+    margin-bottom: 12px;
+    padding-left: 76px;
+  }
+
+  /* ── Divisor de seção ── */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin: 8px 0 24px;
+  }
+  .section-divider span {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+  .section-divider hr {
+    flex: 1;
+    border: none;
+    border-top: 1px solid #1e293b;
+  }
+
+  .sd-ml   { background: #fef9c3; color: #713f12; }
+  .sd-mc   { background: #ede9fe; color: #4c1d95; }
+  .sd-zap  { background: #dcfce7; color: #14532d; }
+  .sd-agent{ background: #dbeafe; color: #1e3a5f; }
+  .sd-imp  { background: #fee2e2; color: #7f1d1d; }
+
+  /* ── Ícones coloridos ── */
+  .bubble-yellow  { background: #1c1917; border-color: #ca8a04; }
+  .bubble-purple  { background: #1e1b4b; border-color: #6366f1; }
+  .bubble-green   { background: #052e16; border-color: #22c55e; }
+  .bubble-blue    { background: #0c1a2e; border-color: #3b82f6; }
+  .bubble-orange  { background: #1c0a00; border-color: #f97316; }
+  .bubble-red     { background: #1c0505; border-color: #ef4444; }
+  .bubble-teal    { background: #022c22; border-color: #14b8a6; }
+
+  /* ── Final ── */
+  .finish {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .finish-badge {
+    font-size: 32px;
+  }
+  .finish-text {
+    font-size: 18px;
+    font-weight: 700;
+    color: #22c55e;
+  }
+  .finish-sub {
+    font-size: 12px;
+    color: #475569;
+  }
+
+  /* ── Legenda ── */
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 40px;
+    padding: 16px 20px;
+    background: #1e293b;
+    border-radius: 10px;
+    border: 1px solid #334155;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #94a3b8;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<h1>🖨️ WingX — Fluxo de Impressão de Etiquetas</h1>
+<p class="subtitle">Do momento da venda até a etiqueta impressa na sua mesa</p>
+
+<div class="flow">
+
+  <!-- MERCADO LIVRE -->
+  <div class="section-divider">
+    <hr>
+    <span class="sd-ml">Mercado Livre</span>
+    <hr>
+  </div>
+
+  <div class="step">
+    <div class="step-left">
+      <div class="icon-bubble bubble-yellow">🛍️</div>
+      <div class="connector solid"></div>
+    </div>
+    <div class="step-body">
+      <div class="step-number">Passo 1</div>
+      <div class="step-title">Venda paga no Mercado Livre</div>
+      <div class="step-desc">Comprador finaliza o pagamento. O ML gera automaticamente uma notificação de pedido pago (<code>orders_v2 / paid</code>).</div>
+      <span class="tag tag-orange">ML API</span>
+    </div>
+  </div>
+
+  <!-- MISSION CONTROL -->
+  <div class="section-divider">
+    <hr>
+    <span class="sd-mc">Mission Control (VPS)</span>
+    <hr>
+  </div>
+
+  <div class="step">
+    <div class="step-left">
+      <div class="icon-bubble bubble-purple">⚡</div>
+      <div class="connector solid"></div>
+    </div>
+    <div class="step-body highlight">
+      <div class="step-number">Passo 2</div>
+      <div class="step-title">Webhook recebe a notificação</div>
+      <div class="step-desc">O MC recebe o aviso do ML em <strong>https://mc.wingx.app.br/api/mercado-livre/webhook</strong>, busca os detalhes do pedido + envio e salva no banco de dados.</div>
+      <span class="tag tag-purple">PostgreSQL</span>
+      <span class="tag tag-blue">ml_pedidos</span>
+      <span class="tag tag-blue">ml_clientes</span>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-left">
+      <div class="icon-bubble bubble-purple">🖨️</div>
+      <div class="connector solid"></div>
+    </div>
+    <div class="step-body">
+      <div class="step-number">Passo 3</div>
+      <div class="step-title">Job de impressão criado na fila</div>
+      <div class="step-desc">Um registro é criado na tabela <strong>print_queue</strong> com status <code>queued</code> e um token único de segurança. A etiqueta ainda não foi impressa — aguardando sua aprovação.</div>
+      <span class="tag tag-purple">print_queue</span>
+      <span class="tag tag-blue">status: queued</span>
+    </div>
+  </div>
+
+  <!-- WHATSAPP -->
+  <div class="section-divider">
+    <hr>
+    <span class="sd-zap">WhatsApp — Grupo "Venda ML"</span>
+    <hr>
+  </div>
+
+  <div class="step">
+    <div class="step-left">
+      <div class="icon-bubble bubble-green">📲</div>
+      <div class="connector solid"></div>
+    </div>
+    <div class="step-body">
+      <div class="step-number">Passo 4</div>
+      <div class="step-title">Notificação de venda chega no WhatsApp</div>
+      <div class="step-desc">O grupo recebe a mensagem com foto do produto, nome do comprador, CPF, telefone, endereço de entrega, endereço da nota fiscal e total da venda.</div>
+      <span class="tag tag-green">Evolution API</span>
+      <span class="tag tag-green">Foto + Dados</span>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-left">
+      <div class="icon-bubble bubble-green">🔗</div>
+      <div class="connector solid"></div>
+    </div>
+    <div class="step-body">
+      <div class="step-number">Passo 5</div>
+      <div class="step-title">Link de impressão chega logo depois</div>
+      <div class="step-desc">Uma segunda mensagem chega com o link de aprovação: <strong>🖨️ Imprimir etiqueta → mc.wingx.app.br/api/print-queue/trigger?token=xxxx</strong></div>
+      <span class="tag tag-green">Token único</span>
+      <span class="tag tag-blue">HTTPS seguro</span>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-left">
+      <div class="icon-bubble bubble-teal">👆</div>
+      <div class="connector solid"></div>
+    </div>
+    <div class="step-body">
+      <div class="step-number">Passo 6 — Você age</div>
+      <div class="step-title">Você toca no link pelo celular</div>
+      <div class="step-desc">Ao tocar, o browser abre e confirma: <em>"✅ Impressão solicitada! O agente no notebook vai imprimir em instantes."</em> O job muda de <code>queued</code> → <code>pending</code>.</div>
+      <span class="tag tag-green">status: pending</span>
+    </div>
+  </div>
+
+  <!-- WINGX AGENT -->
+  <div class="section-divider">
+    <hr>
+    <span class="sd-agent">WingX Agent (seu notebook)</span>
+    <hr>
+  </div>
+
+  <div class="step">
+    <div class="step-left">
+      <div class="icon-bubble bubble-blue">🔄</div>
+      <div class="connector solid"></div>
+    </div>
+    <div class="step-body">
+      <div class="step-number">Passo 7</div>
+      <div class="step-title">Agente detecta o job pendente</div>
+      <div class="step-desc">O WingX Agent roda em segundo plano no notebook e faz polling a cada 10 segundos no MC. Ao encontrar um job <code>pending</code>, começa o processo de impressão.</div>
+      <span class="tag tag-blue">Polling 10s</span>
+      <span class="tag tag-purple">x-agent-key</span>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-left">
+      <div class="icon-bubble bubble-blue">📄</div>
+      <div class="connector solid"></div>
+    </div>
+    <div class="step-body">
+      <div class="step-number">Passo 8</div>
+      <div class="step-title">MC baixa a etiqueta PDF do Mercado Livre</div>
+      <div class="step-desc">O agente pede o PDF ao MC. O MC usa o token OAuth armazenado (renovado automaticamente) para buscar a etiqueta no <strong>ML API /shipments/{id}/labels</strong> e devolve o PDF ao agente.</div>
+      <span class="tag tag-orange">ML OAuth token</span>
+      <span class="tag tag-purple">Proxy seguro</span>
+    </div>
+  </div>
+
+  <!-- IMPRESSÃO -->
+  <div class="section-divider">
+    <hr>
+    <span class="sd-imp">Impressora USB</span>
+    <hr>
+  </div>
+
+  <div class="step">
+    <div class="step-left">
+      <div class="icon-bubble bubble-red">🖨️</div>
+      <div class="connector solid"></div>
+    </div>
+    <div class="step-body">
+      <div class="step-number">Passo 9</div>
+      <div class="step-title">Etiqueta enviada para a impressora</div>
+      <div class="step-desc">O agente usa o SumatraPDF (baixado automaticamente) para imprimir o PDF em silêncio — sem janelas, sem popups. Funciona com qualquer impressora USB conectada ao Windows.</div>
+      <span class="tag tag-blue">SumatraPDF</span>
+      <span class="tag tag-green">USB / Rede</span>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-left">
+      <div class="icon-bubble bubble-green">✅</div>
+    </div>
+    <div class="step-body">
+      <div class="step-number">Passo 10</div>
+      <div class="step-title">Job marcado como concluído</div>
+      <div class="step-desc">O agente confirma ao MC que a impressão foi feita. O status muda para <code>done</code>. Em caso de erro (sem shipment, token expirado), o status muda para <code>error</code> com a mensagem de erro para diagnóstico.</div>
+      <span class="tag tag-green">status: done</span>
+    </div>
+  </div>
+
+  <div class="finish">
+    <div class="finish-badge">🏷️</div>
+    <div class="finish-text">Etiqueta impressa!</div>
+    <div class="finish-sub">Desde a venda até a impressão — sem tocar no computador</div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#ca8a04"></div> Mercado Livre</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div> Mission Control (VPS)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div> WhatsApp / Você</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> WingX Agent (notebook)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> Impressora</div>
+  </div>
+
+</div>
+</body>
+</html>

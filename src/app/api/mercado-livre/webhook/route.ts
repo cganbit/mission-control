@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { sendWhatsApp, sendWhatsAppMedia } from '@/lib/whatsapp';
+import crypto from 'crypto';
 
 const ML_API = 'https://api.mercadolibre.com';
 
@@ -135,6 +136,30 @@ function getThumbnail(order: any): string | null {
   return order.order_items?.[0]?.item?.thumbnail ?? null;
 }
 
+// ─── Criar job de impressão na fila ──────────────────────────────────────────
+
+async function createPrintJob(orderId: number, shipmentId: number | null, sellerNickname: string): Promise<string | null> {
+  try {
+    const token = crypto.randomBytes(20).toString('hex');
+    const db = getPool();
+    await db.query(
+      `INSERT INTO print_queue (ml_order_id, ml_shipment_id, seller_nickname, token, status)
+       VALUES ($1, $2, $3, $4, 'queued')
+       ON CONFLICT DO NOTHING`,
+      [orderId, shipmentId, sellerNickname, token]
+    );
+    // Se já existia um job para esse pedido, pega o token existente
+    const row = await db.query(
+      `SELECT token FROM print_queue WHERE ml_order_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      [orderId]
+    );
+    return row.rows[0]?.token ?? null;
+  } catch (e: any) {
+    console.error('[ML Webhook] Erro ao criar print job:', e.message);
+    return null;
+  }
+}
+
 // ─── POST — ML notification receiver ─────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -172,16 +197,26 @@ export async function POST(req: NextRequest) {
       } catch { /* opcional */ }
     }
 
-    const message = formatSaleMessage(order, shipment, account.nickname);
     const thumbnail = getThumbnail(order);
 
-    // Salvar cliente e pedido no banco (em paralelo com o envio do WhatsApp)
-    await Promise.all([
+    // Criar job de impressão + salvar cliente/pedido em paralelo
+    const [printToken] = await Promise.all([
+      createPrintJob(order.id, shipmentId, account.nickname),
       saveClienteAndPedido(order, shipment, account.nickname).catch(e =>
         console.error('[ML Webhook] Erro ao salvar cliente:', e.message)
       ),
-      thumbnail ? sendWhatsAppMedia(thumbnail, message) : sendWhatsApp(message),
     ]);
+
+    // Montar link de impressão e incluir na mesma mensagem
+    const baseUrl = process.env.MC_URL ?? 'https://mc.wingx.app.br';
+    const printLine = (printToken && shipmentId)
+      ? `\n🖨️ *Imprimir etiqueta:* ${baseUrl}/api/print-queue/trigger?token=${printToken}`
+      : '';
+
+    const message = formatSaleMessage(order, shipment, account.nickname) + printLine;
+
+    // Enviar notificação WhatsApp (uma única mensagem com tudo)
+    await (thumbnail ? sendWhatsAppMedia(thumbnail, message) : sendWhatsApp(message));
 
     return NextResponse.json({ ok: true, order_id: order.id });
   } catch (e: any) {

@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-  connectionString: (process.env.DATABASE_URL ?? '').replace('/mission_control', '/arbitragem'),
-  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
-  max: 3,
-});
+import { getArbitragemPool } from '@/lib/db';
 
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY ?? '';
 
@@ -51,7 +45,7 @@ export async function POST(req: NextRequest) {
   for (const fingerprint of fingerprints) {
     try {
       // Get raw description from DB
-      const row = await pool.query(
+      const row = await getArbitragemPool().query(
         `SELECT hp.descricao_original FROM historico_precos hp
          WHERE hp.fingerprint = $1
          ORDER BY hp.received_at DESC LIMIT 1`,
@@ -91,7 +85,7 @@ export async function POST(req: NextRequest) {
       const parsed = JSON.parse(jsonMatch[0]);
       const { titulo_amigavel, marca, modelo, capacidade, categoria, origem } = parsed;
 
-      await pool.query(
+      await getArbitragemPool().query(
         `INSERT INTO produtos_mestre (fingerprint, titulo_amigavel, marca, modelo, capacidade, categoria, origem)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (fingerprint) DO UPDATE SET

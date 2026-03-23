@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>WingX — Sprint ML + Impressão</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  h1 { font-size: 22px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; letter-spacing: -0.5px; }
+  .subtitle { font-size: 13px; color: #64748b; margin-bottom: 8px; }
+  .date { font-size: 12px; color: #334155; margin-bottom: 48px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 860px;
+  }
+
+  .card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    padding: 20px;
+  }
+  .card.full { grid-column: 1 / -1; }
+  .card.highlight { border-color: #6366f1; background: #1e1b4b; }
+  .card.green { border-color: #22c55e; background: #052e16; }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .card-icon { font-size: 22px; }
+  .card-title { font-size: 14px; font-weight: 700; color: #f1f5f9; }
+  .card-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+  .item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #0f172a;
+  }
+  .item:last-child { border-bottom: none; }
+  .item-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .item-text { font-size: 13px; color: #cbd5e1; line-height: 1.4; }
+  .item-text strong { color: #f1f5f9; }
+
+  .tag {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .tag-green  { background: #14532d; color: #86efac; }
+  .tag-blue   { background: #1e3a5f; color: #93c5fd; }
+  .tag-purple { background: #2e1065; color: #c4b5fd; }
+  .tag-yellow { background: #451a03; color: #fcd34d; }
+  .tag-red    { background: #450a0a; color: #fca5a5; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    width: 100%;
+    max-width: 860px;
+    margin-bottom: 16px;
+  }
+  .stat {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-value { font-size: 28px; font-weight: 800; color: #6366f1; }
+  .stat-label { font-size: 11px; color: #64748b; margin-top: 4px; }
+
+  .url {
+    font-family: monospace;
+    font-size: 11px;
+    color: #6366f1;
+    background: #1e1b4b;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .divider {
+    width: 100%;
+    max-width: 860px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 24px 0 16px;
+  }
+  .divider hr { flex: 1; border: none; border-top: 1px solid #1e293b; }
+  .divider span {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #475569;
+    white-space: nowrap;
+  }
+
+  .next-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #0f172a;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .next-item:last-child { margin-bottom: 0; }
+  .next-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #334155;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .next-text { font-size: 13px; color: #94a3b8; }
+  .next-text strong { color: #e2e8f0; }
+</style>
+</head>
+<body>
+
+<h1>✅ Sprint Fechada — ML + Fila de Impressão</h1>
+<p class="subtitle">WingX Mission Control · Mercado Livre MCP · WingX Agent</p>
+<p class="date">23/03/2026</p>
+
+<!-- Stats -->
+<div class="stats">
+  <div class="stat">
+    <div class="stat-value">4</div>
+    <div class="stat-label">Módulos entregues</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">12</div>
+    <div class="stat-label">Rotas de API criadas</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">6</div>
+    <div class="stat-label">MCP Tools novas</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">1</div>
+    <div class="stat-label">App desktop publicado</div>
+  </div>
+</div>
+
+<!-- Módulo 1 — ML Token -->
+<div class="divider"><hr><span>Módulo 1 — Token Auto-Refresh</span><hr></div>
+<div class="grid">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">🔑</div>
+      <div>
+        <div class="card-title">Token ML sincronizado</div>
+        <div class="card-sub">DB + arquivo /opt/ml-data/tokens.json</div>
+      </div>
+    </div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text"><strong>saveAllAccounts()</strong> grava no PostgreSQL e no arquivo simultaneamente</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Cron <strong>curl</strong> no VPS substituiu o cron node duplicado</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">MCP Mercado Livre lê tokens do arquivo — zero dependência de sessão web</div></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">🤖</div>
+      <div>
+        <div class="card-title">MCP Tools adicionadas</div>
+        <div class="card-sub">projects/mercadolivre-mcp</div>
+      </div>
+    </div>
+    <div class="item"><div class="item-icon">🔧</div><div class="item-text"><strong>list_listings</strong> — lista anúncios ativos</div></div>
+    <div class="item"><div class="item-icon">🔧</div><div class="item-text"><strong>update_listing</strong> — atualiza preço / estoque / título</div></div>
+    <div class="item"><div class="item-icon">🔧</div><div class="item-text"><strong>bulk_update_price</strong> — atualização em lote</div></div>
+    <div class="item"><div class="item-icon">🔧</div><div class="item-text"><strong>answer_question_ai</strong> — responde perguntas com contexto</div></div>
+    <div class="item"><div class="item-icon">🔧</div><div class="item-text"><strong>get_dre</strong> — DRE financeiro por conta</div></div>
+    <div class="item"><div class="item-icon">🔧</div><div class="item-text"><strong>generate_label</strong> — etiqueta de envio</div></div>
+  </div>
+</div>
+
+<!-- Módulo 2 — Gestor de Anúncios -->
+<div class="divider"><hr><span>Módulo 2 — Gestor de Anúncios (UI)</span><hr></div>
+<div class="grid">
+  <div class="card full">
+    <div class="card-header">
+      <div class="card-icon">📋</div>
+      <div>
+        <div class="card-title">Página /mercado-livre — 4 abas</div>
+        <div class="card-sub">mission-control · Next.js</div>
+      </div>
+    </div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text"><strong>Overview</strong> — métricas gerais por conta <span class="tag tag-blue">existente</span></div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text"><strong>Anúncios</strong> — tabela inline com edição de preço/estoque/título <span class="tag tag-green">novo</span></div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text"><strong>Perguntas</strong> — interface de resposta com contexto do produto <span class="tag tag-green">novo</span></div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text"><strong>Financeiro</strong> — DRE por conta + totais consolidados <span class="tag tag-green">novo</span></div></div>
+  </div>
+</div>
+
+<!-- Módulo 3 — Fila de Impressão -->
+<div class="divider"><hr><span>Módulo 3 — Fila de Impressão Automática</span><hr></div>
+<div class="grid">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">⚡</div>
+      <div>
+        <div class="card-title">Webhook ML → Fila</div>
+        <div class="card-sub">/api/mercado-livre/webhook</div>
+      </div>
+    </div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Recebe notificação de venda paga</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Salva cliente e pedido no banco</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Cria job na <strong>print_queue</strong> com token único</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Envia <strong>1 mensagem</strong> no grupo Venda ML com foto do produto + dados + link de imprimir</div></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">🖨️</div>
+      <div>
+        <div class="card-title">WingX Agent</div>
+        <div class="card-sub">App desktop — bandeja do Windows</div>
+      </div>
+    </div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Polling a cada 10s na fila de jobs <code>pending</code></div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Baixa PDF via MC (token ML gerenciado pelo servidor)</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Imprime silenciosamente via SumatraPDF</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">URL e chave <strong>pré-configuradas</strong> — só escolher impressora</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Disponível em <span class="url">mc.wingx.app.br/downloads/WingXAgent-Setup.exe</span></div></div>
+  </div>
+</div>
+
+<!-- Módulo 4 — Claude Channels -->
+<div class="divider"><hr><span>Módulo 4 — Claude Code Channels</span><hr></div>
+<div class="grid">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">📱</div>
+      <div>
+        <div class="card-title">Telegram Channel Plugin</div>
+        <div class="card-sub">claude --channels plugin:telegram@claude-plugins-official</div>
+      </div>
+    </div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Bot configurado e pareado com conta Cleiton</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Allowlist com sender <strong>823371891</strong></div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Atalho <strong>Claude Telegram.bat</strong> na área de trabalho</div></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">🖥️</div>
+      <div>
+        <div class="card-title">Claude Desktop MCPs</div>
+        <div class="card-sub">claude_desktop_config.json</div>
+      </div>
+    </div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">MCP <strong>shell</strong> — git, ssh, docker, curl</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">MCP <strong>filesystem</strong> — pasta Paraguai</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Dispatch funciona quando VSCode está aberto</div></div>
+  </div>
+</div>
+
+<!-- Próxima Sprint -->
+<div class="divider"><hr><span>Próxima Sprint — Sugestões</span><hr></div>
+<div style="width:100%;max-width:860px;">
+  <div class="next-item"><div class="next-num">1</div><div class="next-text"><strong>Processar 10 jobs pendentes</strong> na fila de impressão — testar o agente ponta a ponta com pedido real</div></div>
+  <div class="next-item"><div class="next-num">2</div><div class="next-text"><strong>Webhook ML</strong> — registrar a URL no painel do Mercado Livre para receber notificações reais</div></div>
+  <div class="next-item"><div class="next-num">3</div><div class="next-text"><strong>Telegram → Kanban</strong> — criar tarefas no Mission Control via mensagem no bot</div></div>
+  <div class="next-item"><div class="next-num">4</div><div class="next-text"><strong>VPS Alerts Channel</strong> — finalizar o servidor SSE e testar alertas do n8n/docker via Claude Code</div></div>
+  <div class="next-item"><div class="next-num">5</div><div class="next-text"><strong>DRE com dados reais</strong> — conectar com pedidos salvos no banco pelo webhook</div></div>
+</div>
+
+</body>
+</html>

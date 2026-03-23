@@ -36,9 +36,9 @@ export async function GET(req: NextRequest) {
     params.push(categoria);
   }
   if (has_catalog === 'true') {
-    conditions.push(`c.has_catalog = TRUE`);
+    conditions.push(`hp.fingerprint IN (SELECT fingerprint FROM preco_ml_cache WHERE has_catalog = TRUE)`);
   } else if (has_catalog === 'false') {
-    conditions.push(`(c.has_catalog IS NULL OR c.has_catalog = FALSE)`);
+    conditions.push(`hp.fingerprint NOT IN (SELECT fingerprint FROM preco_ml_cache WHERE has_catalog = TRUE)`);
   }
   if (fornecedor) {
     conditions.push(`hp.fornecedor_nome = $${pi++}`);
@@ -148,10 +148,10 @@ export async function GET(req: NextRequest) {
             ROUND((( (c.ml_price_classic * 0.84) - (l.preco_usd * 5.8) ) / c.ml_price_classic) * 100, 1)
           ELSE 0
         END AS margem_classico,
-        -- Mantemos margem_pct para compatibilidade de ordenação/filtro (usando o maior)
+        -- Mantemos margem_pct para compatibilidade de ordenação/filtro (usando o maior, floado em -100)
         GREATEST(
-          CASE WHEN c.ml_price_premium > 0 THEN ROUND((((c.ml_price_premium*0.82)-(l.preco_usd*5.8))/c.ml_price_premium)*100,1) ELSE -100 END,
-          CASE WHEN c.ml_price_classic > 0 THEN ROUND((((c.ml_price_classic*0.84)-(l.preco_usd*5.8))/c.ml_price_classic)*100,1) ELSE -100 END
+          GREATEST(CASE WHEN c.ml_price_premium > 1 THEN ROUND((((c.ml_price_premium*0.82)-(l.preco_usd*5.8))/c.ml_price_premium)*100,1) ELSE -100 END, -100),
+          GREATEST(CASE WHEN c.ml_price_classic > 1 THEN ROUND((((c.ml_price_classic*0.84)-(l.preco_usd*5.8))/c.ml_price_classic)*100,1) ELSE -100 END, -100)
         ) AS margem_pct,
         EXISTS(
           SELECT 1 FROM lista_compras lc

@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-  connectionString: (process.env.DATABASE_URL ?? '').replace('/mission_control', '/arbitragem'),
-  max: 5,
-});
+import { getArbitragemPool } from '@/lib/db';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionFromRequest(req);
@@ -24,7 +19,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   vals.push(id);
   vals.push(session.username);
-  const result = await pool.query(
+  const result = await getArbitragemPool().query(
     `UPDATE lista_compras SET ${sets.join(', ')} WHERE id = $${pi} AND added_by = $${pi + 1} RETURNING *`,
     vals
   );
@@ -36,6 +31,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
-  await pool.query('DELETE FROM lista_compras WHERE id = $1 AND added_by = $2', [id, session.username]);
+  await getArbitragemPool().query('DELETE FROM lista_compras WHERE id = $1 AND added_by = $2', [id, session.username]);
   return NextResponse.json({ ok: true });
 }

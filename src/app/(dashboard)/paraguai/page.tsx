@@ -17,6 +17,20 @@ interface PriceHistory {
   min_preco_ml: number | null;
 }
 
+interface CatalogEnriched {
+  sold_quantity?: number | null;
+  rating?: string | null;
+  review_count?: number | null;
+  seller_count_fc?: number | null;
+  min_price_brl?: number | null;
+  ranking_position?: number | null;
+  ranking_category?: string | null;
+  best_price_seller?: string | null;
+  winner_seller?: string | null;
+  sellers?: ({ name: string; price: number | null } | string)[];  // suporta formato antigo (string) e novo ({name,price})
+  enriched_at?: string | null;
+}
+
 interface CatalogOffer {
   catalog_id: string;
   title?: string;
@@ -24,11 +38,16 @@ interface CatalogOffer {
   shipping_badge?: string;
   price_premium: number | null;
   price_classic: number | null;
+  price_winner?: number | null;
+  price_winner_type?: 'classic' | 'premium' | null;
   is_winner?: boolean;
+  is_manual?: boolean;
   seller_count?: number;
   sold_quantity?: number;
   available_quantity?: number;
   updated_at?: string;
+  has_full?: boolean;
+  enriched?: CatalogEnriched;
 }
 
 interface Oportunidade {
@@ -63,14 +82,6 @@ interface Oportunidade {
   no_carrinho: boolean;
   monitorando: boolean;
   descricao_raw: string;
-  ml_enriched_json: {
-    sold_quantity?: number | null;
-    rating?: string | null;
-    ranking_position?: number | null;
-    ranking_category?: string | null;
-    best_price_seller?: string | null;
-    winner_seller?: string | null;
-  } | null;
 }
 
 interface CarrinhoItem {
@@ -93,41 +104,6 @@ interface Settings {
   whatsapp_number: string;
   whatsapp_alerts_global: boolean;
   min_margem: number;
-}
-
-// ─── Catalog Proxy (roda localmente na máquina do usuário — sem bloqueio de IP) ──
-
-const CATALOG_PROXY = 'http://localhost:3099';
-
-async function proxyHealth(): Promise<boolean> {
-  try {
-    const res = await fetch(`${CATALOG_PROXY}/health`, { signal: AbortSignal.timeout(2000) });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-async function proxySearchCatalog(q: string): Promise<{ catalog_id: string; title: string; price: number; url: string }[]> {
-  const res = await fetch(`${CATALOG_PROXY}/search?q=${encodeURIComponent(q)}`, {
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!res.ok) throw new Error(`Proxy ${res.status}: ${await res.text()}`);
-  const { catalogs } = await res.json();
-  return catalogs;
-}
-
-async function proxyGetCatalogPrices(catalogId: string, minPrice = 0): Promise<{
-  catalog_id: string; title: string;
-  price_premium: number | null; price_classic: number | null;
-  seller_count: number; sold_quantity: number; available_quantity: number;
-  seller_nickname: string; url: string; updated_at: string;
-}> {
-  const res = await fetch(`${CATALOG_PROXY}/prices?id=${catalogId}&min=${minPrice}`, {
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!res.ok) throw new Error(`Proxy ${res.status}: ${await res.text()}`);
-  return res.json();
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -172,12 +148,14 @@ function CarrinhoDrawer({
   onUpdateQty,
   onUpdateStatus,
   onRemove,
+  cambio,
 }: {
   items: CarrinhoItem[];
   onClose: () => void;
   onUpdateQty: (id: number, qty: number) => void;
   onUpdateStatus: (id: number, status: string) => void;
   onRemove: (id: number) => void;
+  cambio: number;
 }) {
   const totalUSD = items.reduce((s, i) => s + i.preco_usd * i.qty, 0);
 
@@ -249,7 +227,7 @@ function CarrinhoDrawer({
           </div>
           <div className="flex justify-between text-xs text-gray-500 mt-1">
             <span>Com impostos (15%)</span>
-            <span>≈ {formatBRL(totalUSD * 5.80 * 1.15)}</span>
+            <span>≈ {formatBRL(totalUSD * cambio * 1.15)}</span>
           </div>
         </div>
       </div>
@@ -321,11 +299,232 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ─── Shared catalog URL list input ────────────────────────────────────────────
+function CatalogUrlList({ urls, onChange }: { urls: string[]; onChange: (urls: string[]) => void }) {
+  function update(i: number, val: string) { const n = [...urls]; n[i] = val; onChange(n); }
+  function add() { onChange([...urls, '']); }
+  function remove(i: number) { onChange(urls.filter((_, j) => j !== i)); }
+  const extractId = (u: string) => { const m = u.match(/\/p\/(MLB\d+)|^(MLB\d+)$/i); return m ? (m[1] || m[2]) : null; };
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label className="text-gray-400 text-xs">URLs de Catálogos ML <span className="text-gray-600">(opcional)</span></label>
+        <button type="button" onClick={add} className="text-indigo-400 hover:text-indigo-300 text-xs">+ URL</button>
+      </div>
+      {urls.map((u, i) => {
+        const id = extractId(u);
+        return (
+          <div key={i} className="flex gap-2 items-center">
+            <div className="flex-1">
+              <input value={u} onChange={e => update(i, e.target.value)}
+                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                placeholder="https://www.mercadolivre.com.br/p/MLB..." />
+              {id && <p className="text-indigo-400 text-[10px] mt-0.5 font-mono">{id}</p>}
+              {u && !id && <p className="text-yellow-500 text-[10px] mt-0.5">URL inválida</p>}
+            </div>
+            <button type="button" onClick={() => remove(i)} className="text-gray-600 hover:text-red-400 text-lg leading-none mt-[-8px]">✕</button>
+          </div>
+        );
+      })}
+      {urls.length === 0 && <p className="text-gray-600 text-xs italic">Clique em "+ URL" para adicionar catálogos</p>}
+    </div>
+  );
+}
+
+// ─── Edit Product Modal ────────────────────────────────────────────────────────
+function EditProductModal({ item, onClose, onSaved }: { item: Oportunidade; onClose: () => void; onSaved: () => void }) {
+  const [titulo, setTitulo] = useState(item.titulo_amigavel);
+  const [precoUsd, setPrecoUsd] = useState(String(item.melhor_preco_usd));
+  const [fornecedor, setFornecedor] = useState(item.melhor_fornecedor);
+  const [categoria, setCategoria] = useState(item.categoria);
+  const [catalogs, setCatalogs] = useState<CatalogOffer[]>(item.ml_catalogs_json ?? []);
+  const [newUrl, setNewUrl] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [tab, setTab] = useState<'info' | 'catalogs'>('info');
+
+  async function saveInfo() {
+    setSaving(true); setError('');
+    try {
+      const res = await fetch('/api/paraguai/produto', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprint: item.fingerprint, titulo, preco_usd: parseFloat(precoUsd), fornecedor, categoria }),
+      });
+      const data = await res.json();
+      if (data.ok) onSaved();
+      else setError(data.error || 'Erro ao salvar');
+    } catch { setError('Erro na requisição'); }
+    finally { setSaving(false); }
+  }
+
+  async function addCatalog() {
+    if (!newUrl.trim()) return;
+    setAdding(true); setError('');
+    try {
+      const res = await fetch('/api/paraguai/catalogo/pin', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprint: item.fingerprint, catalog_url: newUrl.trim() }),
+      });
+      const data = await res.json();
+      if (data.ok) { setCatalogs(prev => [...prev, data.catalog]); setNewUrl(''); }
+      else setError(data.error || 'Erro ao adicionar');
+    } catch { setError('Erro na requisição'); }
+    finally { setAdding(false); }
+  }
+
+  async function removeCatalog(catalog_id: string) {
+    setRemovingId(catalog_id); setError('');
+    try {
+      const res = await fetch(`/api/paraguai/catalogo/pin?fingerprint=${item.fingerprint}&catalog_id=${catalog_id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.ok) setCatalogs(prev => prev.filter(c => c.catalog_id !== catalog_id));
+      else setError(data.error || 'Erro ao remover');
+    } catch { setError('Erro na requisição'); }
+    finally { setRemovingId(null); }
+  }
+
+  async function pinCatalog(catalog_id: string) {
+    try {
+      const res = await fetch('/api/paraguai/catalogo/pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprint: item.fingerprint, catalog_id }),
+      });
+      const data = await res.json();
+      if (data.ok) setCatalogs(prev => prev.map(c => ({ ...c, is_winner: c.catalog_id === catalog_id })));
+      else setError(data.error || 'Erro ao fixar');
+    } catch { setError('Erro na requisição'); }
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className="relative z-10 bg-gray-900 border border-gray-700 rounded-xl w-[540px] max-h-[85vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-3">
+          <h2 className="text-white font-bold text-base">✏️ Editar Produto</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-gray-700 px-6">
+          {(['info', 'catalogs'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={cn("px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
+                tab === t ? "border-indigo-500 text-indigo-400" : "border-transparent text-gray-500 hover:text-gray-300")}>
+              {t === 'info' ? '📋 Informações' : `📦 Catálogos (${catalogs.length})`}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {tab === 'info' ? (
+            <>
+              <div>
+                <label className="text-gray-400 text-xs mb-1 block">Título</label>
+                <input value={titulo} onChange={e => setTitulo(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm" />
+                <p className="text-gray-600 text-[10px] mt-1 font-mono">fingerprint: {item.fingerprint}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-gray-400 text-xs mb-1 block">Preço USD</label>
+                  <input type="number" min={0} step={0.01} value={precoUsd} onChange={e => setPrecoUsd(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm" />
+                </div>
+                <div>
+                  <label className="text-gray-400 text-xs mb-1 block">Fornecedor</label>
+                  <input value={fornecedor} onChange={e => setFornecedor(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm" />
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs mb-1 block">Categoria</label>
+                <select value={categoria} onChange={e => setCategoria(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                  {CATEGORIAS.map(c => <option key={c} value={c}>{CATEGORIA_EMOJI[c]} {c}</option>)}
+                </select>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                {catalogs.length === 0 && <p className="text-gray-600 text-xs italic py-2">Nenhum catálogo. Adicione abaixo ou clique em ⚡ na tabela.</p>}
+                {catalogs.map(c => (
+                  <div key={c.catalog_id} className={cn("flex items-center gap-2 px-3 py-2.5 rounded-lg", c.is_winner ? "bg-indigo-500/10 border border-indigo-500/30" : "bg-gray-800")}>
+                    <button onClick={() => !c.is_winner && pinCatalog(c.catalog_id)}
+                      className={cn("text-base shrink-0 transition-colors", c.is_winner ? "cursor-default" : "text-gray-500 hover:text-yellow-400")}
+                      title={c.is_winner ? "Principal" : "Definir como principal"}>
+                      {c.is_winner ? '⭐' : '☆'}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-xs truncate">{c.title}</p>
+                      <p className="text-gray-500 font-mono text-[10px]">{c.catalog_id}</p>
+                    </div>
+                    <div className="text-right text-[11px] shrink-0 space-y-0.5">
+                      {c.price_premium ? <div className="flex items-center gap-1"><span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-600 text-white text-[9px] font-bold">P</span><span className="text-gray-300">{c.price_premium.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div> : null}
+                      {c.price_classic ? <div className="flex items-center gap-1"><span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-orange-600 text-white text-[9px] font-bold">C</span><span className="text-gray-400">{c.price_classic.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div> : null}
+                      {!c.price_premium && !c.price_classic && <div className="text-gray-600 text-[10px]">sem preço</div>}
+                    </div>
+                    <button onClick={() => removeCatalog(c.catalog_id)} disabled={removingId === c.catalog_id}
+                      className="text-gray-600 hover:text-red-400 transition-colors disabled:opacity-40 text-base leading-none ml-1 shrink-0"
+                      title="Remover">
+                      {removingId === c.catalog_id ? '⏳' : '✕'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-gray-700/50 pt-3 space-y-2">
+                <label className="text-gray-400 text-xs block">Adicionar catálogo por URL</label>
+                <div className="flex gap-2">
+                  <input value={newUrl} onChange={e => setNewUrl(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addCatalog()}
+                    className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                    placeholder="https://www.mercadolivre.com.br/p/MLB56513855" />
+                  <button onClick={addCatalog} disabled={adding || !newUrl.trim()}
+                    className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500 disabled:opacity-50 whitespace-nowrap">
+                    {adding ? '...' : '+ Add'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+          {error && <p className="text-red-400 text-xs">{error}</p>}
+        </div>
+
+        <div className="flex gap-3 px-6 py-4 border-t border-gray-700">
+          <button onClick={onClose} className="flex-1 px-4 py-2 rounded-lg bg-gray-700 text-gray-300 text-sm hover:bg-gray-600">
+            {tab === 'catalogs' ? 'Fechar e atualizar' : 'Cancelar'}
+          </button>
+          {tab === 'info' && (
+            <button onClick={saveInfo} disabled={saving}
+              className="flex-1 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-500 disabled:opacity-50">
+              {saving ? 'Salvando...' : 'Salvar'}
+            </button>
+          )}
+          {tab === 'catalogs' && (
+            <button onClick={onSaved} className="flex-1 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500">
+              Aplicar
+            </button>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ─── New Product Modal ─────────────────────────────────────────────────────────
 function NovoProdutoModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [titulo, setTitulo] = useState('');
   const [precoUsd, setPrecoUsd] = useState('');
   const [fornecedor, setFornecedor] = useState('Manual');
   const [categoria, setCategoria] = useState('smartphone');
+  const [catalogUrls, setCatalogUrls] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -333,17 +532,28 @@ function NovoProdutoModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
 
   async function save() {
     if (!titulo.trim() || !precoUsd) { setError('Preencha título e preço.'); return; }
-    setSaving(true);
-    setError('');
+    setSaving(true); setError('');
     try {
+      // Create product with first catalog URL (if any)
+      const firstUrl = catalogUrls.find(u => u.trim()) ?? '';
       const res = await fetch('/api/paraguai/produto', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ titulo: titulo.trim(), preco_usd: parseFloat(precoUsd), fornecedor, categoria }),
+        body: JSON.stringify({ titulo: titulo.trim(), preco_usd: parseFloat(precoUsd), fornecedor, categoria, catalog_url: firstUrl }),
       });
       const data = await res.json();
-      if (data.ok) { onSaved(); }
-      else { setError(data.error || 'Erro ao salvar.'); }
+      if (!data.ok) { setError(data.error || 'Erro ao salvar.'); return; }
+
+      // Add extra catalog URLs (2nd onwards) via pin API
+      const extraUrls = catalogUrls.slice(1).filter(u => u.trim());
+      for (const url of extraUrls) {
+        await fetch('/api/paraguai/catalogo/pin', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fingerprint: data.fingerprint, catalog_url: url.trim() }),
+        });
+      }
+      onSaved();
     } catch { setError('Erro na requisição.'); }
     finally { setSaving(false); }
   }
@@ -351,7 +561,7 @@ function NovoProdutoModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative z-10 bg-gray-900 border border-gray-700 rounded-xl w-[440px] p-6 space-y-4">
+      <div className="relative z-10 bg-gray-900 border border-gray-700 rounded-xl w-[480px] max-h-[85vh] flex flex-col p-6 gap-4 overflow-y-auto">
         <h2 className="text-white font-bold text-lg">+ Novo Produto</h2>
 
         <div>
@@ -359,9 +569,7 @@ function NovoProdutoModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
           <input value={titulo} onChange={e => setTitulo(e.target.value)}
             className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
             placeholder="Apple AirPods Pro 3rd Generation" />
-          {titulo && (
-            <p className="text-gray-600 text-[10px] mt-1 font-mono">fingerprint: {fingerprint}</p>
-          )}
+          {titulo && <p className="text-gray-600 text-[10px] mt-1 font-mono">fingerprint: {fingerprint}</p>}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -386,6 +594,8 @@ function NovoProdutoModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
             {CATEGORIAS.map(c => <option key={c} value={c}>{CATEGORIA_EMOJI[c]} {c}</option>)}
           </select>
         </div>
+
+        <CatalogUrlList urls={catalogUrls} onChange={setCatalogUrls} />
 
         {error && <p className="text-red-400 text-xs">{error}</p>}
 
@@ -415,6 +625,7 @@ export default function ParaguaiPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [refreshProgress, setRefreshProgress] = useState<Record<string, { label: string; pct: number }>>({});
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
   const [normalizingId, setNormalizingId] = useState<string | null>(null);
   const [selectedForNormalize, setSelectedForNormalize] = useState<Set<string>>(new Set());
@@ -422,6 +633,8 @@ export default function ParaguaiPage() {
   const [batchRefreshing, setBatchRefreshing] = useState(false);
   const [batchDeleting, setBatchDeleting] = useState(false);
   const [showNovoProduto, setShowNovoProduto] = useState(false);
+  const [cambio, setCambio] = useState(5.80);
+  const [cambioSource, setCambioSource] = useState<'live' | 'fallback'>('fallback');
 
   // Filters
   const [filterMarca, setFilterMarca] = useState('');
@@ -430,12 +643,37 @@ export default function ParaguaiPage() {
   const [filterCatalog, setFilterCatalog] = useState('');
   const [filterMinMargem, setFilterMinMargem] = useState(0);
   const [fornecedores, setFornecedores] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
 
   // Debounce search term
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 500);
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  const [cambioLoading, setCambioLoading] = useState(false);
+
+  // Câmbio USD→BRL — atualiza a cada 30min ou manualmente
+  const fetchCambio = useCallback((bustCache = false) => {
+    setCambioLoading(true);
+    const url = bustCache ? '/api/paraguai/cambio?bust=1' : '/api/paraguai/cambio';
+    fetch(url)
+      .then(r => r.json())
+      .then(d => {
+        if (d.rate && d.rate > 0) {
+          setCambio(d.rate);
+          setCambioSource(d.source === 'fallback' ? 'fallback' : 'live');
+        }
+      })
+      .catch(() => {/* mantém fallback 5.80 */})
+      .finally(() => setCambioLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetchCambio();
+    const interval = setInterval(() => fetchCambio(), 30 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchCambio]);
 
   const loadOportunidades = useCallback(async () => {
     setLoading(true);
@@ -465,10 +703,28 @@ export default function ParaguaiPage() {
     setLoading(false);
   }, [filterMarca, filterCat, filterFornecedor, filterCatalog, filterMinMargem, debouncedSearch]);
 
-  const refreshCatalog = async (fingerprint: string) => {
-    try {
-      setRefreshingId(fingerprint);
+  const setProgress = (fp: string, label: string, pct: number) => {
+    setRefreshProgress(prev => ({ ...prev, [fp]: { label, pct } }));
+  };
 
+  const clearProgress = (fp: string) => {
+    setRefreshProgress(prev => {
+      const next = { ...prev };
+      delete next[fp];
+      return next;
+    });
+  };
+
+  const refreshCatalog = async (fingerprint: string) => {
+    setRefreshingId(fingerprint);
+    setProgress(fingerprint, 'Criando job...', 5);
+
+    const done = (success: boolean) => {
+      setRefreshingId(null);
+      if (!success) clearProgress(fingerprint);
+    };
+
+    try {
       const item = items.find(i => i.fingerprint === fingerprint);
       const productName = item?.titulo_amigavel
         ?? fingerprint.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
@@ -482,38 +738,69 @@ export default function ParaguaiPage() {
       });
       if (!enqueueRes.ok) {
         alert('Erro ao criar job de refresh: ' + (await enqueueRes.text()));
+        done(false);
         return;
       }
 
+      setProgress(fingerprint, 'Buscando catálogos...', 20);
+
       // 2. Poll for completion (up to 90s, check every 3s)
+      // pct goes from 20 → 80 over 30 polls (each poll +2%)
       for (let i = 0; i < 30; i++) {
         await new Promise(r => setTimeout(r, 3000));
+        const pct = Math.min(80, 20 + (i + 1) * 2);
+        const label = i < 3 ? 'Buscando catálogos...' : i < 10 ? 'Calculando preços...' : 'Aguardando VPS...';
+        setProgress(fingerprint, label, pct);
+
         const statusRes = await fetch(`/api/paraguai/catalogo/queue?fingerprint=${fingerprint}`);
         if (statusRes.ok) {
-          const { status } = await statusRes.json();
+          const { status, error } = await statusRes.json();
           if (status === 'done') {
+            setProgress(fingerprint, 'Carregando...', 95);
             await loadOportunidades();
+            setProgress(fingerprint, 'Concluído! ✓', 100);
+            done(true);
+            setTimeout(() => clearProgress(fingerprint), 3000);
             return;
           }
           if (status === 'error') {
-            alert('Worker reportou erro ao buscar catálogo. Verifique o terminal do proxy.');
+            alert(`Erro ao buscar catálogo${error ? ': ' + error : ''}.\n\nVerifique os logs da VPS para detalhes.`);
+            done(false);
             return;
           }
         }
       }
 
-      alert(
-        '⏳ Timeout: worker não respondeu em 90s.\n\n' +
-        'Certifique-se que o worker está rodando:\n\n' +
-        '  cd C:\\Users\\Bolota\\Desktop\\Wingx\\Paraguai\n' +
-        '  node catalog-proxy.mjs\n\n' +
-        'O worker processa automaticamente. Tente novamente.'
-      );
+      alert('⏳ Timeout: VPS não respondeu em 90s. Verifique os logs do container mission-control.');
+      done(false);
     } catch (e: any) {
       console.error(e);
       alert('Erro: ' + (e.message || 'Erro desconhecido'));
+      done(false);
+    }
+  };
+
+  const [pinningCatalog, setPinningCatalog] = useState<string | null>(null); // "fingerprint:catalog_id"
+  const [editCatalogsItem, setEditCatalogsItem] = useState<Oportunidade | null>(null);
+
+  const pinCatalog = async (fingerprint: string, catalog_id: string) => {
+    setPinningCatalog(`${fingerprint}:${catalog_id}`);
+    try {
+      const res = await fetch('/api/paraguai/catalogo/pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprint, catalog_id }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        await loadOportunidades();
+      } else {
+        alert('Erro ao fixar catálogo: ' + (data.error || 'Erro desconhecido'));
+      }
+    } catch (e: any) {
+      alert('Erro: ' + e.message);
     } finally {
-      setRefreshingId(null);
+      setPinningCatalog(null);
     }
   };
 
@@ -716,8 +1003,16 @@ export default function ParaguaiPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">🇵🇾 Oportunidades Paraguai</h1>
-          <p className="text-gray-400 text-sm mt-0.5">
-            {loading ? 'Carregando...' : `${items.length} produto(s) encontrado(s)`}
+          <p className="text-gray-400 text-sm mt-0.5 flex items-center gap-3">
+            <span>{loading ? 'Carregando...' : `${items.length} produto(s) encontrado(s)`}</span>
+            <button
+              onClick={() => fetchCambio(true)}
+              disabled={cambioLoading}
+              title="Atualizar cotação do dólar"
+              className={cn("text-xs px-2 py-0.5 rounded-full border transition-opacity cursor-pointer hover:opacity-80 disabled:opacity-50",
+                cambioSource === 'live' ? 'text-emerald-400 border-emerald-800 bg-emerald-950/40' : 'text-yellow-500 border-yellow-800 bg-yellow-950/40')}>
+              {cambioLoading ? '⏳' : '💱'} USD {cambioSource === 'live' ? '=' : '≈'} {formatBRL(cambio)}
+            </button>
           </p>
         </div>
         <div className="flex gap-2">
@@ -772,38 +1067,26 @@ export default function ParaguaiPage() {
             </button>
           </div>
 
-          <select value={filterMarca} onChange={e => setFilterMarca(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
-            <option value="">Todas as marcas</option>
-            {MARCAS.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
-
-          <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
-            <option value="">Todas as categorias</option>
-            {CATEGORIAS.map(c => <option key={c} value={c}>{CATEGORIA_EMOJI[c]} {c}</option>)}
-          </select>
-
-          <select value={filterFornecedor} onChange={e => setFilterFornecedor(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
-            <option value="">Todos os fornecedores</option>
-            {fornecedores.map(f => <option key={f} value={f}>{f}</option>)}
-          </select>
-
-          <select value={filterCatalog} onChange={e => setFilterCatalog(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
-            <option value="">Catálogo e estimado</option>
-            <option value="true">✅ Só catálogo ML</option>
-            <option value="false">⚠️ Sem catálogo</option>
-          </select>
-
-          <div className="flex items-center gap-2">
-            <span className="text-gray-400 text-xs font-semibold">Margem mín.</span>
-            <input type="number" min={0} max={100} value={filterMinMargem}
-              onChange={e => setFilterMinMargem(parseInt(e.target.value) || 0)}
-              placeholder="0%"
-              className="w-16 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
-          </div>
+          {/* Botão Filtros colapsável */}
+          {(() => {
+            const activeCount = [filterMarca, filterCat, filterFornecedor, filterCatalog].filter(Boolean).length + (filterMinMargem > 0 ? 1 : 0);
+            return (
+              <button
+                onClick={() => setShowFilters(v => !v)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-semibold transition-all",
+                  showFilters || activeCount > 0
+                    ? "bg-indigo-600/20 border-indigo-500 text-indigo-300"
+                    : "bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200"
+                )}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M6 8h12M9 12h6M11 16h2" /></svg>
+                Filtros
+                {activeCount > 0 && <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-indigo-500 text-white text-[10px] font-bold">{activeCount}</span>}
+                <span className="text-[10px] opacity-60">{showFilters ? '▲' : '▼'}</span>
+              </button>
+            );
+          })()}
 
           {selectedForNormalize.size > 0 && (
             <div className="flex items-center gap-2 pl-2 border-l border-gray-700">
@@ -846,6 +1129,48 @@ export default function ParaguaiPage() {
             Atualizar
           </button>
         </div>
+
+        {/* Painel de filtros colapsável */}
+        {showFilters && (
+          <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-gray-800/60 mt-2">
+            <select value={filterMarca} onChange={e => setFilterMarca(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+              <option value="">Todas as marcas</option>
+              {MARCAS.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+              <option value="">Todas as categorias</option>
+              {CATEGORIAS.map(c => <option key={c} value={c}>{CATEGORIA_EMOJI[c]} {c}</option>)}
+            </select>
+            <select value={filterFornecedor} onChange={e => setFilterFornecedor(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+              <option value="">Todos os fornecedores</option>
+              {fornecedores.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+            <select value={filterCatalog} onChange={e => setFilterCatalog(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+              <option value="">Catálogo e estimado</option>
+              <option value="true">✅ Só catálogo ML</option>
+              <option value="false">⚠️ Sem catálogo</option>
+            </select>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400 text-xs font-semibold">Margem mín.</span>
+              <input type="number" min={0} max={100} value={filterMinMargem}
+                onChange={e => setFilterMinMargem(parseInt(e.target.value) || 0)}
+                placeholder="0%"
+                className="w-16 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+            </div>
+            {(filterMarca || filterCat || filterFornecedor || filterCatalog || filterMinMargem > 0) && (
+              <button
+                onClick={() => { setFilterMarca(''); setFilterCat(''); setFilterFornecedor(''); setFilterCatalog(''); setFilterMinMargem(0); }}
+                className="text-xs text-gray-500 hover:text-red-400 transition-colors px-2 py-1.5"
+              >
+                ✕ Limpar filtros
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Product Grid */}
@@ -873,6 +1198,9 @@ export default function ParaguaiPage() {
               onToggleWatch={() => toggleWatch(item)}
               onNormalize={() => normalizeItem(item)}
               normalizing={normalizingId === item.fingerprint}
+              onPinCatalog={pinCatalog}
+              pinningCatalog={pinningCatalog}
+              cambio={cambio}
             />
           ))}
         </div>
@@ -940,22 +1268,22 @@ export default function ParaguaiPage() {
                        {formatUSD(item.melhor_preco_usd)}
                      </td>
                      <td className="px-4 py-3 text-right align-middle whitespace-nowrap">
-                       <span className="text-gray-300 text-[13px]">{formatBRL(item.melhor_preco_usd * 5.80)}</span>
+                       <span className="text-gray-300 text-[13px]">{formatBRL(item.melhor_preco_usd * cambio)}</span>
                      </td>
                      <td className="px-4 py-3 text-right align-middle whitespace-nowrap">
                        {(() => {
                          const cats = item.ml_catalogs_json;
-                         const bestP = cats?.length ? Math.min(...cats.map(c => c.price_premium).filter((v): v is number => v != null)) : (item.ml_price_premium ?? null);
-                         const bestC = cats?.length ? Math.min(...cats.map(c => c.price_classic).filter((v): v is number => v != null)) : (item.ml_price_classic ?? null);
+                         const bestP = item.ml_price_premium ?? null;
+                         const bestC = item.ml_price_classic ?? null;
                          return (
                            <div className="flex flex-col leading-[1.5]">
                              <div className="flex items-center justify-end gap-1.5 py-1">
-                               <span className="text-[10px]" title="Premium">👑</span>
+                               <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-600 text-white text-[9px] font-bold" title="Anúncio Premium do catálogo principal no Mercado Livre">P</span>
                                <span className="text-gray-300 text-[13px]">{bestP && isFinite(bestP) ? formatBRL(bestP) : '—'}</span>
                              </div>
                              <div className="border-t border-gray-700/20 flex items-center justify-end gap-1.5 py-1">
-                               <span className="text-[10px]" title="Clássico">🏷️</span>
-                               <span className="text-gray-300 text-[13px]">{bestC && isFinite(bestC) ? formatBRL(bestC) : formatBRL(item.preco_ml_real || 0)}</span>
+                               <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-orange-600 text-white text-[9px] font-bold" title="Anúncio de Catálogo do catálogo principal no Mercado Livre">C</span>
+                               <span className="text-gray-400 text-[13px]">{bestC && isFinite(bestC) ? formatBRL(bestC) : '—'}</span>
                              </div>
                            </div>
                          );
@@ -999,14 +1327,31 @@ export default function ParaguaiPage() {
                            >
                              🤖
                            </button>
-                           <button
-                             onClick={() => refreshCatalog(item.fingerprint)}
-                             disabled={refreshingId === item.fingerprint}
-                             className={cn("p-1.5 rounded transition-colors", refreshingId === item.fingerprint ? "text-indigo-400 animate-pulse" : "text-indigo-400 hover:text-white hover:bg-indigo-600")}
-                             title="Atualizar Catálogo (Real-Time)"
-                           >
-                             ⚡
-                           </button>
+                           {refreshProgress[item.fingerprint] ? (() => {
+                             const prog = refreshProgress[item.fingerprint];
+                             const done100 = prog.pct >= 100;
+                             return (
+                               <div className="flex flex-col items-center gap-0.5 min-w-[72px]" title={prog.label}>
+                                 <span className={cn("text-[10px] leading-none truncate max-w-[70px]", done100 ? "text-emerald-400" : "text-indigo-300")}>{prog.label}</span>
+                                 <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                   <div
+                                     className={cn("h-full rounded-full transition-all duration-500", done100 ? "bg-emerald-500" : "bg-indigo-500")}
+                                     style={{ width: `${prog.pct}%` }}
+                                   />
+                                 </div>
+                                 <span className={cn("text-[10px] leading-none", done100 ? "text-emerald-400 font-bold" : "text-indigo-400")}>{prog.pct}%</span>
+                               </div>
+                             );
+                           })() : (
+                             <button
+                               onClick={() => refreshCatalog(item.fingerprint)}
+                               disabled={refreshingId === item.fingerprint}
+                               className={cn("p-1.5 rounded transition-colors", refreshingId === item.fingerprint ? "text-indigo-400 animate-pulse" : "text-indigo-400 hover:text-white hover:bg-indigo-600")}
+                               title="Atualizar Catálogo (Real-Time)"
+                             >
+                               ⚡
+                             </button>
+                           )}
                            <button
                              onClick={() => enrichCatalog(item.fingerprint)}
                              disabled={enrichingId === item.fingerprint || !item.ml_catalog_id}
@@ -1016,13 +1361,20 @@ export default function ParaguaiPage() {
                              {enrichingId === item.fingerprint ? '⏳' : '✨'}
                            </button>
                            <button onClick={() => toggleWatch(item)} className={cn("p-1.5 rounded transition-colors", item.monitorando ? "text-amber-400 bg-amber-900/30" : "text-gray-500 hover:text-white hover:bg-gray-700")} title="Monitorar">🔔</button>
-                           <button 
-                            onClick={() => addToCart(item)} 
+                           <button
+                            onClick={() => addToCart(item)}
                             disabled={item.no_carrinho}
-                            className={cn("p-1.5 rounded transition-colors", item.no_carrinho ? "text-emerald-500 bg-emerald-900/30 cursor-not-allowed" : "text-gray-500 hover:text-white hover:bg-gray-700")} 
+                            className={cn("p-1.5 rounded transition-colors", item.no_carrinho ? "text-emerald-500 bg-emerald-900/30 cursor-not-allowed" : "text-gray-500 hover:text-white hover:bg-gray-700")}
                             title={item.no_carrinho ? "Já no carrinho" : "Adicionar ao Carrinho"}
                            >
                              🛒
+                           </button>
+                           <button
+                             onClick={() => setEditCatalogsItem(item)}
+                             className="p-1.5 rounded text-gray-500 hover:text-white hover:bg-gray-700 transition-colors"
+                             title="Gerenciar catálogos"
+                           >
+                             ✏️
                            </button>
                            <div className={cn("transition-transform duration-300 ml-2", expandedRow === item.fingerprint ? "rotate-180" : "rotate-0")}>
                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 group-hover:text-indigo-400">
@@ -1036,7 +1388,7 @@ export default function ParaguaiPage() {
                     <tr className="bg-indigo-500/5 border-l-4 border-indigo-500">
                       <td colSpan={9} className="p-0 border-b border-gray-800">
                         <div className="py-2">
-                          <ExpandedDetails item={item} variant="list" />
+                          <ExpandedDetails item={item} variant="list" onPinCatalog={pinCatalog} pinningCatalog={pinningCatalog} cambio={cambio} />
                         </div>
                       </td>
                     </tr>
@@ -1055,10 +1407,18 @@ export default function ParaguaiPage() {
           onUpdateQty={updateCarrinhoQty}
           onUpdateStatus={updateCarrinhoStatus}
           onRemove={removeFromCart}
+          cambio={cambio}
         />
       )}
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {editCatalogsItem && (
+        <EditProductModal
+          item={editCatalogsItem}
+          onClose={() => setEditCatalogsItem(null)}
+          onSaved={() => { setEditCatalogsItem(null); loadOportunidades(); }}
+        />
+      )}
       {showNovoProduto && (
         <NovoProdutoModal
           onClose={() => setShowNovoProduto(false)}
@@ -1079,6 +1439,9 @@ function ProductCard({
   onToggleWatch,
   onNormalize,
   normalizing,
+  onPinCatalog,
+  pinningCatalog,
+  cambio,
 }: {
   item: Oportunidade;
   expanded: boolean;
@@ -1087,11 +1450,14 @@ function ProductCard({
   onToggleWatch: () => void;
   onNormalize: () => void;
   normalizing: boolean;
+  onPinCatalog?: (fingerprint: string, catalog_id: string) => void;
+  pinningCatalog?: string | null;
+  cambio: number;
 }) {
   const emoji = CATEGORIA_EMOJI[item.categoria] || '📦';
   const cats = item.ml_catalogs_json;
-  const bestP = cats?.length ? Math.min(...cats.map(c => c.price_premium).filter((v): v is number => v != null)) : (item.ml_price_premium ?? null);
-  const bestC = cats?.length ? Math.min(...cats.map(c => c.price_classic).filter((v): v is number => v != null)) : (item.ml_price_classic ?? null);
+  const bestP = item.ml_price_premium ?? null;
+  const bestC = item.ml_price_classic ?? null;
   const bestPSafe = bestP != null && isFinite(bestP) ? bestP : null;
   const bestCSafe = bestC != null && isFinite(bestC) ? bestC : null;
 
@@ -1131,7 +1497,7 @@ function ProductCard({
           </div>
           <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mb-0.5">Melhor preço USD</p>
           <p className="text-white font-black text-lg leading-none">{formatUSD(item.melhor_preco_usd)}</p>
-          <p className="text-gray-400 text-[10px] mt-1 truncate italic">≈ {formatBRL(item.melhor_preco_usd * 5.80)}</p>
+          <p className="text-gray-400 text-[10px] mt-1 truncate italic">≈ {formatBRL(item.melhor_preco_usd * cambio)}</p>
         </div>
         <div className="bg-gray-800/50 rounded-lg p-2.5 border border-gray-800 relative overflow-hidden">
            <div className="absolute top-0 right-0 w-8 h-8 bg-emerald-500/10 rounded-bl-full flex items-start justify-end p-1">
@@ -1145,7 +1511,7 @@ function ProductCard({
                  <div className="flex flex-col text-left">
                    <div className="flex items-center gap-1.5">
                      <span className="text-gray-300 text-[13px]">{formatBRL(bestPSafe ?? item.preco_ml_real ?? 0)}</span>
-                     <span className="text-xs" title="Premium">👑</span>
+                     <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-600 text-white text-[9px] font-bold" title="Anúncio Premium — Mercado Livre">P</span>
                    </div>
                  </div>
                  <div className="flex flex-col items-end">
@@ -1163,7 +1529,7 @@ function ProductCard({
                  <div className="flex flex-col text-left">
                    <div className="flex items-center gap-1.5">
                      <span className="text-gray-300 text-[13px]">{formatBRL(bestCSafe ?? item.preco_ml_real ?? 0)}</span>
-                     <span className="text-xs" title="Clássico">🏷️</span>
+                     <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-orange-600 text-white text-[9px] font-bold" title="Anúncio Catálogo — Mercado Livre">C</span>
                    </div>
                  </div>
                  <div className="flex flex-col items-end">
@@ -1187,7 +1553,7 @@ function ProductCard({
       {/* Expanded Content (Accordion) */}
       {expanded && (
         <div className="mt-2 pt-4 border-t border-gray-800/50 animate-in fade-in slide-in-from-top-2 duration-200">
-           <ExpandedDetails item={item} variant="card" />
+           <ExpandedDetails item={item} variant="card" onPinCatalog={onPinCatalog} pinningCatalog={pinningCatalog} cambio={cambio} />
         </div>
       )}
 
@@ -1231,7 +1597,13 @@ function ProductCard({
 
 // ─── Expanded Details (Accordion Content) ────────────────────────────────────
 
-function ExpandedDetails({ item, variant = 'list' }: { item: Oportunidade; variant?: 'card' | 'list' }) {
+function ExpandedDetails({ item, variant = 'list', onPinCatalog, pinningCatalog, cambio }: {
+  item: Oportunidade;
+  variant?: 'card' | 'list';
+  onPinCatalog?: (fingerprint: string, catalog_id: string) => void;
+  pinningCatalog?: string | null;
+  cambio: number;
+}) {
   const [chartCurrency, setChartCurrency] = useState<'BRL' | 'USD'>('BRL');
 
   // Format dates: check if today, else normal string
@@ -1258,30 +1630,28 @@ function ExpandedDetails({ item, variant = 'list' }: { item: Oportunidade; varia
 
   // Trend Sparkline — custo histórico + referências ML horizontais (só quando catálogo buscado)
   const renderTrend = () => {
-    if (!item.price_history || item.price_history.length < 2) {
+    const hasHistory = item.price_history && item.price_history.length >= 1;
+    const hasMlRef = item.has_catalog && (item.ml_price_classic || item.ml_price_premium ||
+      item.ml_catalogs_json?.some(c => c.price_classic || c.price_premium));
+
+    if (!hasHistory && !hasMlRef) {
       return <div className="text-xs text-gray-600 italic h-[40px] flex items-center justify-center">Sem histórico 30d</div>;
     }
 
-    const cambio = 5.80;
     const isBRL = chartCurrency === 'BRL';
     const fmt = isBRL ? formatBRL : (v: any) => `$${parseFloat(v).toFixed(2)}`;
 
-    // Apenas custo do fornecedor como linha histórica
-    const pyPrices = item.price_history.map(h =>
+    // Custo do fornecedor — linha histórica (vazia se sem histórico)
+    const pyPrices = (item.price_history ?? []).map(h =>
       isBRL ? h.min_preco_usd * cambio * 1.15 * 1.18 : h.min_preco_usd
     );
 
-    // Referências ML horizontais — só se catálogo foi buscado (has_catalog = true)
+    // Referências ML horizontais — sempre do catálogo principal selecionado
     const hasCatalog = item.has_catalog;
-    const cats = item.ml_catalogs_json;
-    const rawClassic = hasCatalog
-      ? (cats?.length ? Math.min(...cats.map(c => c.price_classic).filter((v): v is number => v != null && isFinite(v))) : (item.ml_price_classic ?? null))
-      : null;
-    const rawPremium = hasCatalog
-      ? (cats?.length ? Math.min(...cats.map(c => c.price_premium).filter((v): v is number => v != null && isFinite(v))) : (item.ml_price_premium ?? null))
-      : null;
-    const classicRef = rawClassic != null && isFinite(rawClassic) ? (isBRL ? rawClassic : rawClassic / cambio) : null;
-    const premiumRef = rawPremium != null && isFinite(rawPremium) ? (isBRL ? rawPremium : rawPremium / cambio) : null;
+    const rawClassic = hasCatalog ? (item.ml_price_classic ?? null) : null;
+    const rawPremium = hasCatalog ? (item.ml_price_premium ?? null) : null;
+    const classicRef = rawClassic != null ? (isBRL ? rawClassic : rawClassic / cambio) : null;
+    const premiumRef = rawPremium != null ? (isBRL ? rawPremium : rawPremium / cambio) : null;
 
     // Escala incluindo referências ML se existirem
     const allVals = [
@@ -1293,7 +1663,8 @@ function ExpandedDetails({ item, variant = 'list' }: { item: Oportunidade; varia
     const maxP = Math.max(...allVals);
     const range = maxP - minP || 1;
 
-    const getX = (i: number) => (i / (item.price_history!.length - 1)) * 100;
+    const histLen = pyPrices.length;
+    const getX = (i: number) => histLen <= 1 ? 50 : (i / (histLen - 1)) * 100;
     const getY = (v: number) => 30 - (((v - minP) / range) * 30);
 
     const pyPoints = pyPrices.map((v, i) => `${getX(i)},${getY(v)}`).join(' ');
@@ -1329,8 +1700,20 @@ function ExpandedDetails({ item, variant = 'list' }: { item: Oportunidade; varia
             )}
 
             {/* Custo Fornecedor — linha histórica (Indigo) */}
-            <polyline points={pyPoints} fill="none" stroke="#6366f1" strokeWidth="1.5"
-              strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+            {histLen >= 2 && (
+              <polyline points={pyPoints} fill="none" stroke="#6366f1" strokeWidth="0.8"
+                strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+            )}
+            {histLen === 1 && (
+              <circle cx={getX(0)} cy={getY(pyPrices[0])} r="1.5" fill="#6366f1" opacity="0.9" />
+            )}
+            {/* Dots de hoje para ML Clássico e Premium — mesma posição X que o ponto de custo mais recente */}
+            {classicRef != null && (
+              <circle cx={histLen >= 2 ? 100 : 50} cy={getY(classicRef)} r="1.5" fill="#10b981" opacity="0.9" />
+            )}
+            {premiumRef != null && (
+              <circle cx={histLen >= 2 ? 100 : 50} cy={getY(premiumRef)} r="1.5" fill="#f59e0b" opacity="0.9" />
+            )}
           </svg>
 
           <div className="flex gap-3 mt-1 text-[8px] uppercase tracking-tighter">
@@ -1341,7 +1724,7 @@ function ExpandedDetails({ item, variant = 'list' }: { item: Oportunidade; varia
             {classicRef != null && (
               <div className="flex items-center gap-1">
                 <div className="w-3 border-t border-dashed border-emerald-500" />
-                <span className="text-gray-400">ML Clássico {fmt(classicRef)}</span>
+                <span className="text-gray-400">ML Catálogo {fmt(classicRef)}</span>
               </div>
             )}
             {premiumRef != null && (
@@ -1417,75 +1800,136 @@ function ExpandedDetails({ item, variant = 'list' }: { item: Oportunidade; varia
              </div>
              <table className="w-full text-xs text-left">
                 <thead>
-                  <tr className="text-gray-500 border-b border-gray-800/40">
+                  <tr className="text-gray-500 border-b border-gray-800/40 text-[10px]">
                     <th className="px-4 py-2">Catálogo</th>
-                    <th className="px-4 py-2">Frete</th>
-                    <th className="px-4 py-2 text-right">Premium 👑 (Lucro)</th>
-                    <th className="px-4 py-2 text-right">Clássico 🏷️ (Lucro)</th>
-                    <th className="px-4 py-2 text-right">Vendedores</th>
+                    <th className="px-4 py-2 text-right">Premium</th>
+                    <th className="px-4 py-2 text-right">Clássico</th>
+                    <th className="px-4 py-2 text-center">Avaliação</th>
                     <th className="px-4 py-2 text-right">Vendidos</th>
-                    <th className="px-4 py-2 text-center">Atualizado</th>
-                    <th className="px-4 py-2 text-center">Link</th>
+                    <th className="px-4 py-2 text-right">Vendedores</th>
+                    <th className="px-4 py-2 text-center">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800/40">
                   {item.ml_catalogs_json.map((c) => {
                     const isWinner = c.is_winner || c.catalog_id === item.ml_catalog_id;
-                    const isFull = isWinner && c.price_premium != null;
-                    const updatedDaysAgo = c.updated_at
-                      ? Math.floor((Date.now() - new Date(c.updated_at).getTime()) / 86400000)
-                      : null;
+                    const isFull = c.has_full ?? false;
+                    const e = c.enriched;
+                    const isEnriched = !!e?.enriched_at;
+                    // Vendidos: prefer Firecrawl (mais preciso) sobre ML API
+                    const vendidos = e?.sold_quantity ?? c.sold_quantity ?? null;
+                    // Vendedores: prefer Firecrawl sobre ML API
+                    const vendedores = e?.seller_count_fc ?? c.seller_count ?? null;
                     return (
                       <tr key={c.catalog_id} className={cn("hover:bg-white/5", isWinner ? "bg-indigo-500/5" : "")}>
-                        <td className="px-4 py-2 max-w-[180px]">
+                        {/* Catálogo */}
+                        <td className="px-4 py-2 max-w-[200px]">
                           <div className="flex flex-col gap-0.5">
-                            {c.title && <span className="text-white text-[11px] line-clamp-1">{c.title}</span>}
-                            <div className="flex items-center gap-1.5">
+                            {/* Título: só exibe se for diferente do catalog_id (evita duplicata) */}
+                            {c.title && c.title !== c.catalog_id && (
+                              <span className="text-white text-[11px] line-clamp-1">{c.title}</span>
+                            )}
+                            {/* ID + badges */}
+                            <div className="flex items-center gap-1 flex-wrap">
                               <span className="font-mono text-gray-500 text-[9px]">{c.catalog_id}</span>
                               {isWinner && <span className="text-[8px] bg-indigo-600 text-white px-1 py-0.5 rounded font-bold">PRINCIPAL</span>}
+                              {c.is_manual && <span className="text-[8px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1 py-0.5 rounded font-bold" title="Adicionado manualmente">📌</span>}
                             </div>
+                            {/* Ranking — linha própria abaixo do ID */}
+                            {isEnriched && e?.ranking_position != null && (
+                              <span className="text-[9px] text-amber-400">🏆 {e.ranking_position}º em {e.ranking_category}</span>
+                            )}
+                            {/* Sellers from Firecrawl */}
+                            {isEnriched && (e?.sellers?.length ?? 0) > 0 && (
+                              <div className="flex flex-col gap-0.5 mt-0.5">
+                                {(e?.sellers ?? []).map((s, idx) => {
+                                  // Suporta formato antigo (string) e novo ({name, price})
+                                  const name = typeof s === 'string' ? s : s.name;
+                                  const price = typeof s === 'string' ? null : s.price;
+                                  const isWinnerSeller = name === e?.winner_seller;
+                                  const isBestPrice = name === e?.best_price_seller;
+                                  const badge = isWinnerSeller ? 'P' : isBestPrice ? 'C' : null;
+                                  const badgeColor = isWinnerSeller ? 'bg-emerald-600' : 'bg-orange-600';
+                                  const colorClass = isWinnerSeller
+                                    ? 'text-indigo-400'
+                                    : isBestPrice
+                                    ? 'text-emerald-500'
+                                    : 'text-gray-500';
+                                  const tooltip = isWinnerSeller
+                                    ? 'Vencedor do catálogo (buybox) — Premium'
+                                    : isBestPrice
+                                    ? 'Melhor preço — Clássico'
+                                    : 'Vendedor listado no catálogo';
+                                  return (
+                                    <span key={name} className={`text-[9px] ${colorClass} truncate flex items-center gap-1`} title={tooltip}>
+                                      {badge && <span className={`inline-flex items-center justify-center w-3.5 h-3.5 rounded-full ${badgeColor} text-white text-[8px] font-bold flex-shrink-0`}>{badge}</span>}
+                                      {!badge && <span className="text-gray-600">·</span>}
+                                      {name}{price != null ? ` · ${formatBRL(price)}` : ''}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         </td>
-                        <td className="px-4 py-2 uppercase font-bold text-[10px]">
-                          <span className={isFull ? 'text-yellow-400' : 'text-gray-500'}>
-                            {isFull ? 'FULL' : 'NORMAL'}
-                          </span>
-                        </td>
+                        {/* Premium */}
                         <td className="px-4 py-2 text-right">
                           <div className="flex flex-col items-end">
-                             <span className="font-bold text-white">{c.price_premium ? formatBRL(c.price_premium) : '—'}</span>
-                             {c.price_premium && (
-                               <span className={cn("text-[9px]", ((c.price_premium * 0.82) - (item.melhor_preco_usd * 6 * 1.6)) >= 0 ? "text-emerald-400" : "text-red-400")}>
-                                 {formatBRL((c.price_premium * 0.82) - (item.melhor_preco_usd * 6 * 1.6))}
-                               </span>
-                             )}
+                            <span className="font-bold text-white">{c.price_premium ? formatBRL(c.price_premium) : '—'}</span>
+                            {c.price_premium && (() => {
+                              const lucro = (c.price_premium * 0.82) - (item.melhor_preco_usd * cambio);
+                              return <span className={cn("text-[9px]", lucro >= 0 ? "text-emerald-400" : "text-red-400")}>Lucro {formatBRL(lucro)}</span>;
+                            })()}
                           </div>
                         </td>
+                        {/* Clássico */}
                         <td className="px-4 py-2 text-right">
                           <div className="flex flex-col items-end">
-                             <span className="text-gray-300">{c.price_classic ? formatBRL(c.price_classic) : '—'}</span>
-                             {c.price_classic && (
-                               <span className={cn("text-[9px]", ((c.price_classic * 0.84) - (item.melhor_preco_usd * 6 * 1.6)) >= 0 ? "text-emerald-500" : "text-red-500")}>
-                                 {formatBRL((c.price_classic * 0.84) - (item.melhor_preco_usd * 6 * 1.6))}
-                               </span>
-                             )}
+                            <span className="text-gray-300">{c.price_classic ? formatBRL(c.price_classic) : '—'}</span>
+                            {c.price_classic && (() => {
+                              const lucro = (c.price_classic * 0.84) - (item.melhor_preco_usd * cambio);
+                              return <span className={cn("text-[9px]", lucro >= 0 ? "text-emerald-500" : "text-red-500")}>Lucro {formatBRL(lucro)}</span>;
+                            })()}
                           </div>
                         </td>
-                        <td className="px-4 py-2 text-right text-gray-400">
-                          {c.seller_count != null ? c.seller_count : '—'}
-                        </td>
-                        <td className="px-4 py-2 text-right text-gray-400">
-                          {c.sold_quantity != null ? c.sold_quantity.toLocaleString('pt-BR') : '—'}
-                        </td>
-                        <td className="px-4 py-2 text-center text-[10px]">
-                          {updatedDaysAgo === 0
-                            ? <span className="text-emerald-400">Hoje</span>
-                            : updatedDaysAgo != null
-                            ? <span className="text-gray-500">{updatedDaysAgo}d atrás</span>
+                        {/* Avaliação (Firecrawl) */}
+                        <td className="px-4 py-2 text-center">
+                          {e?.rating
+                            ? <div className="flex flex-col items-center gap-0.5">
+                                <span className="text-amber-400 font-bold">{e.rating} ★</span>
+                                {e.review_count != null && <span className="text-gray-600 text-[9px]">{e.review_count.toLocaleString('pt-BR')} op.</span>}
+                              </div>
                             : <span className="text-gray-700">—</span>}
                         </td>
+                        {/* Vendidos */}
+                        <td className="px-4 py-2 text-right text-gray-400">
+                          {vendidos != null
+                            ? <span className={isEnriched && e?.sold_quantity != null ? 'text-white' : ''}>{vendidos.toLocaleString('pt-BR')}</span>
+                            : '—'}
+                        </td>
+                        {/* Vendedores */}
+                        <td className="px-4 py-2 text-right text-gray-400">
+                          {vendedores != null
+                            ? <span className={isEnriched && e?.seller_count_fc != null ? 'text-white' : ''}>{vendedores}</span>
+                            : '—'}
+                        </td>
+                        {/* Ações */}
                         <td className="px-4 py-2 text-center">
-                          <a href={c.url} target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300">🔗</a>
+                          <div className="flex items-center justify-center gap-2">
+                            {isWinner ? (
+                              <span title="Catálogo principal" className="text-yellow-400 text-sm cursor-default">⭐</span>
+                            ) : onPinCatalog ? (
+                              <button
+                                onClick={() => onPinCatalog(item.fingerprint, c.catalog_id)}
+                                disabled={pinningCatalog === `${item.fingerprint}:${c.catalog_id}`}
+                                title="Definir como catálogo principal"
+                                className="text-gray-500 hover:text-yellow-400 transition-colors disabled:opacity-40 text-sm"
+                              >
+                                {pinningCatalog === `${item.fingerprint}:${c.catalog_id}` ? '⏳' : '☆'}
+                              </button>
+                            ) : null}
+                            <a href={c.url} target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300">🔗</a>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1496,28 +1940,6 @@ function ExpandedDetails({ item, variant = 'list' }: { item: Oportunidade; varia
         </div>
       )}
 
-      {/* Enriched Data (Firecrawl) */}
-      {item.ml_enriched_json && (
-        <div className="px-8 pb-2">
-          <div className="flex gap-4 text-xs text-gray-400 flex-wrap">
-            {item.ml_enriched_json.sold_quantity != null && (
-              <span>📦 {item.ml_enriched_json.sold_quantity.toLocaleString('pt-BR')}+ vendidos</span>
-            )}
-            {item.ml_enriched_json.rating && (
-              <span>⭐ {item.ml_enriched_json.rating}</span>
-            )}
-            {item.ml_enriched_json.ranking_position != null && (
-              <span>🏆 {item.ml_enriched_json.ranking_position}º em {item.ml_enriched_json.ranking_category}</span>
-            )}
-            {item.ml_enriched_json.best_price_seller && (
-              <span>💰 Melhor preço: {item.ml_enriched_json.best_price_seller}</span>
-            )}
-            {item.ml_enriched_json.winner_seller && item.ml_enriched_json.winner_seller !== item.ml_enriched_json.best_price_seller && (
-              <span>🥇 Winner: {item.ml_enriched_json.winner_seller}</span>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Tendência — full width (card only) */}
       {variant === 'card' && (

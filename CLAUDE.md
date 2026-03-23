@@ -8,7 +8,7 @@ Next.js 16 (App Router) + PostgreSQL. Deployado no VPS como container Docker.
 **URL:** http://187.77.43.141:3001
 **Login padrão:** admin / REDACTED_ADMIN_PASS (criado automaticamente no primeiro acesso)
 **Projeto local:** `C:\Users\Bolota\Desktop\Wingx\Paraguai\mission-control\`
-**Script de deploy:** `C:\Users\Bolota\Desktop\Wingx\Paraguai\deploy_mc.py`
+**Script de deploy:** `C:\Users\Bolota\Desktop\Wingx\Paraguai\scripts\deploy_mc.py`
 **Contexto completo do projeto pai:** `C:\Users\Bolota\Desktop\Wingx\Paraguai\CLAUDE.md`
 
 ---
@@ -87,16 +87,21 @@ src/
 │       ├── memories/[id]/route.ts       → DELETE
 │       ├── documents/route.ts           → GET (busca, filtro tipo/squad), POST create
 │       ├── documents/[id]/route.ts      → GET (conteúdo completo), DELETE
-│       ├── paraguai/catalogo/queue/route.ts  → POST enqueue job | GET ?fingerprint=X (status + processa inline via ML API no VPS)
-│       ├── paraguai/catalogo/refresh/route.ts → POST { fingerprint, catalogs[] } salva resultado no preco_ml_cache (usado pelo worker local)
-│       ├── paraguai/catalogo/enrich/route.ts  → POST { fingerprint } Firecrawl proxy:stealth → sold_qty, rating, ranking, sellers → ml_enriched_json
-│       ├── paraguai/produto/route.ts        → POST { titulo, preco_usd, fornecedor, categoria } cadastro manual de produto
+│       ├── paraguai/catalogo/queue/route.ts  → POST enqueue job | GET ?fingerprint=X (processa inline via ML API)
+│       ├── paraguai/catalogo/refresh/route.ts → POST { fingerprint, catalogs[] } salva resultado no preco_ml_cache
+│       ├── paraguai/catalogo/enrich/route.ts  → POST { fingerprint } Firecrawl proxy:stealth → dados em ml_catalogs_json[].enriched
+│       ├── paraguai/catalogo/pin/route.ts    → PATCH adicionar catálogo manual com is_manual:true
+│       ├── paraguai/produto/route.ts        → POST cadastro manual | PATCH editar | DELETE remover
+│       ├── paraguai/assets/route.ts         → CRUD assets comprados (paraguai_assets)
+│       ├── paraguai/audit/route.ts          → GET auditoria | POST registrar evento
+│       ├── paraguai/cambio/route.ts         → GET câmbio USD→BRL via Firecrawl (atacadoconnect.com, cache 30min)
 │       └── tokens/route.ts              → GET (por agente/squad/período), POST registrar uso
 ├── components/
 │   └── Sidebar.tsx                      → navegação lateral com filtro por role (minRole por rota)
 ├── lib/
 │   ├── db.ts                            → Pool pg, funções query() e queryOne()
 │   ├── auth.ts                          → signToken, verifyToken, hashPassword, verifyPassword, hasRole
+│   ├── audit.ts                         → logAudit(username, action, fingerprint?, detail?) — helper direto no DB, nunca quebra o fluxo principal
 │   └── utils.ts                         → cn(), formatDate(), constantes de status/cor
 └── proxy.ts                             → Next.js 16 (renomeado de middleware.ts — apenas passa adiante)
 ```
@@ -121,6 +126,14 @@ access_logs     (id UUID, user_id UUID→users, username, session_id VARCHAR(36)
 
 -- Conectores externos
 connector_configs (id UUID, key VARCHAR(100) UNIQUE, value TEXT, updated_at)
+
+-- Paraguai Arbitrage (database: arbitragem — criadas automaticamente via ensureTable())
+paraguai_audit_log  (id BIGSERIAL, username TEXT, action TEXT, fingerprint TEXT, detail JSONB, created_at TIMESTAMPTZ)
+  -- actions: produto_criado | produto_editado | produto_deletado | catalogo_refresh_solicitado | catalogo_enriquecido | asset_registrado | asset_atualizado | asset_removido
+
+paraguai_assets     (id BIGSERIAL, fingerprint TEXT, titulo TEXT, qty INT, preco_usd NUMERIC, fornecedor TEXT,
+                     data_compra DATE, status CHECK('comprado'|'em_transito'|'em_estoque'|'vendido'|'cancelado'),
+                     preco_venda_brl NUMERIC, data_venda DATE, observacoes TEXT, created_by TEXT, created_at/updated_at TIMESTAMPTZ)
 ```
 
 **Roles:** `admin (3) > member (2) > viewer (1)` — definido em `ROLE_LEVEL` map em `lib/auth.ts`
@@ -225,7 +238,7 @@ PATCH /api/tasks/:id    { status }  → mover tarefa no kanban
 
 ## Deploy (Rebuild e Redeploy)
 
-Script: `C:\Users\Bolota\Desktop\paraguai\deploy_mc.py`
+Script: `C:\Users\Bolota\Desktop\Wingx\Paraguai\scripts\deploy_mc.py`
 
 ```python
 import paramiko, tarfile, os, io
