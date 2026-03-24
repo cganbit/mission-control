@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Tenant ML Accounts — Estado Atual vs Ajustes</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0e1a; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif; padding: 32px 20px; min-height: 100vh; }
+  h1 { text-align: center; font-size: 1.5rem; color: #fff; margin-bottom: 6px; }
+  .subtitle { text-align: center; font-size: 0.85rem; color: #64748b; margin-bottom: 36px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; max-width: 1200px; margin: 0 auto; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .col-header { display: flex; align-items: center; gap-8px; gap: 8px; padding: 14px 18px; border-radius: 12px 12px 0 0; font-weight: 700; font-size: 0.95rem; }
+  .col-green .col-header  { background: #052e16; border: 1.5px solid #16a34a; border-bottom: none; color: #4ade80; }
+  .col-yellow .col-header { background: #1c1204; border: 1.5px solid #ca8a04; border-bottom: none; color: #facc15; }
+  .col-purple .col-header { background: #13073b; border: 1.5px solid #7c3aed; border-bottom: none; color: #a78bfa; }
+
+  .col-body { border-radius: 0 0 12px 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .col-green .col-body  { background: #0a1a0d; border: 1.5px solid #16a34a; border-top: none; }
+  .col-yellow .col-body { background: #1a1205; border: 1.5px solid #ca8a04; border-top: none; }
+  .col-purple .col-body { background: #0d0521; border: 1.5px solid #7c3aed; border-top: none; }
+
+  .item { background: #111827; border-radius: 8px; padding: 12px 14px; }
+  .item-title { font-size: 0.82rem; font-weight: 600; color: #fff; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  .item-desc { font-size: 0.75rem; color: #94a3b8; line-height: 1.5; }
+  .tag { display: inline-block; font-size: 0.65rem; padding: 1px 7px; border-radius: 999px; font-weight: 600; margin-left: 4px; vertical-align: middle; }
+  .tag-done    { background: #052e16; color: #4ade80; border: 1px solid #16a34a; }
+  .tag-partial { background: #1c1204; color: #facc15; border: 1px solid #ca8a04; }
+  .tag-future  { background: #13073b; color: #a78bfa; border: 1px solid #7c3aed; }
+
+  .divider { height: 1px; background: #1e293b; margin: 4px 0; }
+
+  .flow { max-width: 1200px; margin: 36px auto 0; }
+  .flow-title { text-align: center; font-size: 0.85rem; color: #475569; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 18px; }
+  .flow-box { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; }
+  .fnode { background: #111827; border: 1.5px solid #1e293b; border-radius: 10px; padding: 10px 16px; font-size: 0.8rem; text-align: center; min-width: 130px; }
+  .fnode-green  { border-color: #16a34a; color: #4ade80; }
+  .fnode-yellow { border-color: #ca8a04; color: #facc15; }
+  .fnode-purple { border-color: #7c3aed; color: #a78bfa; }
+  .fnode-gray   { border-color: #334155; color: #94a3b8; }
+  .arrow { color: #334155; font-size: 1.2rem; }
+
+  .legend { display: flex; gap: 20px; justify-content: center; margin-top: 28px; flex-wrap: wrap; }
+  .leg { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #64748b; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-green  { background: #16a34a; }
+  .dot-yellow { background: #ca8a04; }
+  .dot-purple { background: #7c3aed; }
+
+  .badge-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .badge { font-size: 0.68rem; padding: 2px 8px; border-radius: 999px; font-weight: 500; }
+  .badge-api   { background: #1e3a5f; color: #60a5fa; }
+  .badge-ui    { background: #1a1a2e; color: #c084fc; }
+  .badge-db    { background: #1a2e1a; color: #86efac; }
+  .badge-wpp   { background: #162417; color: #4ade80; }
+</style>
+</head>
+<body>
+
+<h1>🏪 Multi-Tenant ML Accounts</h1>
+<p class="subtitle">Sprint 18 — Comparativo: o que já funciona vs o que precisa ajustar vs roadmap</p>
+
+<div class="grid">
+
+  <!-- COLUNA 1 — JÁ FUNCIONA -->
+  <div class="col-green">
+    <div class="col-header">✅ Já Funciona</div>
+    <div class="col-body">
+
+      <div class="item">
+        <div class="item-title">Tabela <code>ml_account_configs</code><span class="tag tag-done">DB</span></div>
+        <div class="item-desc">seller_id · nickname · owner_user_id · print_queue_enabled · notification_group. Criada no VPS com índice único por seller_id.</div>
+      </div>
+
+      <div class="item">
+        <div class="item-title">API CRUD completa<span class="tag tag-done">API</span></div>
+        <div class="item-desc">
+          <b>GET</b> /accounts → admin vê todas, member vê só as próprias<br>
+          <b>POST</b> /accounts → owner_user_id = session.sub<br>
+          <b>PATCH</b> /accounts/[id] → notif_group + print_enabled<br>
+          <b>DELETE</b> /accounts/[id] → com ownership check
+        </div>
+        <div class="badge-row"><span class="badge badge-api">role-based</span><span class="badge badge-api">ownership</span></div>
+      </div>
+
+      <div class="item">
+        <div class="item-title">Webhook por conta<span class="tag tag-done">WEBHOOK</span></div>
+        <div class="item-desc">Ao receber venda, lê ml_account_configs pelo seller_id. Respeita print_queue_enabled antes de criar job. Redireciona para notification_group da conta.</div>
+        <div class="badge-row"><span class="badge badge-wpp">WhatsApp routing</span><span class="badge badge-db">print flag</span></div>
+      </div>
+
+      <div class="item">
+        <div class="item-title">UI — Contas ML<span class="tag tag-done">UI</span></div>
+        <div class="item-desc">Tabela com toggle de impressão, edição inline do grupo de notificação, exclusão. Modal para adicionar conta a partir dos tokens existentes.</div>
+        <div class="badge-row"><span class="badge badge-ui">/mercado-livre/contas</span></div>
+      </div>
+
+      <div class="item">
+        <div class="item-title">Sidebar + link direto<span class="tag tag-done">NAV</span></div>
+        <div class="item-desc">"Contas ML 🔑" no menu lateral (minRole: member). StoreCard na página ML tem link direto para contas via ícone externo.</div>
+      </div>
+
+      <div class="item">
+        <div class="item-title">WhatsApp por conta<span class="tag tag-done">NOTIF</span></div>
+        <div class="item-desc">sendWhatsApp(msg, to?) aceita override por conta. Se notification_group estiver configurado, usa ele. Caso contrário, usa padrão global do connector_configs.</div>
+        <div class="badge-row"><span class="badge badge-wpp">fallback global</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- COLUNA 2 — PRECISA AJUSTAR -->
+  <div class="col-yellow">
+    <div class="col-header">⚠️ Precisa Ajustar</div>
+    <div class="col-body">
+
+      <div class="item">
+        <div class="item-title">Admin não pode assignar dono<span class="tag tag-partial">UI gap</span></div>
+        <div class="item-desc">No modal "Adicionar Conta", admin não vê campo para escolher owner_user_id. A conta é sempre criada como pertencente ao admin — impede delegar contas para members.</div>
+        <div class="badge-row"><span class="badge badge-ui">falta campo select</span><span class="badge badge-api">API suporta</span></div>
+      </div>
+
+      <div class="item">
+        <div class="item-title">Contas sem dono são invisíveis para members<span class="tag tag-partial">lógica</span></div>
+        <div class="item-desc">GET /accounts filtra por owner_user_id = session.sub para members. Se owner_user_id for NULL (conta importada), nenhum member vê. Admin vê, mas member não consegue reclamar a conta.</div>
+        <div class="badge-row"><span class="badge badge-api">falta "claim" endpoint</span></div>
+      </div>
+
+      <div class="item">
+        <div class="item-title">Sender único compartilhado<span class="tag tag-partial">WhatsApp</span></div>
+        <div class="item-desc">Todos os grupos de notificação recebem mensagem do MESMO número WhatsApp (Evolution API do sistema). Num cenário multi-cliente, o cliente B vê mensagens vindas do número do cliente A.</div>
+        <div class="badge-row"><span class="badge badge-wpp">Evolution instance única</span></div>
+      </div>
+
+      <div class="item">
+        <div class="item-title">Validação de notification_group<span class="tag tag-partial">UX</span></div>
+        <div class="item-desc">Campo aceita qualquer string. Não valida formato remoteJid (ex: 5511@s.whatsapp.net vs grupo@g.us). Erros silenciosos se o formato estiver errado.</div>
+        <div class="badge-row"><span class="badge badge-ui">sem feedback visual</span></div>
+      </div>
+
+      <div class="item">
+        <div class="item-title">PATCH não atualiza nickname<span class="tag tag-partial">API gap</span></div>
+        <div class="item-desc">Se o nickname do vendedor mudar no ML, a tabela ml_account_configs não é atualizada automaticamente. Seria útil sincronizar na próxima chamada ao webhook.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- COLUNA 3 — ROADMAP SAAS -->
+  <div class="col-purple">
+    <div class="col-header">🔮 Roadmap SaaS</div>
+    <div class="col-body">
+
+      <div class="item">
+        <div class="item-title">Evolution API por cliente<span class="tag tag-future">SaaS</span></div>
+        <div class="item-desc">Cada cliente conecta seu próprio WhatsApp via QR Code. Sistema cria nova instância Evolution API por tenant. Mensagens saem do número do próprio cliente.</div>
+        <div class="badge-row"><span class="badge badge-wpp">instância por tenant</span></div>
+      </div>
+
+      <div class="item">
+        <div class="item-title">Onboarding com QR Code<span class="tag tag-future">UX</span></div>
+        <div class="item-desc">Flow de setup: cliente cria conta → conecta WhatsApp via QR → adiciona contas ML → sistema começa a notificar pelo número dele. Sem intervenção manual do admin.</div>
+        <div class="badge-row"><span class="badge badge-ui">self-serve</span></div>
+      </div>
+
+      <div class="item">
+        <div class="item-title">Billing por conta ML<span class="tag tag-future">monetização</span></div>
+        <div class="item-desc">Cobrar por número de contas ML ativas, volume de notificações enviadas ou jobs de impressão disparados. Integrar com Stripe ou Pagar.me.</div>
+      </div>
+
+      <div class="item">
+        <div class="item-title">ML OAuth por cliente<span class="tag tag-future">integração</span></div>
+        <div class="item-desc">Cada cliente autentica suas próprias contas ML via OAuth2 (App ML). Tokens armazenados por tenant. Hoje tokens são do admin (ml_tokens_json global).</div>
+        <div class="badge-row"><span class="badge badge-api">OAuth2 ML</span></div>
+      </div>
+
+      <div class="item">
+        <div class="item-title">Dashboard por tenant<span class="tag tag-future">isolamento</span></div>
+        <div class="item-desc">Cada cliente vê apenas seus dados: vendas, fila de impressão, clientes, pedidos. Row-level security no PostgreSQL por tenant_id.</div>
+        <div class="badge-row"><span class="badge badge-db">RLS PostgreSQL</span></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- FLUXO DE NOTIFICAÇÃO ATUAL -->
+<div class="flow">
+  <div class="flow-title">Fluxo de Notificação — Estado Atual</div>
+  <div class="flow-box">
+    <div class="fnode fnode-green">ML Webhook<br><small>POST /api/ml/webhook</small></div>
+    <div class="arrow">→</div>
+    <div class="fnode fnode-green">Busca token<br><small>ml_tokens_json</small></div>
+    <div class="arrow">→</div>
+    <div class="fnode fnode-green">Busca config<br><small>ml_account_configs</small></div>
+    <div class="arrow">→</div>
+    <div class="fnode fnode-yellow">Evolution API<br><small>instância única ⚠️</small></div>
+    <div class="arrow">→</div>
+    <div class="fnode fnode-green">notification_group<br><small>por conta ✅</small></div>
+  </div>
+</div>
+
+<!-- FLUXO ROADMAP SAAS -->
+<div class="flow" style="margin-top: 20px;">
+  <div class="flow-title">Fluxo — Roadmap SaaS</div>
+  <div class="flow-box">
+    <div class="fnode fnode-green">ML Webhook<br><small>POST /api/ml/webhook</small></div>
+    <div class="arrow">→</div>
+    <div class="fnode fnode-purple">ML OAuth por tenant<br><small>tokens por cliente</small></div>
+    <div class="arrow">→</div>
+    <div class="fnode fnode-purple">Instância Evolution<br><small>por tenant 🔮</small></div>
+    <div class="arrow">→</div>
+    <div class="fnode fnode-purple">WhatsApp do cliente<br><small>número próprio</small></div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="leg"><div class="dot dot-green"></div> Implementado e funcionando</div>
+  <div class="leg"><div class="dot dot-yellow"></div> Gap / ajuste necessário</div>
+  <div class="leg"><div class="dot dot-purple"></div> Roadmap SaaS futuro</div>
+</div>
+
+<p style="text-align:center; margin-top: 32px; font-size: 0.7rem; color: #1e293b;">
+  Wingx / Mission Control · Sprint 18 · 2026-03-24
+</p>
+
+</body>
+</html>

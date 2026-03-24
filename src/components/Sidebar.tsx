@@ -29,14 +29,16 @@ const NAV: NavItem[] = [
   { href: '/memory',     label: 'Memory',          icon: '🧠', minRole: 'viewer' },
   { href: '/documents',  label: 'Documentos',      icon: '📂', minRole: 'viewer' },
   { href: '/tokens',     label: 'Tokens & Custo',  icon: '🪙', minRole: 'member'  },
-  { href: '/connectors', label: 'Conectores',      icon: '🔌', minRole: 'admin'   },
-  { href: '/users',      label: 'Usuarios',        icon: '👤', minRole: 'admin'   },
+  { href: '/connectors',   label: 'Conectores',      icon: '🔌', minRole: 'admin'   },
+  { href: '/users',        label: 'Usuarios',        icon: '👤', minRole: 'admin'   },
+  { href: '/infograficos', label: 'Infográficos',    icon: '📊', minRole: 'admin'   },
 ];
 
 const APPS: AppItem[] = [
   { href: '/paraguai', label: 'Oportunidades PY', icon: '🇵🇾', minRole: 'member' },
   { href: '/paraguai-assets', label: 'Assets PY', icon: '📦', minRole: 'member' },
   { href: '/mercado-livre', label: 'Mercado Livre', icon: '🛍️', minRole: 'member' },
+  { href: '/mercado-livre/contas', label: 'Contas ML', icon: '🔑', minRole: 'member' },
 ];
 
 const ROLE_LEVEL: Record<string, number> = { admin: 3, member: 2, viewer: 1 };

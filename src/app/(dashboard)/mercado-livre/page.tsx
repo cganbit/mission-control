@@ -62,7 +62,12 @@ function StoreCard({ store, periodLabel }: { store: StoreStats; periodLabel: str
         <h3 className="font-bold text-base text-slate-100 group-hover:text-indigo-400 transition-colors tracking-wide">
           {store.nickname}
         </h3>
-        {isError ? <AlertCircle className="h-4 w-4 text-rose-500" /> : <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+        <div className="flex items-center gap-2">
+          <a href="/mercado-livre/contas" className="text-slate-500 hover:text-slate-300 transition-colors" title="Configurar conta">
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+          {isError ? <AlertCircle className="h-4 w-4 text-rose-500" /> : <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+        </div>
       </div>
       {isError ? (
         <div className="p-5 text-sm text-rose-400">{store.error || 'Erro ao carregar dados'}</div>

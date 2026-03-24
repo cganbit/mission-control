@@ -222,9 +222,21 @@ export async function POST(req: NextRequest) {
 
     const thumbnail = getThumbnail(order);
 
-    // Criar job de impressão + salvar cliente/pedido em paralelo
+    // Buscar config por conta (notification_group, print_queue_enabled)
+    const db = getPool();
+    const cfgRow = await db.query(
+      `SELECT print_queue_enabled, notification_group FROM ml_account_configs WHERE seller_id = $1`,
+      [account.seller_id]
+    );
+    const accountCfg = cfgRow.rows[0] ?? null;
+    const printEnabled = accountCfg ? accountCfg.print_queue_enabled : true;
+    const notifGroup: string | undefined = accountCfg?.notification_group || undefined;
+
+    // Criar job de impressão (se habilitado) + salvar cliente/pedido em paralelo
     const [printToken] = await Promise.all([
-      createPrintJob(order.id, shipmentId, account.nickname, order, shipment),
+      printEnabled
+        ? createPrintJob(order.id, shipmentId, account.nickname, order, shipment)
+        : Promise.resolve(null),
       saveClienteAndPedido(order, shipment, account.nickname).catch(e =>
         console.error('[ML Webhook] Erro ao salvar cliente:', e.message)
       ),
@@ -240,8 +252,8 @@ export async function POST(req: NextRequest) {
 
     const message = formatSaleMessage(order, shipment, account.nickname) + printLine;
 
-    // Enviar notificação WhatsApp (uma única mensagem com tudo)
-    await (thumbnail ? sendWhatsAppMedia(thumbnail, message) : sendWhatsApp(message));
+    // Enviar notificação para o grupo configurado por conta (ou padrão)
+    await (thumbnail ? sendWhatsAppMedia(thumbnail, message, notifGroup) : sendWhatsApp(message, notifGroup));
 
     return NextResponse.json({ ok: true, order_id: order.id });
   } catch (e: any) {

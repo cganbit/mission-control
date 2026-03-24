@@ -54,13 +54,15 @@ async function saveAllAccounts(accounts: MlAccount[]): Promise<void> {
     [newValue]
   );
 
-  // Also sync to file so stats route reads fresh tokens
+  // Sync to file (diagnóstico — label endpoint lê do DB, não do arquivo)
   const ML_TOKENS_FILE = process.env.ML_TOKENS_PATH || '/opt/ml-data/tokens.json';
   try {
     const { writeFileSync } = await import('fs');
     writeFileSync(ML_TOKENS_FILE, JSON.stringify(newPayload, null, 2));
   } catch (e: any) {
-    console.warn('Could not write tokens file:', e.message);
+    // Falha silenciosa não impacta o fluxo principal (label lê do DB)
+    // mas deve ser investigada se tokens.json for usado por outros processos
+    console.error('[ml-token-refresh] SYNC FAIL — tokens.json não atualizado:', ML_TOKENS_FILE, e.message);
   }
 }
 

@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Agentes — Wingx / Mission Control</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --border: #1e2a3a;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --accent: #3b82f6;
+    --green: #10b981;
+    --orange: #f59e0b;
+    --red: #ef4444;
+    --purple: #8b5cf6;
+    --teal: #14b8a6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    padding: 40px 24px;
+    min-height: 100vh;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 6px;
+    letter-spacing: -0.5px;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 48px;
+  }
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .grid { display: grid; gap: 16px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .card-accent {
+    border-top: 3px solid var(--accent);
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-blue { background: rgba(59,130,246,.15); color: #60a5fa; }
+  .badge-green { background: rgba(16,185,129,.15); color: #34d399; }
+  .badge-orange { background: rgba(245,158,11,.15); color: #fbbf24; }
+  .badge-purple { background: rgba(139,92,246,.15); color: #a78bfa; }
+  .badge-teal { background: rgba(20,184,166,.15); color: #2dd4bf; }
+  .badge-red { background: rgba(239,68,68,.15); color: #f87171; }
+  .agent-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .agent-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .agent-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .agent-name {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .agent-file {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: monospace;
+    margin-top: 2px;
+  }
+  .trigger-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .trigger {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,.05);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .context-block {
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.6;
+  }
+  .context-block li {
+    list-style: none;
+    padding-left: 0;
+    padding: 2px 0;
+  }
+  .context-block li::before {
+    content: '→ ';
+    color: var(--accent);
+  }
+  .tier-row {
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .tier-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    min-width: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 4px;
+    border-radius: 6px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid var(--border);
+  }
+  .tier-content { flex: 1; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255,255,255,.04);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  td code {
+    font-family: monospace;
+    font-size: 12px;
+    background: rgba(255,255,255,.06);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #93c5fd;
+  }
+  .cost-zero {
+    font-weight: 700;
+    color: var(--green);
+  }
+  .cost-low {
+    font-weight: 700;
+    color: var(--orange);
+  }
+  .flow-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(255,255,255,.03);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+  .step-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-text { font-size: 13px; line-height: 1.4; }
+  .step-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .arrow {
+    text-align: center;
+    color: var(--muted);
+    font-size: 18px;
+    margin: 4px 0;
+  }
+  .stat-box {
+    text-align: center;
+    padding: 16px;
+  }
+  .stat-num {
+    font-size: 36px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0;
+  }
+  .mono { font-family: monospace; font-size: 12px; }
+  .highlight { color: var(--accent); }
+  .updated-tag {
+    font-size: 10px;
+    font-family: monospace;
+    color: var(--teal);
+    background: rgba(20,184,166,.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .warning-box {
+    background: rgba(245,158,11,.08);
+    border: 1px solid rgba(245,158,11,.2);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #fbbf24;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  @media (max-width: 768px) {
+    .grid-4 { grid-template-columns: 1fr 1fr; }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 480px) {
+    .grid-4 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<h1>🤖 Sistema de Agentes — Wingx / Mission Control</h1>
+<p class="subtitle">Agentes especializados pré-provisionados com contexto do projeto embutido · Sessão 16 · 24/03/2026</p>
+
+<!-- STATS -->
+<div class="grid grid-4" style="margin-bottom:40px">
+  <div class="card stat-box">
+    <div class="stat-num highlight">4</div>
+    <div class="stat-label">Agentes pré-provisionados<br><span class="mono">.claude/agents/</span></div>
+  </div>
+  <div class="card stat-box">
+    <div class="stat-num" style="color:var(--green)">0</div>
+    <div class="stat-label">Custo de contexto<br>em subprocess</div>
+  </div>
+  <div class="card stat-box">
+    <div class="stat-num" style="color:var(--orange)">4</div>
+    <div class="stat-label">Agentes on-demand<br>via Agent tool</div>
+  </div>
+  <div class="card stat-box">
+    <div class="stat-num" style="color:var(--purple)">Auto</div>
+    <div class="stat-label">Invocação<br>pelo Claude Code</div>
+  </div>
+</div>
+
+<!-- OS 4 AGENTES PRÉ-PROVISIONADOS -->
+<div class="section-title">Agentes pré-provisionados — invocação automática</div>
+<div class="grid grid-2" style="margin-bottom:40px">
+
+  <div class="agent-card" style="border-top: 3px solid #3b82f6">
+    <div class="agent-header">
+      <div class="agent-icon" style="background:rgba(59,130,246,.15)">🎨</div>
+      <div>
+        <div class="agent-name">frontend</div>
+        <div class="agent-file">.claude/agents/frontend.md</div>
+      </div>
+      <span class="updated-tag" style="margin-left:auto">updated: 2026-03-24</span>
+    </div>
+    <div class="trigger-list">
+      <span class="trigger">componente</span>
+      <span class="trigger">página</span>
+      <span class="trigger">UI / UX</span>
+      <span class="trigger">CSS</span>
+      <span class="trigger">design</span>
+      <span class="trigger">responsivo</span>
+      <span class="trigger">Tailwind</span>
+    </div>
+    <ul class="context-block">
+      <li>Next.js 16 App Router + TypeScript + Tailwind CSS v4</li>
+      <li>Dark theme: bg #0a0e1a, surface slate-800/900</li>
+      <li>Componentes em src/app/(dashboard)/</li>
+      <li>Anti-padrões de design (purple ban, bento trap, etc.)</li>
+    </ul>
+  </div>
+
+  <div class="agent-card" style="border-top: 3px solid #10b981">
+    <div class="agent-header">
+      <div class="agent-icon" style="background:rgba(16,185,129,.15)">⚙️</div>
+      <div>
+        <div class="agent-name">backend</div>
+        <div class="agent-file">.claude/agents/backend.md</div>
+      </div>
+      <span class="updated-tag" style="margin-left:auto">updated: 2026-03-24</span>
+    </div>
+    <div class="trigger-list">
+      <span class="trigger">endpoint</span>
+      <span class="trigger">API</span>
+      <span class="trigger">integração</span>
+      <span class="trigger">auth</span>
+      <span class="trigger">banco de dados</span>
+      <span class="trigger">servidor</span>
+    </div>
+    <ul class="context-block">
+      <li>Route Handlers: src/app/api/[recurso]/route.ts</li>
+      <li>Auth: JWT cookie (dashboard) | x-agent-key/?key= (externo)</li>
+      <li>DB mission_control + arbitragem (tabelas completas)</li>
+      <li>Integrações: ML API, Evolution API, n8n, Firecrawl</li>
+    </ul>
+  </div>
+
+  <div class="agent-card" style="border-top: 3px solid #f59e0b">
+    <div class="agent-header">
+      <div class="agent-icon" style="background:rgba(245,158,11,.15)">🚀</div>
+      <div>
+        <div class="agent-name">devops</div>
+        <div class="agent-file">.claude/agents/devops.md</div>
+      </div>
+      <span class="updated-tag" style="margin-left:auto">updated: 2026-03-24</span>
+    </div>
+    <div class="trigger-list">
+      <span class="trigger">deploy</span>
+      <span class="trigger">Docker</span>
+      <span class="trigger">VPS</span>
+      <span class="trigger">infra</span>
+      <span class="trigger">container</span>
+      <span class="trigger">produção</span>
+    </div>
+    <ul class="context-block">
+      <li>VPS 187.77.43.141 — todos os containers e portas</li>
+      <li>Procedimento: build --no-cache → verificar hash → up -d</li>
+      <li>Rede Docker: evolution-api-h4pg_default</li>
+      <li>n8n, Evolution API, PostgreSQL, Redis, OpenClaw</li>
+    </ul>
+  </div>
+
+  <div class="agent-card" style="border-top: 3px solid #ef4444">
+    <div class="agent-header">
+      <div class="agent-icon" style="background:rgba(239,68,68,.15)">🔍</div>
+      <div>
+        <div class="agent-name">debugger</div>
+        <div class="agent-file">.claude/agents/debugger.md</div>
+      </div>
+      <span class="updated-tag" style="margin-left:auto">updated: 2026-03-24</span>
+    </div>
+    <div class="trigger-list">
+      <span class="trigger">bug</span>
+      <span class="trigger">erro</span>
+      <span class="trigger">não funciona</span>
+      <span class="trigger">crash</span>
+      <span class="trigger">investigar</span>
+    </div>
+    <ul class="context-block">
+      <li>Gotchas históricos do projeto (ML 403, hash, WhatsApp skip)</li>
+      <li>Diagnóstico por camada: Next.js → API → DB → n8n → WhatsApp</li>
+      <li>APIs que NÃO funcionam (lista completa)</li>
+      <li>Metodologia 4 fases + 5 Whys</li>
+    </ul>
+  </div>
+
+</div>
+
+<!-- ARQUITETURA DE 3 CAMADAS -->
+<hr class="divider">
+<div class="section-title">Arquitetura de 3 camadas — custo de contexto</div>
+
+<div style="margin-bottom:40px">
+  <div class="tier-row">
+    <div class="tier-label" style="color:#34d399;border-color:rgba(16,185,129,.3)">Camada 1</div>
+    <div class="tier-content">
+      <div class="card" style="border-color:rgba(16,185,129,.3)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <span class="badge badge-green">Pré-provisionados</span>
+            <span style="font-size:13px;color:var(--muted);margin-left:8px">.claude/agents/ · 4 agentes</span>
+          </div>
+          <span class="cost-zero">ZERO custo</span>
+        </div>
+        <p style="font-size:13px;color:#94a3b8;line-height:1.6">
+          Claude Code invoca automaticamente ao detectar a task. Rodam em subprocess isolado — não consomem contexto do agente principal.
+          Contexto do projeto embutido: VPS, tabelas, auth patterns, gotchas históricos.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tier-row">
+    <div class="tier-label" style="color:#fbbf24;border-color:rgba(245,158,11,.3)">Camada 2</div>
+    <div class="tier-content">
+      <div class="card" style="border-color:rgba(245,158,11,.3)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <span class="badge badge-orange">On-demand</span>
+            <span style="font-size:13px;color:var(--muted);margin-left:8px">Agent tool · 4 agentes | .skills/ · 16 skills</span>
+          </div>
+          <span class="cost-zero">ZERO custo</span>
+        </div>
+        <p style="font-size:13px;color:#94a3b8;line-height:1.6">
+          Agentes (security-auditor, explorer-agent, database-architect, performance-optimizer) invocados manualmente via Agent tool com template em
+          <code>.skills/AGENT_INVOCATION.md</code>. Skills carregadas sob demanda — saem do contexto naturalmente.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tier-row">
+    <div class="tier-label" style="color:#60a5fa;border-color:rgba(59,130,246,.3)">Camada 3</div>
+    <div class="tier-content">
+      <div class="card" style="border-color:rgba(59,130,246,.3)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <span class="badge badge-blue">Catálogo</span>
+            <span style="font-size:13px;color:var(--muted);margin-left:8px">SKILLS_CATALOG.md · 1x por sessão</span>
+          </div>
+          <span class="cost-low">~100 linhas</span>
+        </div>
+        <p style="font-size:13px;color:#94a3b8;line-height:1.6">
+          Arquivo leve lido no início de sprints. Índice completo de todas as skills, agentes e knowledge bases com instrução de quando carregar cada um.
+          Skills do projeto (n8n-gotchas, apple-parts, etc.) carregadas apenas quando relevante.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CICLO DE VIDA -->
+<hr class="divider">
+<div class="section-title">Ciclo de vida — como os agentes se mantêm atualizados</div>
+
+<div class="grid grid-2" style="margin-bottom:40px">
+  <div>
+    <div class="flow-step">
+      <div class="step-num">1</div>
+      <div class="step-text">
+        Sprint implementa mudança
+        <div class="step-sub">Nova tabela, novo container, novo gotcha de produção</div>
+      </div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="flow-step">
+      <div class="step-num">2</div>
+      <div class="step-text">
+        Checklist de fechamento — Passo 3.5
+        <div class="step-sub">Claude verifica tabela: "o que mudou → qual agente atualizar"</div>
+      </div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="flow-step">
+      <div class="step-num">3</div>
+      <div class="step-text">
+        Agente afetado é atualizado
+        <div class="step-sub">Contexto corrigido + campo <code>updated</code> renovado</div>
+      </div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="flow-step">
+      <div class="step-num">4</div>
+      <div class="step-text">
+        Próxima sessão usa contexto correto
+        <div class="step-sub">Data no frontmatter confirma que o agente está atualizado</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="section-title">tabela de responsabilidade</div>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>O que mudou</th>
+            <th>Atualizar</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Nova tabela / schema DB</td>
+            <td><code>backend</code> + <code>debugger</code></td>
+          </tr>
+          <tr>
+            <td>Novo container / porta</td>
+            <td><code>devops</code> + <code>debugger</code></td>
+          </tr>
+          <tr>
+            <td>Nova integração externa</td>
+            <td><code>backend</code> + <code>debugger</code></td>
+          </tr>
+          <tr>
+            <td>Novo gotcha de produção</td>
+            <td><code>debugger</code></td>
+          </tr>
+          <tr>
+            <td>Mudança no auth pattern</td>
+            <td><code>backend</code> + <code>frontend</code></td>
+          </tr>
+          <tr>
+            <td>Mudança no stack frontend</td>
+            <td><code>frontend</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="warning-box" style="margin-top:16px">
+      <span>⚠️</span>
+      <div>
+        <strong>Data antiga = revisão necessária.</strong><br>
+        Se o campo <code>updated</code> do agente estiver desatualizado em relação ao CLAUDE.md, revisar o contexto antes de confiar nas sugestões do agente.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ON-DEMAND AGENTS -->
+<hr class="divider">
+<div class="section-title">Agentes on-demand — quando invocar</div>
+<div class="card" style="margin-bottom:40px">
+  <table>
+    <thead>
+      <tr>
+        <th>Situação</th>
+        <th>Agente</th>
+        <th>Como invocar</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Antes de merge, auditoria de credenciais, OWASP</td>
+        <td><span class="badge badge-red">security-auditor</span></td>
+        <td>Agent tool + <code>AGENT_INVOCATION.md</code></td>
+      </tr>
+      <tr>
+        <td>Explorar codebase desconhecido, mapear dependências</td>
+        <td><span class="badge badge-teal">explorer-agent</span></td>
+        <td>Agent tool + <code>AGENT_INVOCATION.md</code></td>
+      </tr>
+      <tr>
+        <td>Schema novo, query lenta, migration PostgreSQL</td>
+        <td><span class="badge badge-purple">database-architect</span></td>
+        <td>Agent tool + <code>AGENT_INVOCATION.md</code></td>
+      </tr>
+      <tr>
+        <td>Profiling, bottleneck Next.js/Docker, métricas</td>
+        <td><span class="badge badge-orange">performance-optimizer</span></td>
+        <td>Agent tool + <code>AGENT_INVOCATION.md</code></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- BOA PRÁTICA -->
+<hr class="divider">
+<div class="section-title">Por que isso é boa prática de mercado</div>
+<div class="grid grid-2" style="margin-bottom:16px">
+  <div class="card">
+    <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:#60a5fa">✓ Single Responsibility</div>
+    <p style="font-size:13px;color:#94a3b8;line-height:1.6">Cada agente tem um domínio claro. Nenhum tenta fazer tudo. O <code>debugger</code> conhece os gotchas do projeto; o <code>devops</code> conhece os containers; o <code>frontend</code> conhece os padrões de UI.</p>
+  </div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:#34d399">✓ Context Injection</div>
+    <p style="font-size:13px;color:#94a3b8;line-height:1.6">Contexto do projeto embutido no agente, não passado manualmente toda vez. O agente já chega "onboarded" — conhece o VPS, as tabelas, os padrões de auth.</p>
+  </div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:#fbbf24">✓ Auto-routing</div>
+    <p style="font-size:13px;color:#94a3b8;line-height:1.6">Claude Code detecta a tarefa e invoca o especialista automaticamente via o campo <code>description</code> do frontmatter. Sem instrução manual em cada task.</p>
+  </div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:#a78bfa">✓ Tiered Specialization</div>
+    <p style="font-size:13px;color:#94a3b8;line-height:1.6">Pré-provisionados (tarefas frequentes) vs on-demand (raras). Economia de contexto e recursos. Padrão documentado no Multi-Agent Systems Guide da Anthropic.</p>
+  </div>
+</div>
+
+<p style="text-align:center;font-size:12px;color:var(--muted);margin-top:32px">
+  mc.wingx.app.br/docs/agents-system.html · Sessão 16 · 24/03/2026
+</p>
+
+</body>
+</html>

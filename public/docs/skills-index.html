@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skills Index — Wingx / Paraguai</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0a0e1a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 40px 24px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+  .header p {
+    color: #64748b;
+    font-size: 0.875rem;
+  }
+  .header .badge {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    background: rgba(99,102,241,0.1);
+    border: 1px solid rgba(99,102,241,0.3);
+    color: #a78bfa;
+  }
+
+  /* Section */
+  .section {
+    max-width: 1200px;
+    margin: 0 auto 40px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .section-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+  }
+  .section-icon.project  { background: rgba(59,130,246,0.15); }
+  .section-icon.plugin   { background: rgba(16,185,129,0.15); }
+  .section-icon.official { background: rgba(245,158,11,0.15); }
+  .section-title { font-size: 1rem; font-weight: 600; color: #cbd5e1; }
+  .section-count {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: #475569;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    padding: 2px 10px;
+    border-radius: 20px;
+  }
+
+  /* Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  /* Card */
+  .card {
+    background: #111827;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: border-color 0.2s, transform 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card:hover {
+    border-color: rgba(99,102,241,0.35);
+    transform: translateY(-2px);
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: 14px 14px 0 0;
+  }
+  .card.project::before  { background: linear-gradient(90deg, #3b82f6, #6366f1); }
+  .card.plugin::before   { background: linear-gradient(90deg, #10b981, #059669); }
+  .card.official::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
+  .card.priority::before { background: linear-gradient(90deg, #ef4444, #f97316); }
+
+  .card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .card-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+  }
+  .card-type {
+    font-size: 0.68rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .tag-project  { background: rgba(59,130,246,0.12);  color: #60a5fa; border: 1px solid rgba(59,130,246,0.25); }
+  .tag-plugin   { background: rgba(16,185,129,0.12);  color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
+  .tag-official { background: rgba(245,158,11,0.12);  color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
+  .tag-priority { background: rgba(239,68,68,0.12);   color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+
+  .card-desc {
+    font-size: 0.8rem;
+    color: #64748b;
+    line-height: 1.5;
+    flex: 1;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+  .owner {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: #475569;
+  }
+  .owner-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: white;
+  }
+  .avatar-cleiton  { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+  .avatar-anthropic{ background: linear-gradient(135deg, #f59e0b, #d97706); }
+  .avatar-community{ background: linear-gradient(135deg, #10b981, #059669); }
+
+  .trigger-tag {
+    font-size: 0.68rem;
+    color: #334155;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-family: monospace;
+  }
+
+  /* Priority banner */
+  .priority-star {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 0.7rem;
+    opacity: 0.6;
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    max-width: 1200px;
+    margin: 0 auto 48px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .stat-box {
+    flex: 1;
+    min-width: 160px;
+    background: #111827;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 16px 20px;
+    text-align: center;
+  }
+  .stat-num {
+    font-size: 1.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #6366f1, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-label { font-size: 0.75rem; color: #475569; margin-top: 4px; }
+
+  .updated {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #1e293b;
+    margin-top: 40px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Skills Index</h1>
+  <p>Capacidades do Claude no ecossistema Wingx / Paraguai</p>
+  <div class="badge">Atualizado em 24/03/2026</div>
+</div>
+
+<!-- Stats -->
+<div class="stats-bar">
+  <div class="stat-box">
+    <div class="stat-num">9</div>
+    <div class="stat-label">Skills do Projeto</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-num">1</div>
+    <div class="stat-label">Plugin Ativo</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-num">17</div>
+    <div class="stat-label">Skills Oficiais Anthropic</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-num">4</div>
+    <div class="stat-label">Agentes</div>
+  </div>
+</div>
+
+<!-- PROJECT SKILLS -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon project">🛠️</div>
+    <div class="section-title">Skills do Projeto</div>
+    <div class="section-count">9 skills · .skills/</div>
+  </div>
+  <div class="grid">
+
+    <div class="card project">
+      <div class="card-top">
+        <div class="card-name">collaboration</div>
+        <span class="card-type tag-priority">⚠️ obrigatória</span>
+      </div>
+      <div class="card-desc">Protocolo de colaboração entre sessões. Deve ser lida ao iniciar qualquer sessão de trabalho.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">sempre</span>
+      </div>
+    </div>
+
+    <div class="card project">
+      <div class="card-top">
+        <div class="card-name">mission-control-dev</div>
+        <span class="card-type tag-project">projeto</span>
+      </div>
+      <div class="card-desc">Build, deploy e validação do Mission Control no Docker. Inclui checklist pós-build obrigatório para verificar image mismatch.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">/mission-control-dev</span>
+      </div>
+    </div>
+
+    <div class="card project">
+      <div class="card-top">
+        <div class="card-name">n8n-deploy</div>
+        <span class="card-type tag-project">projeto</span>
+      </div>
+      <div class="card-desc">Deploy e atualização de workflows n8n no VPS. Procedimentos de import/export e ativação de nós.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">deploy n8n</span>
+      </div>
+    </div>
+
+    <div class="card project">
+      <div class="card-top">
+        <div class="card-name">n8n-gotchas</div>
+        <span class="card-type tag-priority">⚠️ obrigatória</span>
+      </div>
+      <div class="card-desc">Armadilhas e comportamentos inesperados do n8n neste projeto. Leitura obrigatória antes de modificar qualquer workflow.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">antes de editar n8n</span>
+      </div>
+    </div>
+
+    <div class="card project">
+      <div class="card-top">
+        <div class="card-name">vps-diagnostics</div>
+        <span class="card-type tag-project">projeto</span>
+      </div>
+      <div class="card-desc">Diagnóstico de saúde do VPS: containers Docker, banco PostgreSQL, logs de serviços e conectividade.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">infra / VPS</span>
+      </div>
+    </div>
+
+    <div class="card project">
+      <div class="card-top">
+        <div class="card-name">pipeline-testing</div>
+        <span class="card-type tag-project">projeto</span>
+      </div>
+      <div class="card-desc">Testes end-to-end do pipeline de arbitragem: WhatsApp → n8n → ML → alerta. Casos de teste e validações.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">testar pipeline</span>
+      </div>
+    </div>
+
+    <div class="card project">
+      <div class="card-top">
+        <div class="card-name">security</div>
+        <span class="card-type tag-project">projeto</span>
+      </div>
+      <div class="card-desc">Gestão de secrets, rotação de credenciais, auditoria de segurança e boas práticas no ecossistema.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">secrets / credenciais</span>
+      </div>
+    </div>
+
+    <div class="card project">
+      <div class="card-top">
+        <div class="card-name">audit</div>
+        <span class="card-type tag-project">projeto</span>
+      </div>
+      <div class="card-desc">Audit log na tabela paraguai_audit_log. Rastreamento de ações críticas e revisão de histórico de operações.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">audit log</span>
+      </div>
+    </div>
+
+    <div class="card project">
+      <div class="card-top">
+        <div class="card-name">apple-parts</div>
+        <span class="card-type tag-project">projeto</span>
+      </div>
+      <div class="card-desc">Part Numbers Apple — regras de prefixo/sufixo/região, qualificação de peças para arbitragem Paraguai→Brasil.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">peças Apple</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- PLUGINS -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon plugin">🔌</div>
+    <div class="section-title">Plugins Ativos</div>
+    <div class="section-count">1 plugin · marketplace</div>
+  </div>
+  <div class="grid">
+
+    <div class="card plugin">
+      <div class="card-top">
+        <div class="card-name">context-mode</div>
+        <span class="card-type tag-plugin">v1.0.52</span>
+      </div>
+      <div class="card-desc">Proteção de contexto e economia de tokens. Intercepta outputs grandes via hooks BeforeTool/AfterTool/SessionStart e processa em sandbox local (SQLite + FTS5).</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-community">M</div>
+          mksglu (community)
+        </div>
+        <span class="trigger-tag">/ctx-stats · /ctx-doctor</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- OFFICIAL SKILLS -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon official">🤖</div>
+    <div class="section-title">Skills Oficiais Anthropic</div>
+    <div class="section-count">17 skills · carregadas sob demanda do GitHub</div>
+  </div>
+  <div class="grid">
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">pdf</div>
+        <span class="card-type tag-priority">⭐ prioritária</span>
+      </div>
+      <div class="card-desc">Extração de texto/tabelas, merge, split, OCR e criação de PDFs. Usado no pipeline WhatsApp → PDF fornecedor → extração de produtos.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/pdf</span>
+      </div>
+    </div>
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">xlsx</div>
+        <span class="card-type tag-priority">⭐ prioritária</span>
+      </div>
+      <div class="card-desc">Leitura e escrita de planilhas Excel. Usado no pipeline WhatsApp → XLS fornecedor → extração de produtos.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/xlsx</span>
+      </div>
+    </div>
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">webapp-testing</div>
+        <span class="card-type tag-priority">⭐ prioritária</span>
+      </div>
+      <div class="card-desc">Testar apps web locais com Playwright: screenshots, DOM, logs de console. Útil para validar o Mission Control após builds.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/webapp-testing</span>
+      </div>
+    </div>
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">claude-api</div>
+        <span class="card-type tag-official">oficial</span>
+      </div>
+      <div class="card-desc">Integração com API Anthropic / Anthropic SDK / Agent SDK. Para build de agentes com Claude.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/claude-api</span>
+      </div>
+    </div>
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">mcp-builder</div>
+        <span class="card-type tag-official">oficial</span>
+      </div>
+      <div class="card-desc">Criar MCP servers customizados. Útil para expandir as ferramentas disponíveis no ecossistema.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/mcp-builder</span>
+      </div>
+    </div>
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">frontend-design</div>
+        <span class="card-type tag-official">oficial</span>
+      </div>
+      <div class="card-desc">Componentes UI, design system, CSS. Para design de interfaces no Mission Control e outros apps.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/frontend-design</span>
+      </div>
+    </div>
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">docx</div>
+        <span class="card-type tag-official">oficial</span>
+      </div>
+      <div class="card-desc">Criar e editar documentos Word (.docx). Para geração de relatórios e documentação.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/docx</span>
+      </div>
+    </div>
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">pptx</div>
+        <span class="card-type tag-official">oficial</span>
+      </div>
+      <div class="card-desc">Criar e editar apresentações PowerPoint. Para relatórios visuais e pitches.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/pptx</span>
+      </div>
+    </div>
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">doc-coauthoring</div>
+        <span class="card-type tag-official">oficial</span>
+      </div>
+      <div class="card-desc">Co-autoria de documentos técnicos. Para PRDs, specs e documentação colaborativa.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/doc-coauthoring</span>
+      </div>
+    </div>
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">internal-comms</div>
+        <span class="card-type tag-official">oficial</span>
+      </div>
+      <div class="card-desc">Comunicação interna: e-mails, anúncios, mensagens para equipes.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/internal-comms</span>
+      </div>
+    </div>
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">brand-guidelines</div>
+        <span class="card-type tag-official">oficial</span>
+      </div>
+      <div class="card-desc">Aplicar brand guidelines em conteúdo. Para manter consistência visual e de tom.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/brand-guidelines</span>
+      </div>
+    </div>
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">algorithmic-art</div>
+        <span class="card-type tag-official">oficial</span>
+      </div>
+      <div class="card-desc">Geração de arte algorítmica com código.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/algorithmic-art</span>
+      </div>
+    </div>
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">canvas-design</div>
+        <span class="card-type tag-official">oficial</span>
+      </div>
+      <div class="card-desc">Design interativo com Canvas API para visualizações e infográficos dinâmicos.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/canvas-design</span>
+      </div>
+    </div>
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">theme-factory</div>
+        <span class="card-type tag-official">oficial</span>
+      </div>
+      <div class="card-desc">Criar temas visuais: paletas de cores, tipografia, tokens de design.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/theme-factory</span>
+      </div>
+    </div>
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">slack-gif-creator</div>
+        <span class="card-type tag-official">oficial</span>
+      </div>
+      <div class="card-desc">Criar GIFs animados para Slack. Para comunicações internas mais visuais.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/slack-gif-creator</span>
+      </div>
+    </div>
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">web-artifacts-builder</div>
+        <span class="card-type tag-official">oficial</span>
+      </div>
+      <div class="card-desc">Construir artefatos web interativos: dashboards, visualizações, demos em HTML/JS.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/web-artifacts-builder</span>
+      </div>
+    </div>
+
+    <div class="card official">
+      <div class="card-top">
+        <div class="card-name">skill-creator</div>
+        <span class="card-type tag-official">oficial</span>
+      </div>
+      <div class="card-desc">Meta-skill para criar novas skills customizadas. Usar para expandir as capacidades do projeto.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-anthropic">A</div>
+          Anthropic
+        </div>
+        <span class="trigger-tag">/skill-creator</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="updated">Gerado por Claude Code · mc.wingx.app.br/docs/skills-index.html</div>
+
+</body>
+</html>

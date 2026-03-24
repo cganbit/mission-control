@@ -15,14 +15,14 @@ async function getEvoCfg(): Promise<Record<string, string> | null> {
  * Envia mensagem de texto via Evolution API.
  * Nunca lança erro — falha de alerta não deve quebrar o caller.
  */
-export async function sendWhatsApp(message: string): Promise<void> {
+export async function sendWhatsApp(message: string, to?: string): Promise<void> {
   try {
     const cfg = await getEvoCfg();
     if (!cfg) return;
     await fetch(`${cfg['evolution_url']}/message/sendText/Cleiton`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: cfg['evolution_api_key'] },
-      body: JSON.stringify({ number: cfg['whatsapp_number'], text: message }),
+      body: JSON.stringify({ number: to ?? cfg['whatsapp_number'], text: message }),
       signal: AbortSignal.timeout(8000),
     });
   } catch { /* never break the caller */ }
@@ -32,7 +32,7 @@ export async function sendWhatsApp(message: string): Promise<void> {
  * Envia imagem com legenda via Evolution API.
  * Se falhar, cai para envio de texto simples.
  */
-export async function sendWhatsAppMedia(imageUrl: string, caption: string): Promise<void> {
+export async function sendWhatsAppMedia(imageUrl: string, caption: string, to?: string): Promise<void> {
   try {
     const cfg = await getEvoCfg();
     if (!cfg) return;
@@ -40,7 +40,7 @@ export async function sendWhatsAppMedia(imageUrl: string, caption: string): Prom
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: cfg['evolution_api_key'] },
       body: JSON.stringify({
-        number: cfg['whatsapp_number'],
+        number: to ?? cfg['whatsapp_number'],
         mediatype: 'image',
         mimetype: 'image/jpeg',
         media: imageUrl,
@@ -50,7 +50,6 @@ export async function sendWhatsAppMedia(imageUrl: string, caption: string): Prom
     });
     if (!res.ok) throw new Error(`Evolution ${res.status}`);
   } catch {
-    // Fallback para texto se a imagem falhar
-    await sendWhatsApp(caption);
+    await sendWhatsApp(caption, to);
   }
 }

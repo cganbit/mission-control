@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deploy Evolution — Antes vs Depois</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --border: #1e2a3a;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --red: #ef4444;
+    --green: #10b981;
+    --orange: #f59e0b;
+    --blue: #3b82f6;
+    --purple: #8b5cf6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; padding: 40px 24px; }
+  h1 { font-size: 26px; font-weight: 700; text-align: center; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 48px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 40px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+  .col-before { border-top: 3px solid var(--red); }
+  .col-after  { border-top: 3px solid var(--green); }
+  .col-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+  .col-title { font-size: 17px; font-weight: 700; }
+  .col-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .badge-red   { background: rgba(239,68,68,.15); color: #f87171; }
+  .badge-green { background: rgba(16,185,129,.15); color: #34d399; }
+  .step { display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start; }
+  .step-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .step-body { flex: 1; }
+  .step-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  .step-desc  { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .step-code  { font-family: monospace; font-size: 11px; background: rgba(255,255,255,.05); padding: 6px 10px; border-radius: 6px; margin-top: 6px; color: #93c5fd; border: 1px solid var(--border); }
+  .icon-bad  { background: rgba(239,68,68,.15); }
+  .icon-good { background: rgba(16,185,129,.15); }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 16px; }
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .compare-table th { text-align: left; padding: 10px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .compare-table td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: top; }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .good { color: #34d399; font-weight: 600; }
+  .bad  { color: #f87171; font-weight: 600; }
+  .neutral { color: var(--muted); }
+  code { font-family: monospace; font-size: 12px; background: rgba(255,255,255,.06); padding: 2px 6px; border-radius: 4px; color: #93c5fd; }
+  .flow-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-bottom: 12px; }
+  .flow-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
+  .flow-steps { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .flow-step-pill { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid; font-weight: 500; }
+  .pill-red    { background: rgba(239,68,68,.1); border-color: rgba(239,68,68,.3); color: #fca5a5; }
+  .pill-green  { background: rgba(16,185,129,.1); border-color: rgba(16,185,129,.3); color: #6ee7b7; }
+  .pill-arrow  { color: var(--muted); font-size: 14px; }
+  .risk-box { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #fca5a5; margin-top: 16px; }
+  .gain-box { background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2); border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #6ee7b7; margin-top: 16px; }
+  .checklist { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .checklist li { font-size: 13px; display: flex; gap: 8px; align-items: flex-start; color: #94a3b8; }
+  .checklist li::before { content: '✅'; flex-shrink: 0; }
+  @media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<h1>🚀 Deploy Evolution — Antes vs Depois</h1>
+<p class="subtitle">Migração de paramiko + secrets.py para rsync + SSH key · Sessão 16 · 24/03/2026</p>
+
+<!-- FLUXOS -->
+<div class="section-title">Fluxo comparado</div>
+<div class="flow-block" style="border-top: 3px solid var(--red)">
+  <div class="flow-label" style="color:#f87171">Antes — paramiko + secrets.py</div>
+  <div class="flow-steps">
+    <span class="flow-step-pill pill-red">pip install paramiko</span>
+    <span class="pill-arrow">→</span>
+    <span class="flow-step-pill pill-red">secrets.py manual</span>
+    <span class="pill-arrow">→</span>
+    <span class="flow-step-pill pill-red">tar.gz inteiro</span>
+    <span class="pill-arrow">→</span>
+    <span class="flow-step-pill pill-red">SFTP upload</span>
+    <span class="pill-arrow">→</span>
+    <span class="flow-step-pill pill-red">docker run inline</span>
+    <span class="pill-arrow">→</span>
+    <span class="flow-step-pill pill-red">credenciais no CMD</span>
+  </div>
+</div>
+
+<div class="flow-block" style="border-top: 3px solid var(--green)">
+  <div class="flow-label" style="color:#34d399">Depois — rsync + SSH key + docker compose</div>
+  <div class="flow-steps">
+    <span class="flow-step-pill pill-green">bash deploy_mc.sh</span>
+    <span class="pill-arrow">→</span>
+    <span class="flow-step-pill pill-green">rsync delta</span>
+    <span class="pill-arrow">→</span>
+    <span class="flow-step-pill pill-green">verificar hash</span>
+    <span class="pill-arrow">→</span>
+    <span class="flow-step-pill pill-green">docker compose build</span>
+    <span class="pill-arrow">→</span>
+    <span class="flow-step-pill pill-green">docker compose up</span>
+    <span class="pill-arrow">→</span>
+    <span class="flow-step-pill pill-green">✅ confirmação hash</span>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- COLUNAS ANTES / DEPOIS -->
+<div class="grid-2">
+  <div class="card col-before">
+    <div class="col-header">
+      <span style="font-size:24px">⚠️</span>
+      <div>
+        <div class="col-title">Antes</div>
+        <span class="col-badge badge-red">deploy_mc.py + paramiko</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-icon icon-bad">📦</div>
+      <div class="step-body">
+        <div class="step-title">Dependência externa: paramiko</div>
+        <div class="step-desc">Precisa instalar manualmente. Quebra em máquina nova, CI/CD, ou após limpeza de venv.</div>
+        <div class="step-code">pip install paramiko</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-icon icon-bad">🔑</div>
+      <div class="step-body">
+        <div class="step-title">secrets.py gitignored</div>
+        <div class="step-desc">Arquivo com senha do VPS, DB, JWT, API keys. Precisa ser copiado manualmente para cada PC. Sem ele, deploy falha silenciosamente.</div>
+        <div class="step-code">import secrets as S  # quebra com módulo built-in!</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-icon icon-bad">🗜️</div>
+      <div class="step-body">
+        <div class="step-title">Upload de tarball completo</div>
+        <div class="step-desc">Toda sessão: compacta TUDO (exceto node_modules), faz upload via SFTP. Lento mesmo para mudança de 1 linha.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-icon icon-bad">🐳</div>
+      <div class="step-body">
+        <div class="step-title">docker run com credenciais inline</div>
+        <div class="step-desc">Senha do banco, JWT, API keys visíveis no comando e no histórico de processos do VPS.</div>
+        <div class="step-code">docker run -e JWT_SECRET="abc123" -e PG_PASS="..." ...</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-icon icon-bad">❌</div>
+      <div class="step-body">
+        <div class="step-title">Sem verificação de hash</div>
+        <div class="step-desc">Não há confirmação de que a imagem foi realmente atualizada. Deploy "bem sucedido" pode rodar código antigo.</div>
+      </div>
+    </div>
+
+    <div class="risk-box">
+      <strong>Riscos:</strong> senha em texto claro no CMD • deploy falha entre máquinas • código antigo em produção sem aviso • secrets.py nunca sincronizado
+    </div>
+  </div>
+
+  <div class="card col-after">
+    <div class="col-header">
+      <span style="font-size:24px">✅</span>
+      <div>
+        <div class="col-title">Depois</div>
+        <span class="col-badge badge-green">deploy_mc.sh + rsync + SSH key</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-icon icon-good">🔐</div>
+      <div class="step-body">
+        <div class="step-title">SSH key — zero senha no código</div>
+        <div class="step-desc">Chave SSH já configurada no VPS. Nenhum arquivo de credentials necessário. Funciona em qualquer máquina com a chave.</div>
+        <div class="step-code">ssh root@187.77.43.141  # sem senha</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-icon icon-good">⚡</div>
+      <div class="step-body">
+        <div class="step-title">rsync delta — só o que mudou</div>
+        <div class="step-desc">Rsync compara checksums e envia apenas arquivos alterados. Deploy de 1 arquivo: segundos. Deploy completo: mais rápido que tarball.</div>
+        <div class="step-code">rsync -az --delete --exclude=node_modules ...</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-icon icon-good">🐳</div>
+      <div class="step-body">
+        <div class="step-title">docker compose + .env no VPS</div>
+        <div class="step-desc">Credenciais ficam no .env persistido no VPS. docker compose lê automaticamente. Nunca passadas na linha de comando.</div>
+        <div class="step-code">docker compose up -d  # lê .env local</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-icon icon-good">🔍</div>
+      <div class="step-body">
+        <div class="step-title">Verificação de image hash</div>
+        <div class="step-desc">Compara hash antes e depois do build. Se igual → alerta imediato. Impossível rodar código antigo sem saber.</div>
+        <div class="step-code">Hash antes: sha256:a1b2c3... → depois: sha256:d4e5f6... ✅</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-icon icon-good">🧹</div>
+      <div class="step-body">
+        <div class="step-title">Sem dependências externas</div>
+        <div class="step-desc">Bash nativo + rsync (disponível em qualquer Linux/Mac/WSL). Sem pip, sem bibliotecas, sem setup.</div>
+        <div class="step-code">bash scripts/deploy_mc.sh  # só isso</div>
+      </div>
+    </div>
+
+    <div class="gain-box">
+      <strong>Ganhos:</strong> zero senha em código • funciona em qualquer máquina • deploy incremental • confirmação de hash • credenciais seguras no VPS
+    </div>
+  </div>
+</div>
+
+<!-- TABELA COMPARATIVA -->
+<hr class="divider">
+<div class="section-title">Comparação técnica</div>
+<div class="card">
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Aspecto</th>
+        <th>Antes (paramiko)</th>
+        <th>Depois (rsync)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Autenticação VPS</td>
+        <td class="bad">Senha em secrets.py</td>
+        <td class="good">Chave SSH (zero senha)</td>
+      </tr>
+      <tr>
+        <td>Credenciais app</td>
+        <td class="bad">Passadas inline no docker run</td>
+        <td class="good">.env no VPS, lido pelo compose</td>
+      </tr>
+      <tr>
+        <td>Velocidade de sync</td>
+        <td class="bad">Tarball completo sempre</td>
+        <td class="good">Delta — só arquivos alterados</td>
+      </tr>
+      <tr>
+        <td>Dependências</td>
+        <td class="bad">paramiko (pip install)</td>
+        <td class="good">rsync + bash (nativo)</td>
+      </tr>
+      <tr>
+        <td>secrets.py</td>
+        <td class="bad">Obrigatório, gitignored, esquecido</td>
+        <td class="good">Não necessário</td>
+      </tr>
+      <tr>
+        <td>Verificação de build</td>
+        <td class="bad">Nenhuma</td>
+        <td class="good">Hash antes vs depois</td>
+      </tr>
+      <tr>
+        <td>Portabilidade</td>
+        <td class="bad">Só Windows com paramiko</td>
+        <td class="good">Qualquer OS com bash/WSL</td>
+      </tr>
+      <tr>
+        <td>Histórico de processos</td>
+        <td class="bad">Senhas visíveis no ps aux</td>
+        <td class="good">Nenhuma credencial exposta</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- MIGRAÇÃO -->
+<hr class="divider">
+<div class="section-title">Como migrar — checklist</div>
+<div class="card">
+  <ul class="checklist">
+    <li>Confirmar que <code>docker-compose.yml</code> existe em <code>/opt/mission-control/</code> no VPS</li>
+    <li>Confirmar que <code>.env</code> existe em <code>/opt/mission-control/.env</code> no VPS com todas as variáveis</li>
+    <li>Testar: <code>ssh root@187.77.43.141 "echo ok"</code> — deve funcionar sem senha</li>
+    <li>Rodar: <code>bash scripts/deploy_mc.sh</code> — deve completar sem pedir senha</li>
+    <li>Verificar hash diferente na saída do script</li>
+    <li>Verificar <code>curl https://mc.wingx.app.br/api/health</code> responde 200</li>
+    <li>Arquivar <code>deploy_mc.py</code> e <code>secrets.py</code> (manter como fallback por 1 sprint)</li>
+  </ul>
+</div>
+
+<p style="text-align:center;font-size:12px;color:var(--muted);margin-top:32px">
+  mc.wingx.app.br/docs/deploy-evolution.html · Sessão 16 · 24/03/2026
+</p>
+</body>
+</html>
