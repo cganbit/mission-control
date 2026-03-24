@@ -1,20 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
-import fs from "fs";
-import path from "path";
-
-function getTokens() {
-  const tokensPath =
-    process.env.ML_TOKENS_PATH ||
-    path.join(process.cwd(), "../../../projects/mercadolivre-mcp/data/tokens.json");
-  if (!fs.existsSync(tokensPath)) throw new Error("tokens.json não encontrado");
-  const data = JSON.parse(fs.readFileSync(tokensPath, "utf-8"));
-  return (data.accounts || []) as Array<{
-    seller_id: number;
-    nickname: string;
-    access_token: string;
-  }>;
-}
+import { getMlAccounts } from "@/lib/ml-tokens";
 
 async function mlGet(url: string, token: string) {
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -46,7 +32,7 @@ export async function GET(req: NextRequest) {
   if (!sellerId) return NextResponse.json({ error: "seller_id obrigatório" }, { status: 400 });
 
   try {
-    const accounts = getTokens();
+    const accounts = await getMlAccounts();
     const account = accounts.find((a) => a.seller_id === sellerId);
     if (!account) return NextResponse.json({ error: "Conta não encontrada" }, { status: 404 });
 
@@ -98,7 +84,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "seller_id e item_id obrigatórios" }, { status: 400 });
     }
 
-    const accounts = getTokens();
+    const accounts = await getMlAccounts();
     const account = accounts.find((a) => a.seller_id === seller_id);
     if (!account) return NextResponse.json({ error: "Conta não encontrada" }, { status: 404 });
 

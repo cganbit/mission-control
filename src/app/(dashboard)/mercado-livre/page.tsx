@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   ShoppingCart, TrendingUp, MessageSquare, AlertCircle, CheckCircle2,
   RefreshCw, Package, DollarSign, ChevronDown, Send, Loader2, Edit2,
   Bell, BellOff, ExternalLink, Users, ChevronRight, ChevronDown as ChevronDownIcon,
+  PlusCircle,
 } from 'lucide-react';
 
 function cn(...inputs: any[]) { return inputs.filter(Boolean).join(' '); }
@@ -16,9 +17,12 @@ function getMesAtual() { return new Date().toLocaleString('pt-BR', { month: 'lon
 
 interface StoreStats {
   nickname: string; seller_id: number; status: string;
-  sales_today: number; sales_total: number; month_revenue: number;
+  sales_count: number; revenue: number;
   pending_questions: number; error?: string;
 }
+
+type Period = 'today' | '7d' | '30d' | '90d' | 'custom';
+const PERIOD_LABELS: Record<Period, string> = { today: 'Hoje', '7d': '7 dias', '30d': '30 dias', '90d': '90 dias', custom: 'Período' };
 interface Listing {
   id: string; title: string; price: number; available_quantity: number;
   sold_quantity: number; status: string; permalink: string; thumbnail: string;
@@ -47,7 +51,7 @@ function StatBox({ label, value, sub }: { label: string; value: string | number;
   );
 }
 
-function StoreCard({ store }: { store: StoreStats }) {
+function StoreCard({ store, periodLabel }: { store: StoreStats; periodLabel: string }) {
   const isError = store.status === 'error';
   return (
     <div className={cn(
@@ -65,8 +69,8 @@ function StoreCard({ store }: { store: StoreStats }) {
       ) : (
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-2">
-            <StatBox label="Hoje" value={fmt(store.sales_today)} />
-            <StatBox label="Total" value={store.sales_total >= 1000 ? `${(store.sales_total / 1000).toFixed(1)}k` : fmt(store.sales_total)} />
+            <StatBox label="Vendas" value={fmt(store.sales_count)} />
+            <StatBox label="Faturamento" value={fmtBRL(store.revenue)} />
           </div>
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2 text-slate-400">
@@ -82,13 +86,6 @@ function StoreCard({ store }: { store: StoreStats }) {
                 Em dia ✓
               </span>
             )}
-          </div>
-          <div className="pt-3 border-t border-slate-800">
-            <div className="flex items-center gap-1.5 mb-1">
-              <TrendingUp className="h-3 w-3 text-emerald-500" />
-              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Faturamento — {getMesAtual()}</span>
-            </div>
-            <p className="text-xl font-black text-emerald-400 tabular-nums">{fmtBRL(store.month_revenue)}</p>
           </div>
         </div>
       )}
@@ -752,19 +749,40 @@ export default function MercadoLivrePage() {
   const [stats, setStats] = useState<StoreStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [period, setPeriod] = useState<Period>('today');
+  const [periodLabel, setPeriodLabel] = useState('Hoje');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [showCustom, setShowCustom] = useState(false);
 
-  const fetchStats = () => {
+  const fetchStats = useCallback((p: Period, cf?: string, ct?: string) => {
     setLoading(true);
-    fetch('/api/mercado-livre/stats')
+    let url = `/api/mercado-livre/stats?period=${p}`;
+    if (p === 'custom' && cf) {
+      url += `&from=${cf}`;
+      if (ct) url += `&to=${ct}`;
+    }
+    fetch(url)
       .then(r => r.json())
-      .then(data => { setStats(Array.isArray(data) ? data : []); setLastUpdate(new Date()); setLoading(false); })
+      .then(data => {
+        if (Array.isArray(data.accounts)) setStats(data.accounts);
+        setPeriodLabel(data.period ?? PERIOD_LABELS[p]);
+        setLastUpdate(new Date());
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { fetchStats('today'); }, [fetchStats]);
+
+  const handlePeriod = (p: Period) => {
+    setPeriod(p);
+    setShowCustom(p === 'custom');
+    if (p !== 'custom') fetchStats(p);
   };
 
-  useEffect(() => { fetchStats(); }, []);
-
-  const totalHoje = stats.filter(s => s.status === 'active').reduce((a, s) => a + (s.sales_today || 0), 0);
-  const totalMes = stats.filter(s => s.status === 'active').reduce((a, s) => a + (s.month_revenue || 0), 0);
+  const totalVendas = stats.filter(s => s.status === 'active').reduce((a, s) => a + (s.sales_count || 0), 0);
+  const totalRevenue = stats.filter(s => s.status === 'active').reduce((a, s) => a + (s.revenue || 0), 0);
   const totalPerguntas = stats.filter(s => s.status === 'active').reduce((a, s) => a + (s.pending_questions || 0), 0);
   const activeCount = stats.filter(s => s.status === 'active').length;
 
@@ -804,10 +822,28 @@ export default function MercadoLivrePage() {
             )}
           </p>
         </div>
-        <button onClick={fetchStats}
-          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 border border-slate-700 hover:border-slate-600 px-3 py-1.5 rounded-lg transition-all">
-          <RefreshCw className="h-3 w-3" /> Atualizar
-        </button>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {/* Filtro de período */}
+          <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1">
+            {(['today', '7d', '30d', '90d', 'custom'] as Period[]).map(p => (
+              <button key={p} onClick={() => handlePeriod(p)}
+                className={cn(
+                  "px-2.5 py-1 rounded text-xs font-medium transition-all",
+                  period === p ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-slate-200"
+                )}>
+                {PERIOD_LABELS[p]}
+              </button>
+            ))}
+          </div>
+          <a href="/api/mercado-livre/oauth/authorize"
+            className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 border border-indigo-700/50 hover:border-indigo-500 px-3 py-1.5 rounded-lg transition-all font-medium">
+            <PlusCircle className="h-3.5 w-3.5" /> Conectar conta
+          </a>
+          <button onClick={() => fetchStats(period, customFrom || undefined, customTo || undefined)}
+            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 border border-slate-700 hover:border-slate-600 px-3 py-1.5 rounded-lg transition-all">
+            <RefreshCw className="h-3 w-3" /> Atualizar
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -837,15 +873,31 @@ export default function MercadoLivrePage() {
       {/* Tab Content */}
       {tab === 'overview' && (
         <div className="space-y-5">
+          {/* Datas personalizadas */}
+          {showCustom && (
+            <div className="flex items-center gap-2 bg-slate-900/60 border border-slate-800 rounded-xl p-3">
+              <span className="text-xs text-slate-400 font-medium flex-shrink-0">De</span>
+              <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
+                className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:border-indigo-500 outline-none" />
+              <span className="text-xs text-slate-400 font-medium flex-shrink-0">até</span>
+              <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
+                className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:border-indigo-500 outline-none" />
+              <button onClick={() => fetchStats('custom', customFrom || undefined, customTo || undefined)} disabled={!customFrom}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-all">
+                Buscar
+              </button>
+            </div>
+          )}
+
           {activeCount > 0 && (
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-center">
-                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Vendas Hoje (Total)</p>
-                <p className="text-3xl font-black text-white">{fmt(totalHoje)}</p>
+                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Vendas — {periodLabel}</p>
+                <p className="text-3xl font-black text-white">{fmt(totalVendas)}</p>
               </div>
               <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-center">
-                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Faturamento {getMesAtual()}</p>
-                <p className="text-2xl font-black text-emerald-400">{fmtBRL(totalMes)}</p>
+                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Faturamento — {periodLabel}</p>
+                <p className="text-2xl font-black text-emerald-400">{fmtBRL(totalRevenue)}</p>
               </div>
               <div className={cn("border rounded-xl p-4 text-center", totalPerguntas > 0 ? "bg-red-900/20 border-red-800/50" : "bg-slate-900/60 border-slate-800")}>
                 <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Perguntas Pendentes</p>
@@ -854,7 +906,7 @@ export default function MercadoLivrePage() {
             </div>
           )}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {stats.map(store => <StoreCard key={store.seller_id} store={store} />)}
+            {stats.map(store => <StoreCard key={store.seller_id} store={store} periodLabel={periodLabel} />)}
           </div>
           <NotificacoesCard />
         </div>

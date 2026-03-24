@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
 
 const AGENT_KEY = process.env.PRINT_AGENT_KEY ?? '';
+const QUEUE_KEY = process.env.QUEUE_KEY ?? '';
 const ML_API = 'https://api.mercadolibre.com';
+const LABELS_DIR = join(process.cwd(), 'labels');
+
+function ensureLabelsDir() {
+  if (!existsSync(LABELS_DIR)) mkdirSync(LABELS_DIR, { recursive: true });
+}
 
 async function getTokenForSeller(nickname: string): Promise<string | null> {
   const db = getPool();
@@ -13,12 +21,16 @@ async function getTokenForSeller(nickname: string): Promise<string | null> {
   return accounts.find(a => a.nickname === nickname)?.access_token ?? accounts[0]?.access_token ?? null;
 }
 
-// ─── GET /api/print-queue/[id]/label — agente baixa etiqueta via MC ──────────
-// MC faz o proxy do ML usando os tokens armazenados (renovados automaticamente)
+// ─── GET — agente baixa etiqueta via MC ──────────────────────────────────────
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const key = req.headers.get('x-agent-key');
-  if (!AGENT_KEY || key !== AGENT_KEY) {
+  const queueKey = req.nextUrl.searchParams.get('key');
+
+  const isAgent = AGENT_KEY && key === AGENT_KEY;
+  const isQueue = QUEUE_KEY && queueKey === QUEUE_KEY;
+
+  if (!isAgent && !isQueue) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -26,7 +38,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const db = getPool();
 
   const row = await db.query(
-    `SELECT ml_shipment_id, seller_nickname FROM print_queue WHERE id = $1`,
+    `SELECT ml_shipment_id, seller_nickname, has_label, ml_order_id FROM print_queue WHERE id = $1`,
     [id]
   );
 
@@ -34,9 +46,42 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: 'Job not found' }, { status: 404 });
   }
 
-  const { ml_shipment_id, seller_nickname } = row.rows[0];
+  const { ml_shipment_id, seller_nickname, has_label, ml_order_id } = row.rows[0];
+
+  // Se já temos o PDF salvo, serve direto
+  if (has_label) {
+    ensureLabelsDir();
+    const saved = join(LABELS_DIR, `${id}.pdf`);
+    if (existsSync(saved)) {
+      const pdf = readFileSync(saved);
+      return new NextResponse(pdf, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="etiqueta-${ml_order_id}.pdf"`,
+        },
+      });
+    }
+  }
+
+  // Modo teste: sem shipment_id → serve arquivo local de /public/test-label-{id}.pdf
   if (!ml_shipment_id) {
-    return NextResponse.json({ error: 'No shipment_id — may be Flex or pickup' }, { status: 422 });
+    try {
+      const testFile = join(process.cwd(), 'public', `test-label-${id}.pdf`);
+      const pdf = readFileSync(testFile);
+      return new NextResponse(pdf, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="etiqueta-teste-${id}.pdf"`,
+        },
+      });
+    } catch {
+      return NextResponse.json({ error: 'No shipment_id and no test label file found' }, { status: 422 });
+    }
+  }
+
+  // Apenas agente pode buscar do ML
+  if (!isAgent) {
+    return NextResponse.json({ error: 'Label not stored yet' }, { status: 404 });
   }
 
   const token = await getTokenForSeller(seller_nickname);
@@ -61,4 +106,25 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       'Content-Disposition': `attachment; filename="etiqueta-${ml_shipment_id}.pdf"`,
     },
   });
+}
+
+// ─── POST — agente envia PDF após imprimir ────────────────────────────────────
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const key = req.headers.get('x-agent-key');
+  if (!AGENT_KEY || key !== AGENT_KEY) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const pdf = await req.arrayBuffer();
+  if (!pdf.byteLength) return NextResponse.json({ error: 'Empty body' }, { status: 400 });
+
+  ensureLabelsDir();
+  writeFileSync(join(LABELS_DIR, `${id}.pdf`), Buffer.from(pdf));
+
+  const db = getPool();
+  await db.query(`UPDATE print_queue SET has_label = true WHERE id = $1`, [id]);
+
+  return NextResponse.json({ ok: true });
 }

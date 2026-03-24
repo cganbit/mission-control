@@ -1,103 +1,111 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
-import fs from "fs";
-import path from "path";
+import { getMlAccounts } from "@/lib/ml-tokens";
+
+const ML_API = "https://api.mercadolibre.com";
 
 async function mlFetch(url: string, token: string) {
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!res.ok) throw new Error(`ML ${res.status}`);
   return res.json();
 }
 
-async function getMonthRevenue(sellerId: number, token: string): Promise<number> {
-  const firstDay = new Date();
-  firstDay.setDate(1);
-  firstDay.setHours(0, 0, 0, 0);
+// Data de início do "hoje" em horário de Brasília (UTC-3) no formato aceito pelo ML
+function brasiliaToday(): string {
+  const now = new Date();
+  const brt = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+  const date = brt.toISOString().split('T')[0]; // "2026-03-24"
+  return `${date}T00:00:00.000-03:00`;
+}
 
-  let total = 0;
-  let offset = 0;
+function parsePeriod(period: string, customFrom?: string, customTo?: string): { from: string; to?: string; label: string } {
+  if (period === 'custom' && customFrom) {
+    return {
+      from: `${customFrom}T00:00:00.000-03:00`,
+      to: customTo ? `${customTo}T23:59:59.000-03:00` : undefined,
+      label: `${customFrom} → ${customTo ?? 'hoje'}`,
+    };
+  }
+  const daysAgo = (n: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return `${d.toISOString().split('T')[0]}T00:00:00.000-03:00`;
+  };
+  switch (period) {
+    case '7d':  return { from: daysAgo(7),  label: '7 dias' };
+    case '30d': return { from: daysAgo(30), label: '30 dias' };
+    case '90d': return { from: daysAgo(90), label: '90 dias' };
+    default:    return { from: brasiliaToday(), label: 'Hoje' };
+  }
+}
 
-  while (true) {
-    const url = new URL("https://api.mercadolibre.com/orders/search");
+// Busca count + revenue com no máximo MAX_PAGES páginas (evita timeout)
+const MAX_PAGES = 6; // 300 pedidos max por conta por chamada
+
+async function getStats(sellerId: number, token: string, from: string, to?: string) {
+  let revenue = 0;
+  let count = 0;
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const url = new URL(`${ML_API}/orders/search`);
     url.searchParams.set("seller", String(sellerId));
-    url.searchParams.set("order.date_created_from", firstDay.toISOString());
+    url.searchParams.set("order.status", "paid");
+    url.searchParams.set("order.date_created_from", from);
+    if (to) url.searchParams.set("order.date_created_to", to);
     url.searchParams.set("limit", "50");
-    url.searchParams.set("offset", String(offset));
+    url.searchParams.set("offset", String(page * 50));
 
     const data = await mlFetch(url.toString(), token);
-    const results = data.results ?? [];
+    const results: any[] = data.results ?? [];
 
-    for (const o of results) total += o.total_amount || 0;
-
+    if (page === 0) count = data.paging?.total ?? results.length;
+    for (const o of results) revenue += o.total_amount || 0;
     if (results.length < 50) break;
-    offset += 50;
   }
 
-  return total;
+  return { count, revenue };
 }
 
 export async function GET(req: NextRequest) {
   const session = await getSessionFromRequest(req);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const sp = req.nextUrl.searchParams;
+  const period = sp.get('period') ?? 'today';
+  const { from, to, label } = parsePeriod(period, sp.get('from') ?? undefined, sp.get('to') ?? undefined);
+
   try {
-    const tokensPath = process.env.ML_TOKENS_PATH ||
-      path.join(process.cwd(), "../../../projects/mercadolivre-mcp/data/tokens.json");
+    const accounts = await getMlAccounts();
+    if (!accounts.length) return NextResponse.json({ error: "Nenhuma conta ML configurada." }, { status: 404 });
 
-    if (!fs.existsSync(tokensPath)) {
-      return NextResponse.json({ error: "Configuração multi-contas não encontrada." }, { status: 404 });
-    }
-
-    const data = JSON.parse(fs.readFileSync(tokensPath, "utf-8"));
-    const accounts = data.accounts || [];
-    const results = [];
-
-    for (const acc of accounts) {
+    const results = await Promise.all(accounts.map(async (acc) => {
       try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const todayUrl = new URL("https://api.mercadolibre.com/orders/search");
-        todayUrl.searchParams.set("seller", String(acc.seller_id));
-        todayUrl.searchParams.set("order.date_created_from", today.toISOString());
-        todayUrl.searchParams.set("limit", "1");
-
-        const totalUrl = new URL("https://api.mercadolibre.com/orders/search");
-        totalUrl.searchParams.set("seller", String(acc.seller_id));
-        totalUrl.searchParams.set("limit", "1");
-        totalUrl.searchParams.set("sort", "date_desc");
-        totalUrl.searchParams.set("order.status", "paid");
-
-        const questionsUrl = new URL("https://api.mercadolibre.com/questions/search");
+        const questionsUrl = new URL(`${ML_API}/questions/search`);
         questionsUrl.searchParams.set("seller_id", String(acc.seller_id));
         questionsUrl.searchParams.set("status", "UNANSWERED");
 
-        const [todayData, totalData, questionsData, monthRevenue] = await Promise.all([
-          mlFetch(todayUrl.toString(), acc.access_token),
-          mlFetch(totalUrl.toString(), acc.access_token),
+        const [{ count, revenue }, questionsData] = await Promise.all([
+          getStats(acc.seller_id, acc.access_token, from, to),
           mlFetch(questionsUrl.toString(), acc.access_token),
-          getMonthRevenue(acc.seller_id, acc.access_token),
         ]);
 
-        results.push({
+        return {
           nickname: acc.nickname,
           seller_id: acc.seller_id,
           status: "active",
-          sales_today: todayData.paging?.total ?? 0,
-          sales_total: totalData.paging?.total ?? 0,
-          month_revenue: monthRevenue,
+          sales_count: count,
+          revenue,
           pending_questions: questionsData.paging?.total ?? questionsData.questions?.length ?? 0,
-        });
+        };
       } catch (e: any) {
-        results.push({
-          nickname: acc.nickname,
-          seller_id: acc.seller_id,
-          status: "error",
-          error: e.message || "Unknown error",
-        });
+        return { nickname: acc.nickname, seller_id: acc.seller_id, status: "error", error: e.message };
       }
-    }
+    }));
 
-    return NextResponse.json(results);
+    return NextResponse.json({ period: label, from, to, accounts: results });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

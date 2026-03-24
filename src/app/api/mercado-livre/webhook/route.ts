@@ -138,15 +138,38 @@ function getThumbnail(order: any): string | null {
 
 // ─── Criar job de impressão na fila ──────────────────────────────────────────
 
-async function createPrintJob(orderId: number, shipmentId: number | null, sellerNickname: string): Promise<string | null> {
+async function createPrintJob(
+  orderId: number,
+  shipmentId: number | null,
+  sellerNickname: string,
+  order: any,
+  shipment: any,
+): Promise<string | null> {
   try {
     const token = crypto.randomBytes(20).toString('hex');
+
+    const items = (order.order_items ?? []) as Array<{ item?: { title?: string }; quantity?: number }>;
+    const itemsSummary = items
+      .map(i => `${i.item?.title ?? 'Produto'} × ${i.quantity ?? 1}`)
+      .join(', ');
+
+    const logisticType = (() => {
+      const lt = shipment?.logistic_type ?? order.shipping?.logistic_type ?? '';
+      if (lt === 'fulfillment') return 'Full';
+      if (lt === 'self_service') return 'Clássico';
+      if (lt === 'xd_drop_off') return 'Flex';
+      return 'Correios';
+    })();
+
+    const buyer = order.buyer ?? {};
+    const buyerName = [buyer.first_name, buyer.last_name].filter(Boolean).join(' ') || buyer.nickname || null;
+
     const db = getPool();
     await db.query(
-      `INSERT INTO print_queue (ml_order_id, ml_shipment_id, seller_nickname, token, status)
-       VALUES ($1, $2, $3, $4, 'queued')
+      `INSERT INTO print_queue (ml_order_id, ml_shipment_id, seller_nickname, token, status, items_summary, logistic_type, buyer_name)
+       VALUES ($1, $2, $3, $4, 'queued', $5, $6, $7)
        ON CONFLICT DO NOTHING`,
-      [orderId, shipmentId, sellerNickname, token]
+      [orderId, shipmentId, sellerNickname, token, itemsSummary || null, logisticType, buyerName]
     );
     // Se já existia um job para esse pedido, pega o token existente
     const row = await db.query(
@@ -201,7 +224,7 @@ export async function POST(req: NextRequest) {
 
     // Criar job de impressão + salvar cliente/pedido em paralelo
     const [printToken] = await Promise.all([
-      createPrintJob(order.id, shipmentId, account.nickname),
+      createPrintJob(order.id, shipmentId, account.nickname, order, shipment),
       saveClienteAndPedido(order, shipment, account.nickname).catch(e =>
         console.error('[ML Webhook] Erro ao salvar cliente:', e.message)
       ),
@@ -209,9 +232,11 @@ export async function POST(req: NextRequest) {
 
     // Montar link de impressão e incluir na mesma mensagem
     const baseUrl = process.env.MC_URL ?? 'https://mc.wingx.app.br';
+    const queueKey = process.env.QUEUE_KEY ?? '';
+    const queueLine = queueKey ? `\n📋 *Ver fila:* ${baseUrl}/fila?key=${queueKey}` : '';
     const printLine = (printToken && shipmentId)
-      ? `\n🖨️ *Imprimir etiqueta:* ${baseUrl}/api/print-queue/trigger?token=${printToken}`
-      : '';
+      ? `\n🖨️ *Imprimir etiqueta:* ${baseUrl}/api/print-queue/trigger?token=${printToken}${queueLine}`
+      : queueLine;
 
     const message = formatSaleMessage(order, shipment, account.nickname) + printLine;
 

@@ -20,7 +20,9 @@ export async function proxy(req: NextRequest) {
     pathname.startsWith('/api/paraguai/ml-token-refresh') || // worker cron — auth via x-worker-key
     pathname === '/api/mercado-livre/webhook' || // ML webhook — autenticado por topic/user_id, não por sessão
     pathname === '/api/print-queue/trigger' || // Link de impressão — autenticado por token único no query param
-    pathname.startsWith('/api/print-queue') // WingX Agent — autenticado por x-agent-key
+    pathname.startsWith('/api/print-queue/manage') || // Fila pública — autenticada por QUEUE_KEY no query param
+    pathname.startsWith('/api/print-queue') || // WingX Agent — autenticado por x-agent-key
+    pathname === '/fila' // Dashboard público da fila de impressão — autenticado por QUEUE_KEY
   ) {
     return NextResponse.next();
   }
