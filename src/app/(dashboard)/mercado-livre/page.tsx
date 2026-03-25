@@ -43,9 +43,9 @@ interface DREAccount {
 
 function StatBox({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center p-3 bg-slate-800/50 rounded-lg">
-      <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">{label}</span>
-      <span className="text-2xl font-black text-white">{value}</span>
+    <div className="flex flex-col items-center justify-center p-3 bg-slate-800/50 rounded-lg min-w-0">
+      <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1 truncate w-full text-center">{label}</span>
+      <span className="text-lg font-black text-white w-full text-center truncate leading-tight" title={String(value)}>{value}</span>
       {sub && <span className="text-[10px] text-slate-600 mt-0.5">{sub}</span>}
     </div>
   );
@@ -895,13 +895,19 @@ export default function MercadoLivrePage() {
           )}
 
           {activeCount > 0 && (
-            <div className="grid grid-cols-3 gap-3">
+            <div className={cn("grid grid-cols-3 gap-3 transition-opacity duration-200", loading && "opacity-40")}>
               <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-center">
-                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Vendas — {periodLabel}</p>
+                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1 flex items-center justify-center gap-1">
+                  Vendas — {periodLabel}
+                  {loading && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
+                </p>
                 <p className="text-3xl font-black text-white">{fmt(totalVendas)}</p>
               </div>
               <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-center">
-                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Faturamento — {periodLabel}</p>
+                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1 flex items-center justify-center gap-1">
+                  Faturamento — {periodLabel}
+                  {loading && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
+                </p>
                 <p className="text-2xl font-black text-emerald-400">{fmtBRL(totalRevenue)}</p>
               </div>
               <div className={cn("border rounded-xl p-4 text-center", totalPerguntas > 0 ? "bg-red-900/20 border-red-800/50" : "bg-slate-900/60 border-slate-800")}>
@@ -910,7 +916,7 @@ export default function MercadoLivrePage() {
               </div>
             </div>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className={cn("grid grid-cols-1 md:grid-cols-3 gap-5 transition-opacity duration-200", loading && "opacity-40 pointer-events-none")}>
             {stats.map(store => <StoreCard key={store.seller_id} store={store} periodLabel={periodLabel} />)}
           </div>
           <NotificacoesCard />

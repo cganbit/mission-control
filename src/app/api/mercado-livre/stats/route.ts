@@ -42,26 +42,31 @@ function parsePeriod(period: string, customFrom?: string, customTo?: string): { 
   }
 }
 
-// Busca count + revenue com no máximo MAX_PAGES páginas (evita timeout)
-const MAX_PAGES = 6; // 300 pedidos max por conta por chamada
+// Busca count + revenue paginando até o total real (máx 1000 pedidos por período)
+const HARD_CAP = 20; // 20 páginas × 50 = 1000 pedidos max
 
 async function getStats(sellerId: number, token: string, from: string, to?: string) {
   let revenue = 0;
   let count = 0;
+  let totalPages = 1;
 
-  for (let page = 0; page < MAX_PAGES; page++) {
+  for (let page = 0; page < totalPages && page < HARD_CAP; page++) {
     const url = new URL(`${ML_API}/orders/search`);
     url.searchParams.set("seller", String(sellerId));
     url.searchParams.set("order.status", "paid");
-    url.searchParams.set("order.date_created_from", from);
-    if (to) url.searchParams.set("order.date_created_to", to);
+    url.searchParams.set("order.date_created.from", from);
+    if (to) url.searchParams.set("order.date_created.to", to);
     url.searchParams.set("limit", "50");
     url.searchParams.set("offset", String(page * 50));
 
     const data = await mlFetch(url.toString(), token);
     const results: any[] = data.results ?? [];
 
-    if (page === 0) count = data.paging?.total ?? results.length;
+    if (page === 0) {
+      count = data.paging?.total ?? results.length;
+      totalPages = Math.ceil(count / 50);
+    }
+
     for (const o of results) revenue += o.total_amount || 0;
     if (results.length < 50) break;
   }
