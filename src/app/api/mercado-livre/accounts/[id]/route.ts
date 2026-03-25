@@ -28,6 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (body.notification_group !== undefined) { fields.push(`notification_group = $${i++}`); values.push(body.notification_group); }
   if (body.print_queue_enabled !== undefined) { fields.push(`print_queue_enabled = $${i++}`); values.push(body.print_queue_enabled); }
+  if (body.test_mode !== undefined) { fields.push(`test_mode = $${i++}`); values.push(body.test_mode); }
 
   if (!fields.length) return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 });
 

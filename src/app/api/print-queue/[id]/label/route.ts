@@ -79,8 +79,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { ml_shipment_id, seller_nickname, has_label, ml_order_id, logistic_type } = row.rows[0];
 
+  // Verificar test_mode por conta
+  const accountCfg = await db.query(
+    `SELECT test_mode FROM ml_account_configs WHERE nickname = $1 LIMIT 1`,
+    [seller_nickname]
+  );
+  const accountTestMode = accountCfg.rows[0]?.test_mode ?? false;
+
   // Modo sandbox: retorna PDF de teste sem chamar a ML API
-  const isMock = MOCK_MODE || String(ml_order_id ?? '').startsWith('9999');
+  const isMock = MOCK_MODE || accountTestMode || String(ml_order_id ?? '').startsWith('9999');
   if (isMock) {
     const isLogisticType = (t: string) => String(logistic_type ?? '').toLowerCase().includes(t);
     const mockCandidates = [

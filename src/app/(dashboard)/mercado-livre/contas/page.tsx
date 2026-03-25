@@ -8,6 +8,7 @@ interface Account {
   nickname: string;
   owner_username: string | null;
   print_queue_enabled: boolean;
+  test_mode: boolean;
   notification_group: string;
   created_at: string;
 }
@@ -61,6 +62,25 @@ export default function ContasMLPage() {
     } else {
       const d = await res.json();
       setError(d.error ?? 'Erro ao salvar');
+    }
+  }
+
+  async function toggleTestMode(id: number, current: boolean) {
+    await fetch(`/api/mercado-livre/accounts/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ test_mode: !current }),
+    });
+    setAccounts(prev => prev.map(a => a.id === id ? { ...a, test_mode: !current } : a));
+  }
+
+  async function resend(id: number, nickname: string) {
+    const res = await fetch(`/api/mercado-livre/accounts/${id}/resend`, { method: 'POST' });
+    const data = await res.json();
+    if (res.ok) {
+      alert(`✅ Notificação reenviada!\nConta: ${nickname}\nPedido: #${data.order_id} — R$${data.total}`);
+    } else {
+      alert(`❌ Erro: ${data.error}`);
     }
   }
 
@@ -122,6 +142,7 @@ export default function ContasMLPage() {
                 <th className="text-left px-4 py-3 font-medium">Seller ID</th>
                 <th className="text-left px-4 py-3 font-medium">Grupo de Notificação</th>
                 <th className="text-center px-4 py-3 font-medium">Impressão</th>
+                <th className="text-center px-4 py-3 font-medium">Modo</th>
                 <th className="text-left px-4 py-3 font-medium">Dono</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -163,9 +184,28 @@ export default function ContasMLPage() {
                       <span className={`inline-block h-4 w-4 mt-0.5 rounded-full bg-white shadow transition-transform ${acc.print_queue_enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
                     </button>
                   </td>
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      onClick={() => toggleTestMode(acc.id, acc.test_mode)}
+                      className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${acc.test_mode ? 'bg-amber-500' : 'bg-slate-600'}`}
+                      title={acc.test_mode ? 'Modo Teste — etiqueta mock. Clique para Produção' : 'Modo Produção. Clique para Teste'}
+                    >
+                      <span className={`inline-block h-4 w-4 mt-0.5 rounded-full bg-white shadow transition-transform ${acc.test_mode ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </button>
+                    <div className={`text-xs mt-0.5 ${acc.test_mode ? 'text-amber-400' : 'text-slate-600'}`}>
+                      {acc.test_mode ? 'Teste' : 'Prod'}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-slate-400 text-xs">{acc.owner_username ?? '—'}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-3">
+                      <button
+                        onClick={() => resend(acc.id, acc.nickname)}
+                        className="text-emerald-400 hover:text-emerald-300 transition-colors text-xs font-medium"
+                        title="Reenviar notificação do último pedido no WhatsApp"
+                      >
+                        Reenviar
+                      </button>
                       <button
                         onClick={() => {
                           if (confirm(`Para reconectar "${acc.nickname}", você precisa estar logado no Mercado Livre com essa conta neste navegador.\n\nContinuar?`)) {
