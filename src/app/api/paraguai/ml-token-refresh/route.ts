@@ -66,45 +66,83 @@ async function saveAllAccounts(accounts: MlAccount[]): Promise<void> {
   }
 }
 
+const REFRESH_MARGIN_MS = 2 * 60 * 60 * 1000; // refresh se expira em < 2h
+const MAX_RETRIES = 3;
+const RETRY_DELAYS_MS = [2000, 4000, 8000]; // backoff: 2s, 4s, 8s
+const STAGGER_MS = 600; // delay entre contas para evitar rate limit
+
+async function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
+
 async function refreshAccount(
   account: MlAccount,
   appId: string,
-  clientSecret: string
+  clientSecret: string,
+  force = false,
 ): Promise<{ account: MlAccount; refreshed: boolean; error?: string }> {
-  const margin = 30 * 60 * 1000; // refresh if expires in < 30min
-  if (account.expires_at && Date.now() < account.expires_at - margin) {
+  if (!force && account.expires_at && Date.now() < account.expires_at - REFRESH_MARGIN_MS) {
     return { account, refreshed: false }; // still valid
   }
 
-  try {
-    const res = await fetch(`${ML_API}/oauth/token`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        client_id: appId,
-        client_secret: clientSecret,
-        refresh_token: account.refresh_token,
-      }).toString(),
-      signal: AbortSignal.timeout(15000),
-    });
+  let lastError = '';
 
-    if (!res.ok) {
-      const body = await res.text();
-      return { account, refreshed: false, error: `HTTP ${res.status}: ${body.slice(0, 200)}` };
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      await sleep(RETRY_DELAYS_MS[attempt - 1] ?? 8000);
     }
 
-    const token = await res.json();
-    const updated: MlAccount = {
-      ...account,
-      access_token: token.access_token,
-      refresh_token: token.refresh_token ?? account.refresh_token,
-      expires_at: Date.now() + (token.expires_in ?? 21600) * 1000,
-    };
-    return { account: updated, refreshed: true };
-  } catch (e: any) {
-    return { account, refreshed: false, error: e.message };
+    try {
+      const res = await fetch(`${ML_API}/oauth/token`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          client_id: appId,
+          client_secret: clientSecret,
+          refresh_token: account.refresh_token,
+        }).toString(),
+        signal: AbortSignal.timeout(15000),
+      });
+
+      // Rate limit / upstream error → retry
+      if (res.status === 429 || res.status === 503) {
+        lastError = `HTTP ${res.status} (tentativa ${attempt + 1}/${MAX_RETRIES + 1})`;
+        continue;
+      }
+
+      if (!res.ok) {
+        const body = await res.text();
+        return { account, refreshed: false, error: `HTTP ${res.status}: ${body.slice(0, 200)}` };
+      }
+
+      const token = await res.json();
+      const updated: MlAccount = {
+        ...account,
+        access_token: token.access_token,
+        refresh_token: token.refresh_token ?? account.refresh_token,
+        expires_at: Date.now() + (token.expires_in ?? 21600) * 1000,
+      };
+      return { account: updated, refreshed: true };
+    } catch (e: any) {
+      lastError = e.message;
+    }
   }
+
+  return { account, refreshed: false, error: `Falhou após ${MAX_RETRIES + 1} tentativas: ${lastError}` };
+}
+
+// Refresh sequencial com stagger para evitar rate limit do ML
+async function refreshAllSequential(
+  accounts: MlAccount[],
+  appId: string,
+  clientSecret: string,
+  force = false,
+) {
+  const results = [];
+  for (let i = 0; i < accounts.length; i++) {
+    if (i > 0) await sleep(STAGGER_MS);
+    results.push(await refreshAccount(accounts[i], appId, clientSecret, force));
+  }
+  return results;
 }
 
 
@@ -125,9 +163,8 @@ export async function POST(req: NextRequest) {
     const { appId, clientSecret } = await getAppCredentials();
     const accounts = await getAllAccounts();
 
-    const results = await Promise.all(
-      accounts.map(acc => refreshAccount(acc, appId, clientSecret))
-    );
+    const force = req.nextUrl.searchParams.get('force') === '1';
+    const results = await refreshAllSequential(accounts, appId, clientSecret, force);
 
     // Save all updated accounts back
     const updatedAccounts = results.map(r => r.account);
