@@ -17,6 +17,7 @@ interface AvailableToken {
   nickname: string;
 }
 
+
 export default function ContasMLPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [availableTokens, setAvailableTokens] = useState<AvailableToken[]>([]);
@@ -164,12 +165,23 @@ export default function ContasMLPage() {
                   </td>
                   <td className="px-4 py-3 text-slate-400 text-xs">{acc.owner_username ?? '—'}</td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleDelete(acc.id, acc.nickname)}
-                      className="text-slate-500 hover:text-red-400 transition-colors text-xs"
-                    >
-                      Remover
-                    </button>
+                    <div className="flex items-center justify-end gap-3">
+                      <a
+                        href="/api/mercado-livre/oauth/authorize"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-amber-400 hover:text-amber-300 transition-colors text-xs font-medium"
+                        title="Re-autorizar esta conta no Mercado Livre"
+                      >
+                        Reconectar
+                      </a>
+                      <button
+                        onClick={() => handleDelete(acc.id, acc.nickname)}
+                        className="text-slate-500 hover:text-red-400 transition-colors text-xs"
+                      >
+                        Remover
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
