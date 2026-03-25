@@ -166,15 +166,16 @@ export default function ContasMLPage() {
                   <td className="px-4 py-3 text-slate-400 text-xs">{acc.owner_username ?? '—'}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-3">
-                      <a
-                        href="/api/mercado-livre/oauth/authorize"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        onClick={() => {
+                          if (confirm(`Para reconectar "${acc.nickname}", você precisa estar logado no Mercado Livre com essa conta neste navegador.\n\nContinuar?`)) {
+                            window.open('/api/mercado-livre/oauth/authorize', '_blank');
+                          }
+                        }}
                         className="text-amber-400 hover:text-amber-300 transition-colors text-xs font-medium"
-                        title="Re-autorizar esta conta no Mercado Livre"
                       >
                         Reconectar
-                      </a>
+                      </button>
                       <button
                         onClick={() => handleDelete(acc.id, acc.nickname)}
                         className="text-slate-500 hover:text-red-400 transition-colors text-xs"
