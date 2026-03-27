@@ -5,7 +5,7 @@ import { logAudit } from '@/lib/audit';
 import { sendWhatsApp } from '@/lib/whatsapp';
 
 const ML_API = 'https://api.mercadolibre.com';
-const WORKER_KEY = process.env.WORKER_KEY || 'catalogo-worker-2026';
+const WORKER_KEY = process.env.WORKER_KEY;
 
 interface MlAccount {
   seller_id: number;
