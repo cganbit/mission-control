@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { getSessionFromRequest, hasRole } from '@/lib/auth';
+import { auditLog } from '@/lib/mc-audit';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
@@ -69,6 +70,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const { id } = await params;
+  const start = Date.now();
   const db = getPool();
 
   const row = await db.query(
@@ -160,10 +162,38 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     console.error(`[label] ML error ${mlRes.status} para shipment ${ml_shipment_id} (seller: ${seller_nickname}): ${txt.slice(0, 200)}`);
     // 424 = Failed Dependency (erro na ML API), 502 = apenas para erros 5xx da ML
     const status = mlRes.status >= 500 ? 502 : 424;
+    await auditLog({
+      event_type: 'label_generated',
+      entity_type: 'print_queue',
+      entity_id: Number(id),
+      seller_nickname,
+      status: 'error',
+      error_msg: `ML ${mlRes.status}: ${txt.slice(0, 200)}`,
+      duration_ms: Date.now() - start,
+    });
     return NextResponse.json({ error: `ML ${mlRes.status}: ${txt.slice(0, 100)}` }, { status });
   }
 
   const pdf = await mlRes.arrayBuffer();
+
+  // Gerar qr_code_url e salvar (token já existe na linha lida acima)
+  const mcUrl = process.env.MC_URL ?? '';
+  const pqRow = await db.query(`SELECT token FROM print_queue WHERE id = $1`, [id]);
+  const pqToken = pqRow.rows[0]?.token ?? null;
+  if (pqToken && mcUrl) {
+    const qrCodeUrl = `${mcUrl}/api/print-queue/confirm?token=${pqToken}`;
+    await db.query(`UPDATE print_queue SET qr_code_url = $1 WHERE id = $2`, [qrCodeUrl, id]);
+  }
+
+  await auditLog({
+    event_type: 'label_generated',
+    entity_type: 'print_queue',
+    entity_id: Number(id),
+    seller_nickname,
+    status: 'ok',
+    duration_ms: Date.now() - start,
+  });
+
   return new NextResponse(pdf, {
     headers: {
       'Content-Type': 'application/pdf',

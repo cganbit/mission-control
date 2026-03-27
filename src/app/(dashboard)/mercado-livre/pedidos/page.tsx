@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface Job {
   id: number;
@@ -15,6 +17,50 @@ interface Job {
   logistic_type: string | null;
   buyer_name: string | null;
   has_label: boolean;
+  qr_code_url: string | null;
+}
+
+// ─── QR Modal ─────────────────────────────────────────────────────────────────
+
+function QRModal({ url, orderId, onClose }: { url: string; orderId: string; onClose: () => void }) {
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-slate-900 border border-slate-700/50 rounded-2xl p-8 max-w-sm w-full mx-4 flex flex-col items-center gap-6 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="text-center space-y-1">
+          <h2 className="text-base font-bold text-slate-100">📱 QR Confirmar</h2>
+          <p className="text-xs text-slate-500 font-mono">Pedido #{orderId}</p>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl">
+          <QRCodeSVG value={url} size={200} level="M" />
+        </div>
+
+        <p className="text-xs text-slate-400 text-center leading-relaxed">
+          Escaneie para confirmar embalagem
+        </p>
+
+        <button
+          onClick={onClose}
+          className="w-full px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-800 text-slate-300 border border-slate-700/50 hover:border-slate-500 hover:text-slate-100 transition-colors"
+        >
+          Fechar
+        </button>
+      </div>
+    </div>,
+    document.body
+  );
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -47,6 +93,7 @@ export default function PedidosMLPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [accounts, setAccounts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [qrModal, setQrModal] = useState<{ url: string; orderId: string } | null>(null);
 
   const [filterAccount, setFilterAccount] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -95,6 +142,13 @@ export default function PedidosMLPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {qrModal && (
+        <QRModal
+          url={qrModal.url}
+          orderId={qrModal.orderId}
+          onClose={() => setQrModal(null)}
+        />
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -234,6 +288,15 @@ export default function PedidosMLPage() {
                           title="Baixar etiqueta PDF"
                         >
                           Etiqueta
+                        </button>
+                      )}
+                      {job.status === 'done' && job.qr_code_url && (
+                        <button
+                          onClick={() => setQrModal({ url: job.qr_code_url!, orderId: job.ml_order_id })}
+                          className="text-violet-400 hover:text-violet-300 transition-colors text-xs font-medium whitespace-nowrap"
+                          title="Confirmar embalagem via QR Code"
+                        >
+                          📱 QR Confirmar
                         </button>
                       )}
                       {(job.status === 'queued' || job.status === 'error') && (

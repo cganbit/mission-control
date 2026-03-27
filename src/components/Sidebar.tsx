@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Shield, ClipboardList, Bot, Zap, Calendar, Brain,
   FolderOpen, CircleDollarSign, Plug, Users, BarChart2,
-  TrendingUp, Package, ShoppingBag, KeyRound,
+  TrendingUp, Package, ShoppingBag, KeyRound, Activity,
   PanelLeftClose, PanelLeftOpen, LogOut, ChevronDown, ChevronUp, AppWindow,
 } from 'lucide-react';
 
@@ -60,6 +60,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/connectors', label: 'Conectores',    icon: Plug,             minRole: 'admin' },
       { href: '/users',      label: 'Usuários',      icon: Users,            minRole: 'admin' },
       { href: '/infograficos', label: 'Infográficos', icon: BarChart2,       minRole: 'admin' },
+      { href: '/sre',          label: 'SRE',          icon: Activity,         minRole: 'admin' },
     ],
   },
 ];
