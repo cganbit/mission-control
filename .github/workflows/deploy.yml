@@ -29,6 +29,22 @@ jobs:
             ./ \
             root@${{ secrets.VPS_HOST }}:/opt/mission-control/
 
+      - name: Update .env on VPS
+        run: |
+          ssh root@${{ secrets.VPS_HOST }} "cat > /opt/mission-control/.env << 'ENVEOF'
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          DATABASE_SSL=false
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+          SESSION_HOURS=24
+          ML_TOKENS_PATH=/opt/ml-data/tokens.json
+          FIRECRAWL_API_KEY=${{ secrets.FIRECRAWL_API_KEY }}
+          OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
+          MC_URL=https://mc.wingx.app.br
+          PRINT_AGENT_KEY=${{ secrets.PRINT_AGENT_KEY }}
+          QUEUE_KEY=${{ secrets.QUEUE_KEY }}
+          ENVEOF"
+
       - name: Build & restart container
         run: |
           ssh root@${{ secrets.VPS_HOST }} "
