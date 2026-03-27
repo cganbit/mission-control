@@ -44,6 +44,7 @@ jobs:
           PRINT_AGENT_KEY=${{ secrets.PRINT_AGENT_KEY }}
           QUEUE_KEY=${{ secrets.QUEUE_KEY }}
           DB_ENCRYPTION_KEY=${{ secrets.DB_ENCRYPTION_KEY }}
+          WORKER_KEY=${{ secrets.WORKER_KEY }}
           ENVEOF"
 
       - name: Build & restart container
@@ -58,3 +59,50 @@ jobs:
         run: |
           sleep 15
           curl -f https://mc.wingx.app.br/api/health || exit 1
+
+      - name: Smoke tests
+        run: |
+          BASE=https://mc.wingx.app.br
+          PASS=0
+          FAIL=0
+
+          check() {
+            local name="$1" url="$2" expected="$3" extra_args="${4:-}"
+            status=$(curl -s -o /dev/null -w "%{http_code}" $extra_args "$url")
+            if [ "$status" = "$expected" ]; then
+              echo "✅ $name ($status)"
+              PASS=$((PASS+1))
+            else
+              echo "❌ $name — esperado $expected, recebeu $status"
+              FAIL=$((FAIL+1))
+            fi
+          }
+
+          # Login para obter cookie JWT
+          COOKIE=$(curl -s -c - -X POST "$BASE/api/auth/login" \
+            -H "Content-Type: application/json" \
+            -d "{\"username\":\"admin\",\"password\":\"${{ secrets.ADMIN_PASSWORD }}\"}" \
+            | grep mc_token | awk '{print "mc_token="$NF}')
+
+          # Públicos
+          check "health"             "$BASE/api/health"                      "200"
+          check "webhook GET"        "$BASE/api/mercado-livre/webhook"        "200"
+          check "print trigger (sem token)" "$BASE/api/print-queue/trigger"  "400"
+
+          # Com QUEUE_KEY
+          check "fila manage"        "$BASE/api/print-queue/manage?key=${{ secrets.QUEUE_KEY }}" "200"
+
+          # Com JWT
+          if [ -n "$COOKIE" ]; then
+            check "clientes ML"      "$BASE/api/mercado-livre/clientes"       "200" "-H 'Cookie: $COOKIE'"
+            check "stats ML"         "$BASE/api/mercado-livre/stats"          "200" "-H 'Cookie: $COOKIE'"
+            check "SRE events"       "$BASE/api/sre/events"                   "200" "-H 'Cookie: $COOKIE'"
+            check "print queue"      "$BASE/api/print-queue"                  "401" "-H 'Cookie: $COOKIE'"
+          else
+            echo "⚠️  Login falhou — testes JWT pulados"
+            FAIL=$((FAIL+1))
+          fi
+
+          echo ""
+          echo "Resultado: ✅ $PASS passou | ❌ $FAIL falhou"
+          [ "$FAIL" -eq 0 ] || exit 1
