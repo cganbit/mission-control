@@ -1,0 +1,42 @@
+name: Deploy — Mission Control
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Sync files to VPS
+        run: |
+          rsync -avz --delete \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='.next' \
+            ./ \
+            root@${{ secrets.VPS_HOST }}:/opt/mission-control/
+
+      - name: Build & restart container
+        run: |
+          ssh root@${{ secrets.VPS_HOST }} "
+            cd /opt/mission-control &&
+            docker compose build --no-cache &&
+            docker compose up -d
+          "
+
+      - name: Health check
+        run: |
+          sleep 15
+          curl -f https://mc.wingx.app.br/api/health || exit 1
