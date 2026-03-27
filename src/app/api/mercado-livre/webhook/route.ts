@@ -68,11 +68,11 @@ async function saveClienteAndPedido(order: any, shipment: any, sellerNickname: s
     unit_price: i.unit_price,
   }));
 
-  // Insert pedido (ignora se já existe — idempotente)
+  // Upsert pedido — se já existia como payment_required, promove para paid
   await db.query(
     `INSERT INTO ml_pedidos (ml_order_id, ml_buyer_id, seller_nickname, items_json, total, status, shipment_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT (ml_order_id) DO NOTHING`,
+     ON CONFLICT (ml_order_id) DO UPDATE SET status = 'paid'`,
     [order.id, ml_buyer_id, sellerNickname, JSON.stringify(items), order.total_amount ?? 0, order.status, shipment?.id ?? null]
   );
 }
@@ -206,6 +206,67 @@ export async function POST(req: NextRequest) {
 
     const orderUrl = resource.startsWith('http') ? resource : `${ML_API}${resource}`;
     const order = await mlGet(orderUrl, account.access_token);
+
+    // ── Mudança 1 & 2: capturar payment_required ────────────────────────────
+    if (order.status === 'payment_required') {
+      const buyer = order.buyer ?? {};
+      const ml_buyer_id = buyer.id ?? null;
+      const items = (order.order_items ?? []).map((i: any) => ({
+        title: i.item?.title,
+        quantity: i.quantity,
+        unit_price: i.unit_price,
+      }));
+      const sellerNickname = account.nickname;
+
+      // Salvar/atualizar em ml_pedidos com status payment_required
+      try {
+        const db = getPool();
+        await db.query(
+          `INSERT INTO ml_pedidos (ml_order_id, ml_buyer_id, seller_nickname, items_json, total, status, shipment_id)
+           VALUES ($1, $2, $3, $4, $5, 'payment_required', $6)
+           ON CONFLICT (ml_order_id) DO UPDATE SET status = 'payment_required'`,
+          [order.id, ml_buyer_id, sellerNickname, JSON.stringify(items), order.total_amount ?? 0, order.shipping?.id ?? null]
+        );
+      } catch (e: any) {
+        console.error('[ML Webhook] Erro ao salvar payment_required:', e.message);
+      }
+
+      // Notificação WhatsApp para payment_required
+      const buyerName = buyer.nickname || buyer.first_name || 'Comprador';
+      const firstItem = order.order_items?.[0];
+      const itemTitle = firstItem?.item?.title ?? 'Produto';
+      const itemQty = firstItem?.quantity ?? 1;
+      const totalFormatted = Number(order.total_amount ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+      const prMsg = [
+        `⏳ *Nova venda aguardando pagamento*`,
+        ``,
+        `🛒 *Pedido:* #ML-${order.id}`,
+        `👤 *Comprador:* ${buyerName}`,
+        `📦 *Item:* ${itemTitle} (x${itemQty})`,
+        `💰 *Valor:* R$ ${totalFormatted}`,
+        `🏷️ *Conta:* ${sellerNickname}`,
+        ``,
+        `⚠️ Pagamento ainda não confirmado.`,
+        `Etiqueta será gerada após a confirmação.`,
+      ].join('\n');
+
+      try {
+        // Buscar notifGroup da conta
+        const db = getPool();
+        const cfgRowPr = await db.query(
+          `SELECT notification_group FROM ml_account_configs WHERE seller_id = $1`,
+          [account.seller_id]
+        );
+        const notifGroupPr: string | undefined = cfgRowPr.rows[0]?.notification_group || undefined;
+        await sendWhatsApp(prMsg, notifGroupPr);
+      } catch (e: any) {
+        console.error('[ML Webhook] Erro ao enviar WhatsApp payment_required:', e.message);
+      }
+
+      return NextResponse.json({ ok: true, saved: 'payment_required' });
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     if (order.status !== 'paid') {
       return NextResponse.json({ ok: true, skipped: true, reason: `status=${order.status}` });

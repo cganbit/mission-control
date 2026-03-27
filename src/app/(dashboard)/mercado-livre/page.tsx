@@ -18,7 +18,9 @@ function getMesAtual() { return new Date().toLocaleString('pt-BR', { month: 'lon
 interface StoreStats {
   nickname: string; seller_id: number; status: string;
   sales_count: number; revenue: number;
-  pending_questions: number; error?: string;
+  pending_questions: number;
+  pending_payment_count?: number;
+  error?: string;
 }
 
 type Period = 'today' | '7d' | '30d' | '90d' | 'custom';
@@ -77,6 +79,13 @@ function StoreCard({ store, periodLabel }: { store: StoreStats; periodLabel: str
             <StatBox label="Vendas" value={fmt(store.sales_count)} />
             <StatBox label="Faturamento" value={fmtBRL(store.revenue)} />
           </div>
+          {(store.pending_payment_count ?? 0) > 0 && (
+            <div className="flex items-center gap-2 px-1">
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                ⏳ {store.pending_payment_count} aguardando pagamento
+              </span>
+            </div>
+          )}
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2 text-slate-400">
               <MessageSquare className="h-3.5 w-3.5 text-amber-400" />

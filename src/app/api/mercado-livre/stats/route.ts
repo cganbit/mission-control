@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
 import { getMlAccounts } from "@/lib/ml-tokens";
+import { query } from "@/lib/db";
 
 const ML_API = "https://api.mercadolibre.com";
 
@@ -110,7 +111,21 @@ export async function GET(req: NextRequest) {
       }
     }));
 
-    return NextResponse.json({ period: label, from, to, accounts: results });
+    // Query pending_payment_count por nickname
+    const pendingRows = await query<{ seller_nickname: string; pending_count: string }>(
+      `SELECT seller_nickname, COUNT(*) as pending_count
+       FROM ml_pedidos
+       WHERE status = 'payment_required'
+       GROUP BY seller_nickname`
+    );
+    const pendingMap = new Map(pendingRows.map(r => [r.seller_nickname, Number(r.pending_count)]));
+
+    const accountsWithPending = results.map(acc => ({
+      ...acc,
+      pending_payment_count: pendingMap.get(acc.nickname) ?? 0,
+    }));
+
+    return NextResponse.json({ period: label, from, to, accounts: accountsWithPending });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
