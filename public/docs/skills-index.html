@@ -239,7 +239,7 @@
 <div class="header">
   <h1>Skills Index</h1>
   <p>Capacidades do Claude no ecossistema Wingx / Paraguai</p>
-  <div class="badge">Atualizado em 27/03/2026</div>
+  <div class="badge">Atualizado em 27/03/2026 — novas features: pagamento pendente · CRM clientes · QR confirm · SRE/audit</div>
 </div>
 
 <!-- Stats -->
@@ -381,13 +381,13 @@
         <div class="card-name">audit</div>
         <span class="card-type tag-project">projeto</span>
       </div>
-      <div class="card-desc">Audit log na tabela paraguai_audit_log. Rastreamento de ações críticas e revisão de histórico de operações.</div>
+      <div class="card-desc">Audit log na tabela <code>mc_audit_log</code>. Rastreamento de todos os eventos do sistema (webhook, impressão, QR, CRM). Painel SRE em <code>/sre</code> com filtros e auto-refresh.</div>
       <div class="card-footer">
         <div class="owner">
           <div class="owner-avatar avatar-cleiton">C</div>
           Cleiton
         </div>
-        <span class="trigger-tag">audit log</span>
+        <span class="trigger-tag">audit log, sre, eventos</span>
       </div>
     </div>
 
@@ -411,13 +411,13 @@
         <div class="card-name">mercado-livre</div>
         <span class="card-type tag-project">projeto</span>
       </div>
-      <div class="card-desc">Especialista ML: OAuth multi-conta, webhooks, etiquetas, anúncios, MCP tools. Carrega gotchas e regras do projeto.</div>
+      <div class="card-desc">Especialista ML: OAuth multi-conta, webhooks, etiquetas, anúncios, MCP tools. Suporte a <code>payment_required</code>, CRM de clientes (<code>/mercado-livre/clientes</code>), notas/etiquetas. Endpoint correto: <code>/shipment_labels?shipment_ids=...&amp;response_type=pdf</code>.</div>
       <div class="card-footer">
         <div class="owner">
           <div class="owner-avatar avatar-cleiton">C</div>
           Cleiton
         </div>
-        <span class="trigger-tag">mercado livre, ml, webhook, etiqueta, token</span>
+        <span class="trigger-tag">mercado livre, ml, webhook, etiqueta, token, crm, clientes</span>
       </div>
     </div>
 
@@ -426,13 +426,13 @@
         <div class="card-name">wingx</div>
         <span class="card-type tag-project">projeto</span>
       </div>
-      <div class="card-desc">Especialista e-commerce WingX: Next.js 15, Drizzle ORM, MercadoPago SDK v2, catálogo de baterias DJI.</div>
+      <div class="card-desc">Especialista e-commerce WingX: Next.js 15, Drizzle ORM, MercadoPago SDK v2, catálogo de baterias DJI. Integração com Mission Control (print_queue, QR confirm, audit log).</div>
       <div class="card-footer">
         <div class="owner">
           <div class="owner-avatar avatar-cleiton">C</div>
           Cleiton
         </div>
-        <span class="trigger-tag">wingx, loja, checkout, produto, bateria</span>
+        <span class="trigger-tag">wingx, loja, checkout, produto, bateria, qr confirm</span>
       </div>
     </div>
 

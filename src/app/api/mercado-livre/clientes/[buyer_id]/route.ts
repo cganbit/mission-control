@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { getPool } from '@/lib/db';
+import { safeDecrypt } from '@/lib/crypto';
 
 // GET /api/mercado-livre/clientes/[buyer_id]
 // Retorna perfil completo: dados do cliente + lojas compradas + histórico de pedidos
@@ -34,7 +35,13 @@ export async function GET(
       return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 });
     }
 
-    const cliente = clienteResult.rows[0];
+    const clienteRaw = clienteResult.rows[0];
+    const cliente = {
+      ...clienteRaw,
+      cpf: safeDecrypt(clienteRaw.cpf),
+      telefone: safeDecrypt(clienteRaw.telefone),
+      email: safeDecrypt(clienteRaw.email),
+    };
 
     // 2. Pedidos agrupados por loja
     const lojasResult = await db.query(

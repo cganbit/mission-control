@@ -162,6 +162,8 @@
   .bubble-orange  { background: #1c0a00; border-color: #f97316; }
   .bubble-red     { background: #1c0505; border-color: #ef4444; }
   .bubble-teal    { background: #022c22; border-color: #14b8a6; }
+  .bubble-amber   { background: #1c1200; border-color: #f59e0b; }
+  .tag-amber { background: #451a03; color: #fcd34d; }
 
   /* ── Final ── */
   .finish {
@@ -226,14 +228,29 @@
 
   <div class="step">
     <div class="step-left">
+      <div class="icon-bubble bubble-amber">⏳</div>
+      <div class="connector solid"></div>
+    </div>
+    <div class="step-body">
+      <div class="step-number">Passo 1a — Pagamento Pendente</div>
+      <div class="step-title">Webhook captura <code>payment_required</code></div>
+      <div class="step-desc">Antes do pagamento ser confirmado, o ML pode gerar um evento <code>payment_required</code>. O MC salva o pedido com status pendente e envia notificação WhatsApp com badge ⏳.</div>
+      <span class="tag tag-amber">payment_required</span>
+      <span class="tag tag-orange">WhatsApp ⏳</span>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-left">
       <div class="icon-bubble bubble-yellow">🛍️</div>
       <div class="connector solid"></div>
     </div>
     <div class="step-body">
-      <div class="step-number">Passo 1</div>
+      <div class="step-number">Passo 1b — Pagamento Confirmado</div>
       <div class="step-title">Venda paga no Mercado Livre</div>
-      <div class="step-desc">Comprador finaliza o pagamento. O ML gera automaticamente uma notificação de pedido pago (<code>orders_v2 / paid</code>).</div>
+      <div class="step-desc">Comprador finaliza o pagamento. O ML gera automaticamente uma notificação de pedido pago (<code>orders_v2 / paid</code>). Status atualizado de pendente para pago.</div>
       <span class="tag tag-orange">ML API</span>
+      <span class="tag tag-green">status: paid</span>
     </div>
   </div>
 
@@ -350,7 +367,7 @@
     <div class="step-body">
       <div class="step-number">Passo 8</div>
       <div class="step-title">MC baixa a etiqueta PDF do Mercado Livre</div>
-      <div class="step-desc">O agente pede o PDF ao MC. O MC usa o token OAuth armazenado (renovado automaticamente) para buscar a etiqueta no <strong>ML API /shipments/{id}/labels</strong> e devolve o PDF ao agente.</div>
+      <div class="step-desc">O agente pede o PDF ao MC. O MC usa o token OAuth armazenado (renovado automaticamente) para buscar a etiqueta no <strong>ML API /shipment_labels?shipment_ids=...&amp;response_type=pdf</strong> e devolve o PDF ao agente.</div>
       <span class="tag tag-orange">ML OAuth token</span>
       <span class="tag tag-purple">Proxy seguro</span>
     </div>
@@ -380,6 +397,7 @@
   <div class="step">
     <div class="step-left">
       <div class="icon-bubble bubble-green">✅</div>
+      <div class="connector solid"></div>
     </div>
     <div class="step-body">
       <div class="step-number">Passo 10</div>
@@ -389,10 +407,44 @@
     </div>
   </div>
 
+  <!-- QR CONFIRM -->
+  <div class="section-divider">
+    <hr>
+    <span class="sd-zap">QR Code — Confirmação de Embalagem</span>
+    <hr>
+  </div>
+
+  <div class="step">
+    <div class="step-left">
+      <div class="icon-bubble bubble-teal">📦</div>
+      <div class="connector solid"></div>
+    </div>
+    <div class="step-body">
+      <div class="step-number">Passo 11</div>
+      <div class="step-title">QR Code gerado após impressão</div>
+      <div class="step-desc">Ao imprimir a etiqueta, o MC gera um QR Code único apontando para <code>/api/print-queue/confirm?token=...</code>. O QR Code fica disponível no dashboard junto ao job.</div>
+      <span class="tag tag-purple">qr_code_url</span>
+      <span class="tag tag-blue">print_queue</span>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-left">
+      <div class="icon-bubble bubble-teal">📷</div>
+    </div>
+    <div class="step-body">
+      <div class="step-number">Passo 12 — Você age</div>
+      <div class="step-title">Escanear QR Code confirma embalagem</div>
+      <div class="step-desc">Após colocar a etiqueta na caixa, escaneie o QR Code com o celular. O status muda de <code>done</code> → <code>confirmed</code>, registrando <code>confirmed_at</code> e <code>confirmed_by</code> no banco.</div>
+      <span class="tag tag-green">status: confirmed</span>
+      <span class="tag tag-purple">confirmed_at / confirmed_by</span>
+    </div>
+  </div>
+
   <div class="finish">
-    <div class="finish-badge">🏷️</div>
-    <div class="finish-text">Etiqueta impressa!</div>
-    <div class="finish-sub">Desde a venda até a impressão — sem tocar no computador</div>
+    <div class="finish-badge">📦</div>
+    <div class="finish-text">Pedido embalado e confirmado!</div>
+    <div class="finish-sub">Fluxo completo: payment_required → paid → print_queue → done → QR scan → confirmed</div>
   </div>
 
   <div class="legend">
@@ -401,6 +453,8 @@
     <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div> WhatsApp / Você</div>
     <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> WingX Agent (notebook)</div>
     <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> Impressora</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#14b8a6"></div> QR Confirm</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Pagamento Pendente</div>
   </div>
 
 </div>

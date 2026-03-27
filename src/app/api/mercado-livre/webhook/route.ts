@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { sendWhatsApp, sendWhatsAppMedia } from '@/lib/whatsapp';
 import crypto from 'crypto';
+import { encrypt } from '@/lib/crypto';
 
 const ML_API = 'https://api.mercadolibre.com';
 
@@ -58,7 +59,7 @@ async function saveClienteAndPedido(order: any, shipment: any, sellerNickname: s
        endereco_json = COALESCE(EXCLUDED.endereco_json, ml_clientes.endereco_json),
        lead = ml_clientes.lead OR EXCLUDED.lead,
        updated_at = NOW()`,
-    [ml_buyer_id, nome, cpf, telefone, endereco ? JSON.stringify(endereco) : null, isBateriaLead]
+    [ml_buyer_id, nome, encrypt(cpf ?? ''), encrypt(telefone ?? ''), endereco ? JSON.stringify(endereco) : null, isBateriaLead]
   );
 
   // Montar itens do pedido

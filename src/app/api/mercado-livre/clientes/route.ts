@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { getPool } from '@/lib/db';
+import { safeDecrypt } from '@/lib/crypto';
 
 // GET /api/mercado-livre/clientes?search=nome&page=1&limit=20
 export async function GET(req: NextRequest) {
@@ -46,8 +47,15 @@ export async function GET(req: NextRequest) {
       [search]
     );
 
+    const clientes = rows.rows.map((c: any) => ({
+      ...c,
+      cpf: safeDecrypt(c.cpf),
+      telefone: safeDecrypt(c.telefone),
+      email: safeDecrypt(c.email),
+    }));
+
     return NextResponse.json({
-      clientes: rows.rows,
+      clientes,
       total: countRow.rows[0]?.total ?? 0,
       page,
     });

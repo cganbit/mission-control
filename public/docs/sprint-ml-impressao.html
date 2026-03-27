@@ -148,18 +148,18 @@
 </head>
 <body>
 
-<h1>✅ Sprint Fechada — ML + Fila de Impressão</h1>
+<h1>✅ Sprints Fechadas — ML + Impressão + CRM + SRE</h1>
 <p class="subtitle">WingX Mission Control · Mercado Livre MCP · WingX Agent</p>
-<p class="date">23/03/2026</p>
+<p class="date">23/03/2026 → 27/03/2026</p>
 
 <!-- Stats -->
 <div class="stats">
   <div class="stat">
-    <div class="stat-value">4</div>
+    <div class="stat-value">8</div>
     <div class="stat-label">Módulos entregues</div>
   </div>
   <div class="stat">
-    <div class="stat-value">12</div>
+    <div class="stat-value">12+</div>
     <div class="stat-label">Rotas de API criadas</div>
   </div>
   <div class="stat">
@@ -280,6 +280,61 @@
     <div class="item"><div class="item-icon">✅</div><div class="item-text">MCP <strong>shell</strong> — git, ssh, docker, curl</div></div>
     <div class="item"><div class="item-icon">✅</div><div class="item-text">MCP <strong>filesystem</strong> — pasta Paraguai</div></div>
     <div class="item"><div class="item-icon">✅</div><div class="item-text">Dispatch funciona quando VSCode está aberto</div></div>
+  </div>
+</div>
+
+<!-- Sprint 27/03/2026 — Features entregues -->
+<div class="divider"><hr><span>Sprint 27/03/2026 — Features Entregues</span><hr></div>
+<div class="grid">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">⏳</div>
+      <div>
+        <div class="card-title">Pagamento Pendente</div>
+        <div class="card-sub">webhook · WhatsApp · dashboard badge</div>
+      </div>
+    </div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Webhook captura <strong>payment_required</strong> antes do pagamento ser confirmado</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Notificação WhatsApp com badge ⏳ enviada para o grupo Venda ML</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Badge de "pendente" visível no dashboard Mission Control</div></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">👥</div>
+      <div>
+        <div class="card-title">CRM de Clientes ML</div>
+        <div class="card-sub">/mercado-livre/clientes</div>
+      </div>
+    </div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Página <strong>/mercado-livre/clientes</strong> com perfil completo por comprador</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Histórico de pedidos, lojas associadas, notas e etiquetas por cliente</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Coluna <code>notas</code> na tabela <strong>ml_clientes</strong></div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Campo <code>logistic_type</code> em <strong>ml_pedidos</strong></div></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">📷</div>
+      <div>
+        <div class="card-title">QR Code Confirm</div>
+        <div class="card-sub">print_queue · confirmed_at/by</div>
+      </div>
+    </div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Após impressão, QR Code gerado apontando para <code>/api/print-queue/confirm?token=</code></div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Escanear o QR confirma embalagem: status <code>done</code> → <code>confirmed</code></div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Novas colunas na <strong>print_queue</strong>: <code>confirmed_at</code>, <code>confirmed_by</code>, <code>qr_code_url</code></div></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">🔍</div>
+      <div>
+        <div class="card-title">Audit Log + Painel SRE</div>
+        <div class="card-sub">mc_audit_log · /sre</div>
+      </div>
+    </div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Tabela <strong>mc_audit_log</strong> — registra todos os eventos do sistema</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Painel <strong>/sre</strong> com tabela de eventos, filtros por tipo/data e auto-refresh</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Badge de erros recentes visível no painel SRE</div></div>
+    <div class="item"><div class="item-icon">✅</div><div class="item-text">Endpoint de etiquetas corrigido: <code>/shipment_labels?shipment_ids=...&amp;response_type=pdf</code></div></div>
   </div>
 </div>
 
