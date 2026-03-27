@@ -24,7 +24,6 @@ export async function GET(req: NextRequest) {
         c.nome,
         c.cpf,
         c.telefone,
-        c.email,
         COALESCE(c.notas, '') AS notas,
         c.created_at,
         COUNT(p.id)::int                              AS total_pedidos,
@@ -34,7 +33,7 @@ export async function GET(req: NextRequest) {
        FROM ml_clientes c
        LEFT JOIN ml_pedidos p ON p.ml_buyer_id = c.ml_buyer_id
        WHERE ($1::text IS NULL OR c.nome ILIKE '%' || $1 || '%')
-       GROUP BY c.id, c.ml_buyer_id, c.nome, c.cpf, c.telefone, c.email, c.notas, c.created_at
+       GROUP BY c.id, c.ml_buyer_id, c.nome, c.cpf, c.telefone, c.notas, c.created_at
        ORDER BY ultima_compra DESC NULLS LAST
        LIMIT $2 OFFSET $3`,
       [search, limit, offset]
@@ -51,7 +50,6 @@ export async function GET(req: NextRequest) {
       ...c,
       cpf: safeDecrypt(c.cpf),
       telefone: safeDecrypt(c.telefone),
-      email: safeDecrypt(c.email),
     }));
 
     return NextResponse.json({

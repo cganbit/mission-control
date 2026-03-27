@@ -23,7 +23,7 @@ export async function GET(
     // 1. Dados do cliente
     const clienteResult = await db.query(
       `SELECT
-        id, ml_buyer_id, nome, cpf, telefone, email,
+        id, ml_buyer_id, nome, cpf, telefone,
         COALESCE(notas, '') AS notas,
         created_at
        FROM ml_clientes
@@ -40,7 +40,6 @@ export async function GET(
       ...clienteRaw,
       cpf: safeDecrypt(clienteRaw.cpf),
       telefone: safeDecrypt(clienteRaw.telefone),
-      email: safeDecrypt(clienteRaw.email),
     };
 
     // 2. Pedidos agrupados por loja
