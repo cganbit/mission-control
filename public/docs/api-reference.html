@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Reference — Mission Control</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0a0e1a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 40px 24px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+  .header p { color: #64748b; font-size: 0.875rem; }
+  .header .meta {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .badge-purple { background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3); color: #a78bfa; }
+  .badge-green  { background: rgba(34,197,94,0.1);  border: 1px solid rgba(34,197,94,0.3);  color: #4ade80; }
+  .badge-blue   { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #60a5fa; }
+
+  /* Auth legend */
+  .auth-legend {
+    max-width: 1100px;
+    margin: 0 auto 40px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .auth-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .auth-card .auth-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .auth-card p { font-size: 0.78rem; color: #94a3b8; line-height: 1.4; }
+
+  /* Section */
+  .section {
+    max-width: 1100px;
+    margin: 0 auto 36px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .section-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+  }
+  .section-title { font-size: 1rem; font-weight: 600; }
+  .section-count { font-size: 0.75rem; color: #64748b; margin-left: auto; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  thead tr { border-bottom: 1px solid rgba(255,255,255,0.08); }
+  thead th { padding: 8px 12px; text-align: left; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #64748b; }
+  tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
+  tbody tr:hover { background: rgba(255,255,255,0.03); }
+  tbody td { padding: 9px 12px; vertical-align: top; }
+  td.path { font-family: 'Cascadia Code', 'Fira Code', monospace; color: #e2e8f0; font-size: 0.78rem; }
+  td.desc { color: #94a3b8; line-height: 1.45; }
+
+  /* Method badges */
+  .method {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    font-family: monospace;
+    min-width: 52px;
+    text-align: center;
+  }
+  .GET    { background: rgba(34,197,94,0.12);  color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+  .POST   { background: rgba(99,102,241,0.12); color: #818cf8; border: 1px solid rgba(99,102,241,0.25); }
+  .PATCH  { background: rgba(234,179,8,0.12);  color: #facc15; border: 1px solid rgba(234,179,8,0.25); }
+  .PUT    { background: rgba(249,115,22,0.12); color: #fb923c; border: 1px solid rgba(249,115,22,0.25); }
+  .DELETE { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+
+  /* Auth tags inline */
+  .auth-tag {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 4px;
+    font-size: 0.67rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .auth-jwt     { background: rgba(99,102,241,0.1); color: #a78bfa; }
+  .auth-admin   { background: rgba(239,68,68,0.1);  color: #f87171; }
+  .auth-agent   { background: rgba(234,179,8,0.1);  color: #facc15; }
+  .auth-public  { background: rgba(34,197,94,0.1);  color: #4ade80; }
+  .auth-worker  { background: rgba(249,115,22,0.1); color: #fb923c; }
+  .auth-token   { background: rgba(20,184,166,0.1); color: #2dd4bf; }
+
+  /* Warnings */
+  .notes-section {
+    max-width: 1100px;
+    margin: 0 auto 40px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 12px;
+  }
+  .note-card {
+    background: rgba(239,68,68,0.05);
+    border: 1px solid rgba(239,68,68,0.15);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .note-card.resolved {
+    background: rgba(34,197,94,0.05);
+    border-color: rgba(34,197,94,0.15);
+  }
+  .note-card .note-title { font-size: 0.78rem; font-weight: 700; margin-bottom: 6px; color: #f87171; }
+  .note-card.resolved .note-title { color: #4ade80; }
+  .note-card p { font-size: 0.76rem; color: #94a3b8; line-height: 1.45; }
+
+  .section-divider { color: #64748b; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; text-align: center; margin: 8px 0 24px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Mission Control — API Reference</h1>
+  <p>Referência completa de todos os endpoints REST. Fonte de verdade técnica.</p>
+  <div class="meta">
+    <span class="badge badge-purple">80 endpoints</span>
+    <span class="badge badge-green">10 grupos</span>
+    <span class="badge badge-blue">Atualizado 27/03/2026</span>
+  </div>
+</div>
+
+<!-- Auth Legend -->
+<div style="max-width:1100px;margin:0 auto 12px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;font-weight:600;">Mecanismos de autenticação</div>
+<div class="auth-legend">
+  <div class="auth-card">
+    <div class="auth-label" style="color:#a78bfa;">JWT</div>
+    <p>Cookie httpOnly <code>mc_token</code> — login via <code>/login</code>. Dashboard e todas as rotas autenticadas.</p>
+  </div>
+  <div class="auth-card">
+    <div class="auth-label" style="color:#f87171;">JWT admin</div>
+    <p>JWT com role <code>admin</code>. Gestão de usuários, conectores, remoção de squads.</p>
+  </div>
+  <div class="auth-card">
+    <div class="auth-label" style="color:#facc15;">x-agent-key</div>
+    <p>Header <code>x-agent-key: PRINT_AGENT_KEY</code> — agente impressor WingX local.</p>
+  </div>
+  <div class="auth-card">
+    <div class="auth-label" style="color:#fb923c;">x-worker-key</div>
+    <p>Header <code>x-worker-key: WORKER_KEY</code> — cron de refresh de tokens e catálogo ML.</p>
+  </div>
+  <div class="auth-card">
+    <div class="auth-label" style="color:#2dd4bf;">token na URL</div>
+    <p>Query <code>?token=</code> único por job — QR confirm e trigger do WhatsApp. Sem login.</p>
+  </div>
+  <div class="auth-card">
+    <div class="auth-label" style="color:#4ade80;">público</div>
+    <p>Sem autenticação. Webhook ML, health check, OAuth callback, confirm/trigger por token.</p>
+  </div>
+</div>
+
+<!-- AUTH -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:rgba(99,102,241,0.12);">🔐</div>
+    <div class="section-title">Auth</div>
+    <div class="section-count">3 endpoints</div>
+  </div>
+  <table>
+    <thead><tr><th>Método</th><th>Path</th><th>Auth</th><th>Descrição</th></tr></thead>
+    <tbody>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/auth/login</td><td><span class="auth-tag auth-public">público</span></td><td class="desc">Autentica usuário; seta cookie <code>mc_token</code></td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/auth/logout</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Encerra sessão; apaga cookie e registra logout</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/auth/me</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Retorna dados do usuário logado (id, username, name, role)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- USUÁRIOS -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:rgba(239,68,68,0.1);">👤</div>
+    <div class="section-title">Usuários & Access Logs</div>
+    <div class="section-count">5 endpoints</div>
+  </div>
+  <table>
+    <thead><tr><th>Método</th><th>Path</th><th>Auth</th><th>Descrição</th></tr></thead>
+    <tbody>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/users</td><td><span class="auth-tag auth-admin">JWT admin</span></td><td class="desc">Lista todos os usuários</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/users</td><td><span class="auth-tag auth-admin">JWT admin</span></td><td class="desc">Cria usuário (username, name, password, role)</td></tr>
+      <tr><td><span class="method PATCH">PATCH</span></td><td class="path">/api/users/[id]</td><td><span class="auth-tag auth-admin">JWT admin</span></td><td class="desc">Atualiza dados, role, status ou senha</td></tr>
+      <tr><td><span class="method DELETE">DELETE</span></td><td class="path">/api/users/[id]</td><td><span class="auth-tag auth-admin">JWT admin</span></td><td class="desc">Remove usuário (não pode remover o próprio)</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/access-logs</td><td><span class="auth-tag auth-admin">JWT admin</span></td><td class="desc">Logs de login/logout com duração de sessão</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- CONECTORES -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:rgba(20,184,166,0.1);">🔌</div>
+    <div class="section-title">Conectores</div>
+    <div class="section-count">3 endpoints</div>
+  </div>
+  <table>
+    <thead><tr><th>Método</th><th>Path</th><th>Auth</th><th>Descrição</th></tr></thead>
+    <tbody>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/connectors</td><td><span class="auth-tag auth-admin">JWT admin</span></td><td class="desc">Lista chaves de <code>connector_configs</code></td></tr>
+      <tr><td><span class="method PUT">PUT</span></td><td class="path">/api/connectors</td><td><span class="auth-tag auth-admin">JWT admin</span></td><td class="desc">Upsert de valores em <code>connector_configs</code></td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/connectors/test</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Testa conectividade (postgresql, evolution, firecrawl, openrouter, n8n…)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- MERCADO LIVRE -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:rgba(250,204,21,0.1);">🛒</div>
+    <div class="section-title">Mercado Livre</div>
+    <div class="section-count">22 endpoints</div>
+  </div>
+  <table>
+    <thead><tr><th>Método</th><th>Path</th><th>Auth</th><th>Descrição</th></tr></thead>
+    <tbody>
+      <tr><td colspan="4" style="padding:6px 12px;font-size:0.68rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;background:rgba(255,255,255,0.02);">Contas</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/mercado-livre/accounts</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Lista contas ML (admin: todas; member: suas)</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/mercado-livre/accounts</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Cadastra nova conta ML</td></tr>
+      <tr><td><span class="method PATCH">PATCH</span></td><td class="path">/api/mercado-livre/accounts/[id]</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Atualiza notification_group, print_enabled, test_mode</td></tr>
+      <tr><td><span class="method DELETE">DELETE</span></td><td class="path">/api/mercado-livre/accounts/[id]</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Remove conta (owner ou admin)</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/mercado-livre/accounts/[id]/resend</td><td><span class="auth-tag auth-admin">JWT admin</span></td><td class="desc">Reenvia último webhook pago (teste de integração)</td></tr>
+      <tr><td colspan="4" style="padding:6px 12px;font-size:0.68rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;background:rgba(255,255,255,0.02);">OAuth</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/mercado-livre/oauth/authorize</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Redireciona para tela OAuth do ML</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/mercado-livre/oauth/callback</td><td><span class="auth-tag auth-public">público</span></td><td class="desc">Troca code por token; salva em connector_configs</td></tr>
+      <tr><td colspan="4" style="padding:6px 12px;font-size:0.68rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;background:rgba(255,255,255,0.02);">Webhook</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/mercado-livre/webhook</td><td><span class="auth-tag auth-public">público</span></td><td class="desc">Recebe notificações ML; processa paid/payment_required, cria print job, envia WhatsApp</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/mercado-livre/webhook</td><td><span class="auth-tag auth-public">público</span></td><td class="desc">Health check do endpoint de webhook</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/mercado-livre/webhook/register</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Lista webhooks registrados no ML para o app</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/mercado-livre/webhook/register</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Registra webhook orders_v2 no ML</td></tr>
+      <tr><td><span class="method DELETE">DELETE</span></td><td class="path">/api/mercado-livre/webhook/register</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Remove webhook pelo subscription_id</td></tr>
+      <tr><td colspan="4" style="padding:6px 12px;font-size:0.68rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;background:rgba(255,255,255,0.02);">Dados</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/mercado-livre/stats</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Resumo de vendas e perguntas por conta (<code>?period=today|7d|30d</code>)</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/mercado-livre/dre</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">DRE consolidado: faturamento bruto, comissão ML, líquido</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/mercado-livre/listings</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Lista anúncios de um seller (<code>?status=active&offset=&limit=</code>)</td></tr>
+      <tr><td><span class="method PUT">PUT</span></td><td class="path">/api/mercado-livre/listings</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Atualiza preço, estoque ou título de anúncio</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/mercado-livre/pedidos</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Lista pedidos locais com filtros por conta, status e data</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/mercado-livre/questions</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Perguntas não respondidas com contexto do produto</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/mercado-livre/questions</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Responde pergunta ML</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/mercado-livre/clientes</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Lista clientes com histórico agregado (<code>?search=&page=&limit=</code>)</td></tr>
+      <tr><td><span class="method PATCH">PATCH</span></td><td class="path">/api/mercado-livre/clientes</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Atualiza notas internas de um cliente</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/mercado-livre/clientes/[buyer_id]</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Perfil completo: dados + lojas compradas + histórico de pedidos</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PRINT QUEUE -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:rgba(59,130,246,0.1);">🖨️</div>
+    <div class="section-title">Print Queue</div>
+    <div class="section-count">10 endpoints</div>
+  </div>
+  <table>
+    <thead><tr><th>Método</th><th>Path</th><th>Auth</th><th>Descrição</th></tr></thead>
+    <tbody>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/print-queue</td><td><span class="auth-tag auth-agent">x-agent-key</span></td><td class="desc">Agente local busca jobs <code>pending</code> (até 10)</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/print-queue</td><td><span class="auth-tag auth-agent">x-internal-key</span></td><td class="desc">Criação interna de job (chamado pelo webhook)</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/print-queue/[id]/label</td><td><span class="auth-tag auth-agent">x-agent-key</span> <span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Baixa etiqueta PDF do ML (mock em sandbox)</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/print-queue/[id]/label</td><td><span class="auth-tag auth-agent">x-agent-key</span></td><td class="desc">Agente envia PDF impresso para armazenamento</td></tr>
+      <tr><td><span class="method PATCH">PATCH</span></td><td class="path">/api/print-queue/[id]/done</td><td><span class="auth-tag auth-agent">x-agent-key</span></td><td class="desc">Agente marca job como <code>done</code> ou <code>error</code></td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/print-queue/trigger</td><td><span class="auth-tag auth-token">?token=</span></td><td class="desc">Link do WhatsApp — muda <code>queued → pending</code>; retorna HTML</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/print-queue/confirm</td><td><span class="auth-tag auth-token">?token=</span></td><td class="desc">QR Code — confirma embalagem <code>done → confirmed</code>; retorna HTML</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/print-queue/manage</td><td><span class="auth-tag auth-token">?key=QUEUE_KEY</span></td><td class="desc">Página /fila: lista jobs das últimas 48h</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/print-queue/manage</td><td><span class="auth-tag auth-token">?key=QUEUE_KEY</span></td><td class="desc">Ativa jobs em massa <code>queued → pending</code> por array de ids</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/print-queue/retrigger</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Dashboard reativa jobs <code>queued</code> ou <code>error</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- SRE -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:rgba(239,68,68,0.1);">📡</div>
+    <div class="section-title">SRE</div>
+    <div class="section-count">1 endpoint</div>
+  </div>
+  <table>
+    <thead><tr><th>Método</th><th>Path</th><th>Auth</th><th>Descrição</th></tr></thead>
+    <tbody>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/sre/events</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Eventos do <code>mc_audit_log</code> — filtros por tipo, status, seller, período (<code>?period=2h|24h|7d</code>)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PARAGUAI -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:rgba(34,197,94,0.1);">🇵🇾</div>
+    <div class="section-title">Paraguai / Arbitragem</div>
+    <div class="section-count">20 endpoints</div>
+  </div>
+  <table>
+    <thead><tr><th>Método</th><th>Path</th><th>Auth</th><th>Descrição</th></tr></thead>
+    <tbody>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/paraguai/oportunidades</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Lista oportunidades com margem calculada (<code>?marca=&min_margem=&search=</code>)</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/paraguai/cambio</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Cotação USD→BRL em tempo real (cache 30min)</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/paraguai/assets</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Lista assets de estoque</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/paraguai/assets</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Registra compra de asset</td></tr>
+      <tr><td><span class="method PATCH">PATCH</span></td><td class="path">/api/paraguai/assets</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Atualiza status, preço de venda, observações</td></tr>
+      <tr><td><span class="method DELETE">DELETE</span></td><td class="path">/api/paraguai/assets</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Remove asset por id</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/paraguai/carrinho</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Lista carrinho de compras do usuário logado</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/paraguai/carrinho</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Adiciona produto ao carrinho (upsert por fingerprint)</td></tr>
+      <tr><td><span class="method PATCH">PATCH</span></td><td class="path">/api/paraguai/carrinho/[id]</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Atualiza status ou qty (owner only)</td></tr>
+      <tr><td><span class="method DELETE">DELETE</span></td><td class="path">/api/paraguai/carrinho/[id]</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Remove item do carrinho (owner only)</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/paraguai/catalogo/queue</td><td><span class="auth-tag auth-jwt">JWT</span> <span class="auth-tag auth-worker">x-worker-key</span></td><td class="desc">Verifica status de job de catálogo; processa inline se pendente</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/paraguai/catalogo/queue</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Enfileira busca de catálogo ML para fingerprint</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/paraguai/catalogo/refresh</td><td><span class="auth-tag auth-jwt">JWT</span> <span class="auth-tag auth-worker">x-worker-key</span></td><td class="desc">Worker salva catálogos processados em <code>preco_ml_cache</code></td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/paraguai/catalogo/enrich</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Enriquece via Firecrawl (sold_qty, rating, sellers, preços)</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/paraguai/normalizar</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Normaliza descrição via IA (OpenRouter)</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/paraguai/watches</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Lista price watches ativos</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/paraguai/watches</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Cria ou reativa watch de preço</td></tr>
+      <tr><td><span class="method DELETE">DELETE</span></td><td class="path">/api/paraguai/watches</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Desativa watch de preço</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/paraguai/ml-token-refresh</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Status de validade dos tokens ML (sem refresh)</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/paraguai/ml-token-refresh</td><td><span class="auth-tag auth-jwt">JWT</span> <span class="auth-tag auth-worker">x-worker-key</span></td><td class="desc">Renova todos os tokens ML com backoff e retry</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- AGENTES & SQUADS -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:rgba(168,85,247,0.1);">🤖</div>
+    <div class="section-title">Agentes & Squads</div>
+    <div class="section-count">10 endpoints</div>
+  </div>
+  <table>
+    <thead><tr><th>Método</th><th>Path</th><th>Auth</th><th>Descrição</th></tr></thead>
+    <tbody>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/squads</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Lista squads com contagem de agentes e tasks abertas</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/squads</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Cria squad (name, description, mission, color)</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/squads/[id]</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Detalhes de um squad</td></tr>
+      <tr><td><span class="method PATCH">PATCH</span></td><td class="path">/api/squads/[id]</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Atualiza dados de um squad</td></tr>
+      <tr><td><span class="method DELETE">DELETE</span></td><td class="path">/api/squads/[id]</td><td><span class="auth-tag auth-admin">JWT admin</span></td><td class="desc">Remove squad</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/agents</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Lista agentes com open_tasks (<code>?squad_id=</code>)</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/agents</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Cria agente (squad_id, name, role, system_prompt)</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/agents/[id]</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Dados de um agente</td></tr>
+      <tr><td><span class="method PATCH">PATCH</span></td><td class="path">/api/agents/[id]</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Atualiza nome, role, status, system_prompt, tools, workflow</td></tr>
+      <tr><td><span class="method DELETE">DELETE</span></td><td class="path">/api/agents/[id]</td><td><span class="auth-tag auth-admin">JWT admin</span></td><td class="desc">Remove agente</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- TASKS + DOCS + MEMORIES -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:rgba(234,179,8,0.1);">📋</div>
+    <div class="section-title">Tasks, Documentos & Memórias</div>
+    <div class="section-count">11 endpoints</div>
+  </div>
+  <table>
+    <thead><tr><th>Método</th><th>Path</th><th>Auth</th><th>Descrição</th></tr></thead>
+    <tbody>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/tasks</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Lista tasks (<code>?squad_id=&status=</code>)</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/tasks</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Cria task (squad_id, title, description, priority, due_date)</td></tr>
+      <tr><td><span class="method PATCH">PATCH</span></td><td class="path">/api/tasks/[id]</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Atualiza campos ou status</td></tr>
+      <tr><td><span class="method DELETE">DELETE</span></td><td class="path">/api/tasks/[id]</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Remove task</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/documents</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Lista documentos de agentes (<code>?q=&doc_type=</code>)</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/documents</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Cria documento (title, content, squad_id, doc_type)</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/documents/[id]</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Documento completo</td></tr>
+      <tr><td><span class="method DELETE">DELETE</span></td><td class="path">/api/documents/[id]</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Remove documento</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/memories</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Lista memórias de agentes (<code>?q=&category=</code>)</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/memories</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Cria memória (content, squad_id, category)</td></tr>
+      <tr><td><span class="method DELETE">DELETE</span></td><td class="path">/api/memories/[id]</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Remove memória</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ACTIVITY + HEALTH -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:rgba(99,102,241,0.1);">⚡</div>
+    <div class="section-title">Activity, Tokens & Health</div>
+    <div class="section-count">6 endpoints</div>
+  </div>
+  <table>
+    <thead><tr><th>Método</th><th>Path</th><th>Auth</th><th>Descrição</th></tr></thead>
+    <tbody>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/activity</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Activity log (<code>?squad_id=&limit=</code>)</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/activity/stream</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">SSE stream em tempo real (poll a cada 2s)</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/tokens</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Uso de tokens por agente e por dia</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/tokens</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Registra uso de tokens de uma sessão</td></tr>
+      <tr><td><span class="method POST">POST</span></td><td class="path">/api/setup</td><td><span class="auth-tag auth-jwt">JWT</span></td><td class="desc">Inicializa banco (CREATE TABLES + seed Paraguay squad)</td></tr>
+      <tr><td><span class="method GET">GET</span></td><td class="path">/api/health</td><td><span class="auth-tag auth-public">público</span></td><td class="desc">Saúde da aplicação e do banco — retorna <code>ok</code> ou <code>degraded</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- NOTAS -->
+<div style="max-width:1100px;margin:0 auto 12px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;font-weight:600;">⚠️ Notas e ambiguidades</div>
+<div class="notes-section">
+  <div class="note-card">
+    <div class="note-title">Webhook ML sem HMAC</div>
+    <p><code>POST /api/mercado-livre/webhook</code> não valida assinatura HMAC. Aceita qualquer POST com body válido. Risco de spoofing se a URL vazar.</p>
+  </div>
+  <div class="note-card">
+    <div class="note-title">OAuth callback público</div>
+    <p><code>GET /api/mercado-livre/oauth/callback</code> sem verificação de sessão. Mitigação: TTL curto do <code>code</code> do ML.</p>
+  </div>
+  <div class="note-card">
+    <div class="note-title">Label — 3 mecanismos de auth</div>
+    <p><code>/api/print-queue/[id]/label</code> aceita agent-key, queue-key ou JWT. Via queue-key (celular) só serve PDF já armazenado — não busca do ML.</p>
+  </div>
+  <div class="note-card resolved">
+    <div class="note-title">✅ WORKER_KEY — fallback removido (27/03/2026)</div>
+    <p>Hardcoded <code>'catalogo-worker-2026'</code> removido dos 3 endpoints. Agora exige a env var explicitamente. Verificar que <code>WORKER_KEY</code> está setada no VPS.</p>
+  </div>
+</div>
+
+<div style="max-width:1100px;margin:0 auto;text-align:center;color:#334155;font-size:0.72rem;padding-top:24px;border-top:1px solid rgba(255,255,255,0.05);">
+  Mission Control API Reference · Fonte: <code>docs/api/MISSION_CONTROL_API.md</code> · 27/03/2026
+</div>
+
+</body>
+</html>
