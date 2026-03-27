@@ -35,9 +35,24 @@ export async function GET(req: NextRequest) {
   // Retornar também a lista de contas disponíveis no ml_tokens_json (para o form de adição)
   const tokenRow = await db.query(`SELECT value FROM connector_configs WHERE key = 'ml_tokens_json' LIMIT 1`);
   let availableTokens: Array<{ seller_id: number; nickname: string }> = [];
+  
   if (tokenRow.rows[0]) {
     const parsed = JSON.parse(tokenRow.rows[0].value);
     const all: Array<{ seller_id: number; nickname: string }> = Array.isArray(parsed) ? parsed : (parsed.accounts ?? []);
+    
+    // --- Soft Cascade Delete (Limpando as Contas Órfãs) ---
+    const activeSellerIds = new Set(all.map(a => Number(a.seller_id)));
+    const orphanedRows = rows.filter((r: any) => !activeSellerIds.has(Number(r.seller_id)));
+    
+    if (orphanedRows.length > 0) {
+      for (const orphan of orphanedRows) {
+        await db.query(`DELETE FROM ml_account_configs WHERE seller_id = $1`, [orphan.seller_id]);
+      }
+      // Remove orfãos do array que será devolvido ao front-end
+      rows = rows.filter((r: any) => activeSellerIds.has(Number(r.seller_id)));
+    }
+    // -------------------------------------------------------
+
     const configuredIds = new Set(rows.map((r: any) => Number(r.seller_id)));
     availableTokens = all.filter(a => !configuredIds.has(a.seller_id));
   }

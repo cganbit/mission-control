@@ -68,6 +68,7 @@
   .section-icon.project  { background: rgba(59,130,246,0.15); }
   .section-icon.plugin   { background: rgba(16,185,129,0.15); }
   .section-icon.official { background: rgba(245,158,11,0.15); }
+  .section-icon.spare    { background: rgba(249,115,22,0.15); }
   .section-title { font-size: 1rem; font-weight: 600; color: #cbd5e1; }
   .section-count {
     margin-left: auto;
@@ -114,6 +115,7 @@
   .card.plugin::before   { background: linear-gradient(90deg, #10b981, #059669); }
   .card.official::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
   .card.priority::before { background: linear-gradient(90deg, #ef4444, #f97316); }
+  .card.spare::before    { background: linear-gradient(90deg, #f97316, #ea580c); }
 
   .card-top {
     display: flex;
@@ -139,6 +141,7 @@
   .tag-plugin   { background: rgba(16,185,129,0.12);  color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
   .tag-official { background: rgba(245,158,11,0.12);  color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
   .tag-priority { background: rgba(239,68,68,0.12);   color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+  .tag-spare    { background: rgba(249,115,22,0.12);  color: #fb923c; border: 1px solid rgba(249,115,22,0.25); }
 
   .card-desc {
     font-size: 0.8rem;
@@ -236,13 +239,13 @@
 <div class="header">
   <h1>Skills Index</h1>
   <p>Capacidades do Claude no ecossistema Wingx / Paraguai</p>
-  <div class="badge">Atualizado em 24/03/2026</div>
+  <div class="badge">Atualizado em 27/03/2026</div>
 </div>
 
 <!-- Stats -->
 <div class="stats-bar">
   <div class="stat-box">
-    <div class="stat-num">9</div>
+    <div class="stat-num">14</div>
     <div class="stat-label">Skills do Projeto</div>
   </div>
   <div class="stat-box">
@@ -254,8 +257,8 @@
     <div class="stat-label">Skills Oficiais Anthropic</div>
   </div>
   <div class="stat-box">
-    <div class="stat-num">4</div>
-    <div class="stat-label">Agentes</div>
+    <div class="stat-num">5</div>
+    <div class="stat-label">Agentes Spare</div>
   </div>
 </div>
 
@@ -264,7 +267,7 @@
   <div class="section-header">
     <div class="section-icon project">🛠️</div>
     <div class="section-title">Skills do Projeto</div>
-    <div class="section-count">9 skills · .skills/</div>
+    <div class="section-count">14 skills · .skills/</div>
   </div>
   <div class="grid">
 
@@ -403,6 +406,81 @@
       </div>
     </div>
 
+    <div class="card project">
+      <div class="card-top">
+        <div class="card-name">mercado-livre</div>
+        <span class="card-type tag-project">projeto</span>
+      </div>
+      <div class="card-desc">Especialista ML: OAuth multi-conta, webhooks, etiquetas, anúncios, MCP tools. Carrega gotchas e regras do projeto.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">mercado livre, ml, webhook, etiqueta, token</span>
+      </div>
+    </div>
+
+    <div class="card project">
+      <div class="card-top">
+        <div class="card-name">wingx</div>
+        <span class="card-type tag-project">projeto</span>
+      </div>
+      <div class="card-desc">Especialista e-commerce WingX: Next.js 15, Drizzle ORM, MercadoPago SDK v2, catálogo de baterias DJI.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">wingx, loja, checkout, produto, bateria</span>
+      </div>
+    </div>
+
+    <div class="card project">
+      <div class="card-top">
+        <div class="card-name">dev</div>
+        <span class="card-type tag-project">projeto</span>
+      </div>
+      <div class="card-desc">Feature developer Mission Control: Next.js, APIs, TypeScript, UI full-stack.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">feature, dashboard, componente, rota</span>
+      </div>
+    </div>
+
+    <div class="card project">
+      <div class="card-top">
+        <div class="card-name">infra</div>
+        <span class="card-type tag-project">projeto</span>
+      </div>
+      <div class="card-desc">Infraestrutura: deploy VPS, Docker, PostgreSQL, n8n, Tailscale.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">deploy, docker, vps, container</span>
+      </div>
+    </div>
+
+    <div class="card project">
+      <div class="card-top">
+        <div class="card-name">qa</div>
+        <span class="card-type tag-project">projeto</span>
+      </div>
+      <div class="card-desc">QA leve (haiku): testa endpoints, valida pipeline pós-deploy.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">testar, validar, pipeline</span>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -427,6 +505,93 @@
           mksglu (community)
         </div>
         <span class="trigger-tag">/ctx-stats · /ctx-doctor</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SPARE AGENTS -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon spare">🟠</div>
+    <div class="section-title">Agentes Spare</div>
+    <div class="section-count">5 agentes · invocar sob demanda</div>
+  </div>
+  <div class="grid">
+
+    <div class="card spare">
+      <div class="card-top">
+        <div class="card-name">security-auditor</div>
+        <span class="card-type tag-spare">spare</span>
+      </div>
+      <div class="card-desc">Auditoria OWASP 2025, vulnerabilidades, supply chain, zero trust. Invocar antes de deploys críticos.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">segurança, owasp, auditoria</span>
+      </div>
+    </div>
+
+    <div class="card spare">
+      <div class="card-top">
+        <div class="card-name">performance-optimizer</div>
+        <span class="card-type tag-spare">spare</span>
+      </div>
+      <div class="card-desc">Core Web Vitals, bundle size, profiling. Invocar na sprint WingX/Vercel.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">performance, vitals, bundle</span>
+      </div>
+    </div>
+
+    <div class="card spare">
+      <div class="card-top">
+        <div class="card-name">database-architect</div>
+        <span class="card-type tag-spare">spare</span>
+      </div>
+      <div class="card-desc">Schema design, query optimization, migrations seguras PostgreSQL.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">schema, migration, query, postgres</span>
+      </div>
+    </div>
+
+    <div class="card spare">
+      <div class="card-top">
+        <div class="card-name">seo-specialist</div>
+        <span class="card-type tag-spare">spare</span>
+      </div>
+      <div class="card-desc">SEO + GEO (AI search). Invocar na sprint WingX para otimizar a loja.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">seo, geo, busca, loja</span>
+      </div>
+    </div>
+
+    <div class="card spare">
+      <div class="card-top">
+        <div class="card-name">product-owner</div>
+        <span class="card-type tag-spare">spare</span>
+      </div>
+      <div class="card-desc">Priorização de backlog, decisões de roadmap, critérios de aceite.</div>
+      <div class="card-footer">
+        <div class="owner">
+          <div class="owner-avatar avatar-cleiton">C</div>
+          Cleiton
+        </div>
+        <span class="trigger-tag">backlog, roadmap, prioridade</span>
       </div>
     </div>
 

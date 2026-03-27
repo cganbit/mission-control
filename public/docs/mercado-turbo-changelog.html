@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inteligência Competitiva — Mercado Turbo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0e1a;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      padding: 40px 20px 60px;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .header-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #111827;
+      border: 1px solid #1f2a3c;
+      border-radius: 999px;
+      padding: 6px 16px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 20px;
+    }
+
+    .header-eyebrow span.dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #3b82f6;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .header h1 {
+      font-size: clamp(22px, 4vw, 32px);
+      font-weight: 700;
+      color: #f1f5f9;
+      line-height: 1.2;
+      margin-bottom: 10px;
+    }
+
+    .header h1 .accent { color: #60a5fa; }
+
+    .header .subtitle {
+      font-size: 14px;
+      color: #475569;
+      letter-spacing: 0.04em;
+    }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      border: 1px solid transparent;
+    }
+
+    .badge-pagamentos  { background: #052e16; color: #4ade80; border-color: #166534; }
+    .badge-envios      { background: #0c1a2e; color: #60a5fa; border-color: #1e40af; }
+    .badge-anuncios    { background: #1a0e2e; color: #c084fc; border-color: #6b21a8; }
+    .badge-estoque     { background: #1c1500; color: #facc15; border-color: #854d0e; }
+    .badge-reclamacoes { background: #1f0707; color: #f87171; border-color: #991b1b; }
+
+    /* Timeline */
+    .timeline {
+      position: relative;
+      padding-left: 32px;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 11px;
+      top: 6px;
+      bottom: 6px;
+      width: 2px;
+      background: linear-gradient(to bottom, #1e3a5f, #1e1e2e);
+    }
+
+    .timeline-item {
+      position: relative;
+      margin-bottom: 28px;
+    }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -25px;
+      top: 18px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #1e3a5f;
+      border: 2px solid #3b82f6;
+    }
+
+    .timeline-item.highlight-green::before {
+      background: #052e16;
+      border-color: #4ade80;
+      box-shadow: 0 0 8px #4ade8066;
+    }
+
+    .card {
+      background: #0d1117;
+      border: 1px solid #1e2a3a;
+      border-radius: 12px;
+      padding: 20px 22px;
+      transition: border-color 0.2s;
+    }
+
+    .card:hover {
+      border-color: #2563eb;
+    }
+
+    .timeline-item.highlight-green .card {
+      border-color: #166534;
+      background: #061410;
+    }
+
+    .timeline-item.highlight-green .card:hover {
+      border-color: #22c55e;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .version-tag {
+      font-size: 13px;
+      font-weight: 700;
+      color: #93c5fd;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 0.06em;
+    }
+
+    .timeline-item.highlight-green .version-tag {
+      color: #86efac;
+    }
+
+    .priority-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #052e16;
+      color: #4ade80;
+      border: 1px solid #166534;
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .priority-badge::before {
+      content: '';
+      display: inline-block;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #4ade80;
+      animation: pulse 1.5s infinite;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin-bottom: 10px;
+    }
+
+    .timeline-item.highlight-green .card-title {
+      color: #bbf7d0;
+    }
+
+    .features-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.45;
+    }
+
+    .feature-item .feature-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #3b82f6;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+
+    .timeline-item.highlight-green .feature-item .feature-dot {
+      background: #4ade80;
+    }
+
+    .badges-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 14px;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      margin-top: 52px;
+      padding-top: 24px;
+      border-top: 1px solid #111827;
+      font-size: 11px;
+      color: #334155;
+      letter-spacing: 0.04em;
+    }
+
+    .footer strong { color: #475569; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-eyebrow">
+        <span class="dot"></span>
+        Análise Competitiva · Wingx Intelligence
+      </div>
+      <h1>Inteligência Competitiva — <span class="accent">Mercado Turbo</span></h1>
+      <p class="subtitle">Changelog v6.0.18–6.0.29 | fev–mar 2026</p>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <span class="badge badge-pagamentos">● Pagamentos</span>
+      <span class="badge badge-envios">● Envios</span>
+      <span class="badge badge-anuncios">● Anúncios</span>
+      <span class="badge badge-estoque">● Estoque</span>
+      <span class="badge badge-reclamacoes">● Reclamações</span>
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline">
+
+      <!-- v6.0.22 -->
+      <div class="timeline-item">
+        <div class="card">
+          <div class="card-header">
+            <span class="version-tag">v6.0.22</span>
+          </div>
+          <div class="card-title">Multi Origem Flex & Análise Raio-X sob Demanda</div>
+          <div class="features-list">
+            <div class="feature-item">
+              <span class="feature-dot"></span>
+              <span><strong>Multi Origem Flex</strong> — gestão simultânea de múltiplas origens de estoque com priorização automática por região.</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-dot"></span>
+              <span><strong>Análise Raio-X sob Demanda</strong> — diagnóstico instantâneo de anúncios com score de saúde e recomendações de otimização.</span>
+            </div>
+          </div>
+          <div class="badges-row">
+            <span class="badge badge-estoque">Estoque</span>
+            <span class="badge badge-anuncios">Anúncios</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- v6.0.21 -->
+      <div class="timeline-item">
+        <div class="card">
+          <div class="card-header">
+            <span class="version-tag">v6.0.21</span>
+          </div>
+          <div class="card-title">Clonagem em Massa, Gerenciamento de Envios & Tabelas de Medidas</div>
+          <div class="features-list">
+            <div class="feature-item">
+              <span class="feature-dot"></span>
+              <span><strong>Clonagem em Massa via CSV</strong> — replicação de anúncios em lote com mapeamento de variações por arquivo CSV.</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-dot"></span>
+              <span><strong>Gerenciamento de Envios</strong> — painel centralizado de rastreamento com alertas proativos de atraso.</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-dot"></span>
+              <span><strong>Tabelas de Medidas</strong> — cadastro e vinculação de guias de tamanho diretamente nos anúncios de moda/calçados.</span>
+            </div>
+          </div>
+          <div class="badges-row">
+            <span class="badge badge-anuncios">Anúncios</span>
+            <span class="badge badge-envios">Envios</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- v6.0.20 -->
+      <div class="timeline-item">
+        <div class="card">
+          <div class="card-header">
+            <span class="version-tag">v6.0.20</span>
+          </div>
+          <div class="card-title">Inserção em Promoções & Desconto por Percentual</div>
+          <div class="features-list">
+            <div class="feature-item">
+              <span class="feature-dot"></span>
+              <span><strong>Inserção em Promoções</strong> — adição de anúncios em campanhas ativas do ML diretamente pelo painel.</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-dot"></span>
+              <span><strong>Desconto por Percentual</strong> — aplicação de descontos em lote usando percentual fixo ou por faixa de preço.</span>
+            </div>
+          </div>
+          <div class="badges-row">
+            <span class="badge badge-anuncios">Anúncios</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- v4.3.11 -->
+      <div class="timeline-item">
+        <div class="card">
+          <div class="card-header">
+            <span class="version-tag">v4.3.11</span>
+          </div>
+          <div class="card-title">Central de Promoções & Replicação de Compatibilidades</div>
+          <div class="features-list">
+            <div class="feature-item">
+              <span class="feature-dot"></span>
+              <span><strong>Central de Promoções</strong> — hub unificado para criação, monitoramento e encerramento de promoções por conta ML.</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-dot"></span>
+              <span><strong>Replicação de Compatibilidades</strong> — cópia de tabelas de compatibilidade veicular entre anúncios com um clique.</span>
+            </div>
+          </div>
+          <div class="badges-row">
+            <span class="badge badge-anuncios">Anúncios</span>
+            <span class="badge badge-estoque">Estoque</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- v4.1.4 — DESTAQUE VERDE -->
+      <div class="timeline-item highlight-green">
+        <div class="card">
+          <div class="card-header">
+            <span class="version-tag">v4.1.4</span>
+            <span class="priority-badge">Alta Prioridade para nós</span>
+          </div>
+          <div class="card-title">Pagamentos a Liberar</div>
+          <div class="features-list">
+            <div class="feature-item">
+              <span class="feature-dot"></span>
+              <span><strong>Pagamentos a Liberar</strong> — painel dedicado para acompanhar valores retidos, datas de liberação e histórico de repasses do ML. Feature crítica para gestão de fluxo de caixa dos sellers.</span>
+            </div>
+          </div>
+          <div class="badges-row">
+            <span class="badge badge-pagamentos">Pagamentos</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- v4.1.3 -->
+      <div class="timeline-item">
+        <div class="card">
+          <div class="card-header">
+            <span class="version-tag">v4.1.3</span>
+          </div>
+          <div class="card-title">Gerenciamento de Reclamações</div>
+          <div class="features-list">
+            <div class="feature-item">
+              <span class="feature-dot"></span>
+              <span><strong>Gerenciamento de Reclamações</strong> — central de SAC integrada ao ML com triagem automática, templates de resposta e histórico de mediações.</span>
+            </div>
+          </div>
+          <div class="badges-row">
+            <span class="badge badge-reclamacoes">Reclamações</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- /Timeline -->
+
+    <!-- Footer -->
+    <div class="footer">
+      <strong>Fonte:</strong> Mercado Turbo changelog oficial &nbsp;·&nbsp; Compilado pela equipe Wingx &nbsp;·&nbsp; mar/2026
+    </div>
+
+  </div>
+</body>
+</html>

@@ -69,6 +69,7 @@ const APPS: NavItem[] = [
   { href: '/paraguai-assets',      label: 'Assets PY',        icon: Package,     minRole: 'member' },
   { href: '/mercado-livre',        label: 'Mercado Livre',    icon: ShoppingBag, minRole: 'member' },
   { href: '/mercado-livre/contas', label: 'Contas ML',        icon: KeyRound,    minRole: 'member' },
+  { href: '/mercado-livre/pedidos', label: 'Pedidos ML',      icon: ClipboardList, minRole: 'member' },
 ];
 
 const ROLE_LEVEL: Record<string, number> = { admin: 3, member: 2, viewer: 1 };

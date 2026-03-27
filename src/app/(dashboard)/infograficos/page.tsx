@@ -43,6 +43,13 @@ const DOCS = [
     icon: '📚',
     sprint: 'Infra',
   },
+  {
+    slug: 'mercado-turbo-changelog',
+    title: 'Inteligência Competitiva — Mercado Turbo',
+    description: 'Timeline de features lançadas pelo Mercado Turbo (fev–mar 2026). Análise de concorrência para priorização de roadmap.',
+    icon: '🔍',
+    sprint: 'Competitivo',
+  },
 ];
 
 export default function InfograficosPage() {

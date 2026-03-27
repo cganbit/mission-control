@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { getSessionFromRequest, hasRole } from '@/lib/auth';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
@@ -60,8 +61,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const isAgent = AGENT_KEY && key === AGENT_KEY;
   const isQueue = QUEUE_KEY && queueKey === QUEUE_KEY;
+  const session = await getSessionFromRequest(req);
+  const isDashboard = !!(session && hasRole(session, 'member'));
 
-  if (!isAgent && !isQueue) {
+  if (!isAgent && !isQueue && !isDashboard) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -137,8 +140,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
 
-  // Apenas agente pode buscar do ML
-  if (!isAgent) {
+  // Apenas agente ou dashboard pode buscar do ML
+  if (!isAgent && !isDashboard) {
     return NextResponse.json({ error: 'Label not stored yet' }, { status: 404 });
   }
 
@@ -148,7 +151,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const mlRes = await fetch(
-    `${ML_API}/shipments/${ml_shipment_id}/labels?response_type=pdf2&free_method=false`,
+    `${ML_API}/shipment_labels?shipment_ids=${ml_shipment_id}&response_type=pdf`,
     { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(30000) }
   );
 
