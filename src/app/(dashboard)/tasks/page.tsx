@@ -17,7 +17,42 @@ interface Task {
   squad_color: string;
   due_date: string;
   created_at: string;
+  auto_created?: boolean;
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function relativeDue(dateStr: string): { label: string; color: string } {
+  const diff = new Date(dateStr).getTime() - Date.now();
+  const days = Math.floor(diff / 86400000);
+  if (days < 0)  return { label: `venceu ${Math.abs(days)}d atrás`, color: 'text-red-400' };
+  if (days === 0) return { label: 'vence hoje', color: 'text-amber-400' };
+  if (days === 1) return { label: 'amanhã', color: 'text-amber-300' };
+  return { label: `em ${days}d`, color: 'text-slate-500' };
+}
+
+function agentInitials(name: string): string {
+  return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
+}
+
+const PRIORITY_BADGE: Record<string, string> = {
+  urgent: 'bg-red-500/20 text-red-400 border border-red-500/40',
+  high:   'bg-orange-500/20 text-orange-400 border border-orange-500/40',
+  medium: 'bg-blue-500/20 text-blue-400 border border-blue-500/40',
+  low:    'bg-slate-700/40 text-slate-500 border border-slate-600/40',
+};
+
+const PRIORITY_ICON: Record<string, string> = {
+  urgent: '🔴', high: '🟠', medium: '🔵', low: '⚪',
+};
+
+const COL_ACCENT: Record<string, string> = {
+  backlog:    'border-slate-700',
+  assigned:   'border-indigo-500/50',
+  in_progress:'border-amber-500/50',
+  review:     'border-purple-500/50',
+  done:       'border-emerald-500/50',
+};
 
 interface Squad { id: string; name: string; color: string }
 interface Agent { id: string; name: string; squad_id: string }
@@ -184,54 +219,96 @@ export default function TasksPage() {
       )}
 
       {/* Kanban board */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-5 gap-3 items-start">
         {STATUSES.map(status => {
           const col = tasks.filter(t => t.status === status);
+          const hasUrgent = col.some(t => t.priority === 'urgent');
           return (
             <div
               key={status}
-              className="bg-gray-900/50 rounded-xl p-3 min-h-[200px]"
+              className={`bg-gray-900/60 rounded-xl border-t-2 ${COL_ACCENT[status]} min-h-[120px]`}
               onDragOver={e => e.preventDefault()}
               onDrop={() => { if (dragging) moveTask(dragging, status); setDragging(null); }}
             >
-              <div className="flex items-center justify-between mb-3">
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[status]}`}>
+              {/* Column header */}
+              <div className="flex items-center justify-between px-3 pt-3 pb-2">
+                <span className={`text-xs font-bold uppercase tracking-wider ${STATUS_COLORS[status]}`}>
                   {STATUS_LABELS[status]}
                 </span>
-                <span className="text-xs text-gray-500">{col.length}</span>
+                <div className="flex items-center gap-1.5">
+                  {hasUrgent && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />}
+                  <span className="text-xs font-semibold text-gray-500 bg-gray-800 rounded-full w-5 h-5 flex items-center justify-center">
+                    {col.length}
+                  </span>
+                </div>
               </div>
-              <div className="space-y-2">
-                {col.map(task => (
-                  <div
-                    key={task.id}
-                    draggable
-                    onDragStart={() => setDragging(task.id)}
-                    onDragEnd={() => setDragging(null)}
-                    className={`bg-gray-800 rounded-lg p-3 cursor-grab active:cursor-grabbing border transition-colors group ${justDone.has(task.id) ? 'border-green-500 task-done-anim' : 'border-gray-700 hover:border-gray-600'}`}
-                  >
-                    <div className="flex items-start justify-between gap-1 mb-2">
-                      <p className="text-sm text-gray-200 leading-snug">{task.title}</p>
-                      <button
-                        onClick={() => deleteTask(task.id)}
-                        className="text-gray-600 hover:text-red-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                      >✕</button>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {task.squad_color && (
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: task.squad_color }} title={task.squad_name} />
+
+              {/* Cards */}
+              <div className="px-2 pb-3 space-y-2">
+                {col.map(task => {
+                  const isSRE = task.auto_created === true;
+                  const due = task.due_date ? relativeDue(task.due_date) : null;
+                  const isDone = justDone.has(task.id);
+                  return (
+                    <div
+                      key={task.id}
+                      draggable
+                      onDragStart={() => setDragging(task.id)}
+                      onDragEnd={() => setDragging(null)}
+                      className={`rounded-lg p-3 cursor-grab active:cursor-grabbing border transition-all group
+                        ${isDone ? 'border-emerald-500 bg-emerald-500/10' : isSRE ? 'bg-gray-800 border-l-2 border-l-red-500 border-gray-700 hover:border-gray-600' : 'bg-gray-800 border-gray-700 hover:border-gray-600'}
+                      `}
+                    >
+                      {/* Title row */}
+                      <div className="flex items-start justify-between gap-1 mb-2.5">
+                        <p className="text-sm text-gray-200 leading-snug flex-1">
+                          {isSRE && <span className="mr-1">⚡</span>}
+                          {task.title}
+                        </p>
+                        <button
+                          onClick={() => deleteTask(task.id)}
+                          className="text-gray-600 hover:text-red-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5"
+                        >✕</button>
+                      </div>
+
+                      {/* Meta row */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Squad dot */}
+                        {task.squad_color && (
+                          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: task.squad_color }} title={task.squad_name} />
+                        )}
+
+                        {/* Priority badge */}
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${PRIORITY_BADGE[task.priority] ?? PRIORITY_BADGE.medium}`}>
+                          {PRIORITY_ICON[task.priority]} {task.priority}
+                        </span>
+
+                        {/* Agent avatar */}
+                        {task.agent_name && (
+                          <span
+                            className="text-[10px] font-bold bg-indigo-900/60 text-indigo-300 border border-indigo-700/50 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0"
+                            title={task.agent_name}
+                          >
+                            {agentInitials(task.agent_name)}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Due date */}
+                      {due && (
+                        <p className={`text-[10px] mt-1.5 font-medium ${due.color}`}>
+                          📅 {due.label}
+                        </p>
                       )}
-                      {task.agent_name && (
-                        <span className="text-xs text-gray-500">🤖 {task.agent_name}</span>
-                      )}
-                      <span className={`text-xs font-medium ${PRIORITY_COLORS[task.priority]}`}>
-                        {task.priority === 'urgent' ? '🔴' : task.priority === 'high' ? '🟠' : task.priority === 'medium' ? '🔵' : '⚪'} {task.priority}
-                      </span>
                     </div>
-                    {task.due_date && (
-                      <div className="text-xs text-gray-600 mt-1.5">{formatDate(task.due_date)}</div>
-                    )}
+                  );
+                })}
+
+                {col.length === 0 && (
+                  <div className="text-center py-6 text-xs text-gray-700 select-none">
+                    Arraste aqui
                   </div>
-                ))}
+                )}
               </div>
             </div>
           );

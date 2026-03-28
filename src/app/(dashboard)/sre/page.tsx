@@ -5,6 +5,79 @@ import { RefreshCw } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface SreCheck {
+  id: number;
+  service: string;
+  check_name: string;
+  enabled: boolean;
+  last_checked_at: string | null;
+  last_status: 'ok' | 'error' | 'warning' | null;
+  last_error: string | null;
+}
+
+const SERVICE_ICON: Record<string, string> = {
+  evolution:   '📱',
+  ml_tokens:   '🔑',
+  print_queue: '🖨️',
+  n8n:         '⚙️',
+  db:          '🗄️',
+};
+
+const SERVICE_LABEL: Record<string, string> = {
+  evolution:   'WhatsApp',
+  ml_tokens:   'ML Tokens',
+  print_queue: 'Fila Impressão',
+  n8n:         'n8n Workflow',
+  db:          'Banco de Dados',
+};
+
+function HealthCard({ check }: { check: SreCheck }) {
+  const isOk      = check.last_status === 'ok';
+  const isWarning = check.last_status === 'warning';
+  const isError   = check.last_status === 'error';
+  const isUnknown = !check.last_status;
+
+  const border = isError   ? 'border-red-500/40 bg-red-500/5'
+               : isWarning ? 'border-amber-500/40 bg-amber-500/5'
+               : isOk      ? 'border-emerald-500/30 bg-emerald-500/5'
+               :             'border-slate-700/50 bg-slate-900/40';
+
+  const dot = isError   ? 'bg-red-500 animate-pulse'
+            : isWarning ? 'bg-amber-400 animate-pulse'
+            : isOk      ? 'bg-emerald-400'
+            :             'bg-slate-600';
+
+  const label = isError ? 'ERROR' : isWarning ? 'WARNING' : isOk ? 'OK' : '—';
+  const labelColor = isError ? 'text-red-400' : isWarning ? 'text-amber-400' : isOk ? 'text-emerald-400' : 'text-slate-500';
+
+  const ago = check.last_checked_at
+    ? (() => {
+        const mins = Math.floor((Date.now() - new Date(check.last_checked_at).getTime()) / 60000);
+        return mins < 1 ? 'agora' : `${mins}min atrás`;
+      })()
+    : 'nunca';
+
+  return (
+    <div className={`rounded-xl border p-4 flex flex-col gap-2 min-w-[160px] ${border}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-xl">{SERVICE_ICON[check.service] ?? '🔧'}</span>
+        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dot}`} />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-slate-200">{SERVICE_LABEL[check.service] ?? check.service}</p>
+        <p className={`text-xs font-bold mt-0.5 ${labelColor}`}>{label}</p>
+      </div>
+      {isError && check.last_error && (
+        <p className="text-[10px] text-red-400/80 truncate" title={check.last_error}>{check.last_error}</p>
+      )}
+      {isWarning && check.last_error && (
+        <p className="text-[10px] text-amber-400/80 truncate" title={check.last_error}>{check.last_error}</p>
+      )}
+      <p className="text-[10px] text-slate-600 mt-auto">{ago}</p>
+    </div>
+  );
+}
+
 interface SreEvent {
   id: number;
   created_at: string;
@@ -81,6 +154,7 @@ export default function SREPage() {
   const [data, setData] = useState<SreResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [checks, setChecks] = useState<SreCheck[]>([]);
 
   const [filterType, setFilterType] = useState<EventType>('');
   const [filterStatus, setFilterStatus] = useState<Status>('');
@@ -88,6 +162,22 @@ export default function SREPage() {
   const [filterAccount, setFilterAccount] = useState('');
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const loadHealth = useCallback(async () => {
+    try {
+      const res = await fetch('/api/sre/health');
+      if (res.ok) {
+        const json = await res.json();
+        setChecks(json.checks ?? []);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    loadHealth();
+    const t = setInterval(loadHealth, 30000);
+    return () => clearInterval(t);
+  }, [loadHealth]);
 
   const load = useCallback(async (p = page) => {
     setLoading(true);
@@ -141,6 +231,13 @@ export default function SREPage() {
             </span>
           )}
         </div>
+
+        {/* Service Health Cards */}
+        {checks.length > 0 && (
+          <div className="flex flex-wrap gap-3">
+            {checks.map(c => <HealthCard key={c.id} check={c} />)}
+          </div>
+        )}
 
         {/* Filters */}
         <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-4">

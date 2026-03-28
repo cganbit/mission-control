@@ -1,5 +1,6 @@
 // Mission Control — Database Schema (PostgreSQL via pg)
 // Fase 1: Squads, Agents, Tasks, Activity Log
+// Fase 2 (SRE): sre_checks + colunas SRE em tasks
 
 export const CREATE_TABLES_SQL = `
 -- Squads (projetos/clientes isolados)
@@ -24,21 +25,38 @@ CREATE TABLE IF NOT EXISTS agents (
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- SRE Checks — configuração e último estado de cada serviço monitorado
+CREATE TABLE IF NOT EXISTS sre_checks (
+  id                  SERIAL PRIMARY KEY,
+  service             VARCHAR(50)  NOT NULL,
+  check_name          VARCHAR(100) NOT NULL,
+  enabled             BOOLEAN      DEFAULT true,
+  interval_minutes    INT          DEFAULT 5,
+  escalation_minutes  INT          DEFAULT 300,
+  last_checked_at     TIMESTAMPTZ,
+  last_status         VARCHAR(20),
+  last_error          TEXT,
+  UNIQUE(service, check_name)
+);
+
 -- Tasks (Kanban)
 CREATE TABLE IF NOT EXISTS tasks (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  squad_id    UUID NOT NULL REFERENCES squads(id) ON DELETE CASCADE,
-  agent_id    UUID REFERENCES agents(id),
-  title       VARCHAR(255) NOT NULL,
-  description TEXT,
-  status      VARCHAR(20) DEFAULT 'backlog'
-                CHECK (status IN ('backlog','assigned','in_progress','review','done')),
-  priority    VARCHAR(10) DEFAULT 'medium'
-                CHECK (priority IN ('low','medium','high','urgent')),
-  due_date    TIMESTAMPTZ,
-  created_by  VARCHAR(100),
-  created_at  TIMESTAMPTZ DEFAULT NOW(),
-  updated_at  TIMESTAMPTZ DEFAULT NOW()
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  squad_id      UUID NOT NULL REFERENCES squads(id) ON DELETE CASCADE,
+  agent_id      UUID REFERENCES agents(id),
+  title         VARCHAR(255) NOT NULL,
+  description   TEXT,
+  status        VARCHAR(20) DEFAULT 'backlog'
+                  CHECK (status IN ('backlog','assigned','in_progress','review','done')),
+  priority      VARCHAR(10) DEFAULT 'medium'
+                  CHECK (priority IN ('low','medium','high','urgent')),
+  due_date      TIMESTAMPTZ,
+  created_by    VARCHAR(100),
+  sre_check_id  INT REFERENCES sre_checks(id),
+  auto_created  BOOLEAN DEFAULT false,
+  notified_at   TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Activity log (feed em tempo real)
@@ -59,6 +77,27 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
   expires_at TIMESTAMPTZ NOT NULL,
   revoked    BOOLEAN DEFAULT FALSE
 );
+`;
+
+export const SEED_SRE_SQL = `
+-- Squad SRE (infra auto-healing)
+INSERT INTO squads (id, name, description, mission, color)
+VALUES (
+  'sre00000-0000-0000-0000-000000000001',
+  'SRE',
+  'Monitoramento e auto-healing da infraestrutura',
+  'Detectar, diagnosticar e resolver falhas de infra sem intervenção humana',
+  '#ef4444'
+) ON CONFLICT (id) DO NOTHING;
+
+-- Checks iniciais
+INSERT INTO sre_checks (service, check_name, enabled, interval_minutes, escalation_minutes) VALUES
+  ('evolution',    'whatsapp_connected', true, 5,  0),
+  ('ml_tokens',    'token_expiry_24h',   true, 60, 60),
+  ('print_queue',  'jobs_in_error',      true, 5,  0),
+  ('n8n',          'workflow_active',    true, 5,  60),
+  ('db',           'connectivity',       true, 5,  0)
+ON CONFLICT (service, check_name) DO NOTHING;
 `;
 
 export const SEED_PARAGUAY_SQUAD_SQL = `
