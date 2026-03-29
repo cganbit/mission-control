@@ -159,7 +159,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   if (!mlRes.ok) {
     const txt = await mlRes.text().catch(() => '');
+    const errMsg = `ML ${mlRes.status}: ${txt.slice(0, 200)}`;
     console.error(`[label] ML error ${mlRes.status} para shipment ${ml_shipment_id} (seller: ${seller_nickname}): ${txt.slice(0, 200)}`);
+
+    // Marcar job como error no banco para o SRE detectar
+    await db.query(
+      `UPDATE print_queue SET status = 'error', error_msg = $1, updated_at = NOW() WHERE id = $2`,
+      [errMsg, id]
+    ).catch(() => {});
+
     // 424 = Failed Dependency (erro na ML API), 502 = apenas para erros 5xx da ML
     const status = mlRes.status >= 500 ? 502 : 424;
     await auditLog({
@@ -168,7 +176,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       entity_id: Number(id),
       seller_nickname,
       status: 'error',
-      error_msg: `ML ${mlRes.status}: ${txt.slice(0, 200)}`,
+      error_msg: errMsg,
       duration_ms: Date.now() - start,
     });
     return NextResponse.json({ error: `ML ${mlRes.status}: ${txt.slice(0, 100)}` }, { status });
