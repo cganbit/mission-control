@@ -8,8 +8,11 @@ const N8N_URL         = process.env.N8N_URL ?? 'http://evolution-api-h4pg-n8n-1:
 const N8N_API_KEY     = process.env.N8N_API_KEY ?? '';
 const N8N_WORKFLOW_ID = process.env.N8N_WORKFLOW_ID ?? 'okizEwONJrJ8M6vI';
 
-// Squad SRE fixo (seed)
-const SRE_SQUAD_ID = 'sre00000-0000-0000-0000-000000000001';
+// Squad SRE — buscado dinamicamente por nome
+async function getSreSquadId(db: ReturnType<typeof getPool>): Promise<string | null> {
+  const r = await db.query(`SELECT id FROM squads WHERE name = 'SRE' LIMIT 1`);
+  return r.rows[0]?.id ?? null;
+}
 
 interface CheckResult {
   service: string;
@@ -30,9 +33,10 @@ async function checkEvolution(): Promise<CheckResult> {
     const data = await res.json();
     const instances: any[] = Array.isArray(data) ? data : Object.values(data);
     const cleiton = instances.find(
-      (i: any) => (i.instance?.instanceName ?? i.instanceName ?? '').toLowerCase() === 'cleiton'
+      (i: any) => (i.name ?? i.instance?.instanceName ?? i.instanceName ?? '').toLowerCase() === 'cleiton'
     );
-    const state = cleiton?.instance?.state ?? cleiton?.state ?? 'unknown';
+    // Evolution API v2: connectionStatus (flat); v1: instance.state
+    const state = cleiton?.connectionStatus ?? cleiton?.instance?.state ?? cleiton?.state ?? 'unknown';
     if (state !== 'open') {
       return { service: 'evolution', check_name: 'whatsapp_connected', status: 'error', error: `Instância state=${state}` };
     }
@@ -97,9 +101,22 @@ async function checkDb(db: ReturnType<typeof getPool>): Promise<CheckResult> {
   }
 }
 
+async function checkDiskUsage(): Promise<CheckResult> {
+  try {
+    const { execSync } = await import('child_process');
+    const output = execSync('df / --output=pcent', { encoding: 'utf8' });
+    const pct = parseInt(output.split('\n')[1].trim().replace('%', ''), 10);
+    if (pct >= 85) return { service: 'vps', check_name: 'disk_usage', status: 'error', error: `Disco em ${pct}%` };
+    if (pct >= 70) return { service: 'vps', check_name: 'disk_usage', status: 'warning', error: `Disco em ${pct}%` };
+    return { service: 'vps', check_name: 'disk_usage', status: 'ok' };
+  } catch (e: any) {
+    return { service: 'vps', check_name: 'disk_usage', status: 'error', error: e.message };
+  }
+}
+
 // ─── Upsert check + criar task se falha ──────────────────────────────────────
 
-async function persistCheck(db: ReturnType<typeof getPool>, result: CheckResult): Promise<boolean> {
+async function persistCheck(db: ReturnType<typeof getPool>, result: CheckResult, sreSquadId: string | null): Promise<boolean> {
   const isError = result.status !== 'ok';
 
   // Atualiza último estado do check
@@ -141,13 +158,15 @@ async function persistCheck(db: ReturnType<typeof getPool>, result: CheckResult)
   );
   if (existing.rows.length > 0) return false; // Já tem task aberta — não duplica
 
+  if (!sreSquadId) return false; // Squad SRE não encontrado
+
   const priority = escalation_minutes === 0 ? 'urgent' : 'high';
   const title = `[SRE] ${result.service} — ${result.check_name.replace(/_/g, ' ')}`;
 
   await db.query(
     `INSERT INTO tasks (squad_id, title, description, status, priority, sre_check_id, auto_created, created_by)
      VALUES ($1, $2, $3, 'backlog', $4, $5, true, 'sre-monitor')`,
-    [SRE_SQUAD_ID, title, result.error ?? null, priority, checkId]
+    [sreSquadId, title, result.error ?? null, priority, checkId]
   );
 
   return true;
@@ -163,22 +182,25 @@ export async function POST(req: NextRequest) {
 
   const db = getPool();
 
-  const [evolution, mlTokens, printQueue, n8n, dbCheck] = await Promise.allSettled([
+  const [evolution, mlTokens, printQueue, n8n, dbCheck, diskUsage] = await Promise.allSettled([
     checkEvolution(),
     checkMlTokens(db),
     checkPrintQueue(db),
     checkN8n(),
     checkDb(db),
+    checkDiskUsage(),
   ]);
 
-  const results: CheckResult[] = [evolution, mlTokens, printQueue, n8n, dbCheck].map(r =>
+  const results: CheckResult[] = [evolution, mlTokens, printQueue, n8n, dbCheck, diskUsage].map(r =>
     r.status === 'fulfilled' ? r.value : { service: 'unknown', check_name: 'unknown', status: 'error', error: String((r as PromiseRejectedResult).reason) }
   );
+
+  const sreSquadId = await getSreSquadId(db);
 
   let tasks_created = 0;
   for (const result of results) {
     try {
-      const created = await persistCheck(db, result);
+      const created = await persistCheck(db, result, sreSquadId);
       if (created) tasks_created++;
     } catch (e: any) {
       console.error(`[SRE] Erro ao persistir check ${result.service}/${result.check_name}:`, e.message);

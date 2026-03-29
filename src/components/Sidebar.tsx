@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Shield, ClipboardList, Bot, Zap, Calendar, Brain,
   FolderOpen, CircleDollarSign, Plug, Users, BarChart2,
   TrendingUp, Package, ShoppingBag, KeyRound, Activity,
-  PanelLeftClose, PanelLeftOpen, LogOut, ChevronDown, ChevronUp, AppWindow,
+  PanelLeftClose, PanelLeftOpen, LogOut, ChevronDown, ChevronUp, AppWindow, Sparkles,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
