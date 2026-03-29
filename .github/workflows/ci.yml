@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+        env:
+          DB_ENCRYPTION_KEY: ${{ secrets.DB_ENCRYPTION_KEY }}
+          WORKER_KEY: ${{ secrets.WORKER_KEY }}
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /opt/mission-control
+            git pull origin main
+            cat > .env <<EOF
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            WORKER_KEY=${{ secrets.WORKER_KEY }}
+            DB_ENCRYPTION_KEY=${{ secrets.DB_ENCRYPTION_KEY }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            FIRECRAWL_API_KEY=${{ secrets.FIRECRAWL_API_KEY }}
+            OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
+            PRINT_AGENT_KEY=${{ secrets.PRINT_AGENT_KEY }}
+            QUEUE_KEY=${{ secrets.QUEUE_KEY }}
+            MC_URL=https://mc.wingx.app.br
+            DATABASE_SSL=false
+            EOF
+            docker compose build --no-cache
+            docker compose up -d
+            sleep 5
+            curl -sf http://localhost:3001/api/mercado-livre/webhook && echo "✅ health ok" || echo "⚠️ health check failed"
