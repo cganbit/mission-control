@@ -45,6 +45,9 @@ jobs:
           QUEUE_KEY=${{ secrets.QUEUE_KEY }}
           DB_ENCRYPTION_KEY=${{ secrets.DB_ENCRYPTION_KEY }}
           WORKER_KEY=${{ secrets.WORKER_KEY }}
+          SRE_WHATSAPP_GROUP=${{ secrets.SRE_WHATSAPP_GROUP }}
+          EVOLUTION_API_KEY=${{ secrets.EVOLUTION_API_KEY }}
+          N8N_API_KEY=${{ secrets.N8N_API_KEY }}
           ENVEOF"
 
       - name: Build & restart container
@@ -58,7 +61,7 @@ jobs:
       - name: Health check
         run: |
           sleep 15
-          curl -f https://mc.wingx.app.br/api/health || exit 1
+          curl -f https://mc.wingx.app.br/api/mercado-livre/webhook || exit 1
 
       - name: Smoke tests
         run: |
@@ -106,3 +109,16 @@ jobs:
           echo ""
           echo "Resultado: ✅ $PASS passou | ❌ $FAIL falhou"
           [ "$FAIL" -eq 0 ] || exit 1
+
+      - name: Notify SRE on failure
+        if: failure()
+        run: |
+          MSG="🔴 *Deploy falhou — Mission Control*%0A%0A"
+          MSG="${MSG}*Commit:* ${{ github.sha }}%0A"
+          MSG="${MSG}*Branch:* ${{ github.ref_name }}%0A"
+          MSG="${MSG}*Por:* ${{ github.actor }}%0A%0A"
+          MSG="${MSG}_Verifique o painel: https://mc.wingx.app.br/sre_"
+          curl -s -X POST "${{ secrets.EVOLUTION_URL }}/message/sendText/${{ secrets.EVOLUTION_INSTANCE }}" \
+            -H "apikey: ${{ secrets.EVOLUTION_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"number\":\"${{ secrets.SRE_WHATSAPP_GROUP }}\",\"text\":\"$(echo -e $MSG)\"}" || true
