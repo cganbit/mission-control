@@ -104,8 +104,8 @@ async function checkDb(db: ReturnType<typeof getPool>): Promise<CheckResult> {
 async function checkDiskUsage(): Promise<CheckResult> {
   try {
     const { execSync } = await import('child_process');
-    const output = execSync('df / --output=pcent', { encoding: 'utf8' });
-    const pct = parseInt(output.split('\n')[1].trim().replace('%', ''), 10);
+    const output = execSync('df -P /', { encoding: 'utf8' });
+    const pct = parseInt(output.split('\n')[1].trim().split(/\s+/)[4].replace('%', ''), 10);
     if (pct >= 85) return { service: 'vps', check_name: 'disk_usage', status: 'error', error: `Disco em ${pct}%` };
     if (pct >= 70) return { service: 'vps', check_name: 'disk_usage', status: 'warning', error: `Disco em ${pct}%` };
     return { service: 'vps', check_name: 'disk_usage', status: 'ok' };

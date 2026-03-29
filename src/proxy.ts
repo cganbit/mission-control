@@ -22,7 +22,9 @@ export async function proxy(req: NextRequest) {
     pathname === '/api/print-queue/trigger' || // Link de impressão — autenticado por token único no query param
     pathname.startsWith('/api/print-queue/manage') || // Fila pública — autenticada por QUEUE_KEY no query param
     pathname.startsWith('/api/print-queue') || // WingX Agent — autenticado por x-agent-key
-    pathname === '/fila' // Dashboard público da fila de impressão — autenticado por QUEUE_KEY
+    pathname === '/fila' || // Dashboard público da fila de impressão — autenticado por QUEUE_KEY
+    pathname.startsWith('/api/sre/run-checks') || // SRE cron — autenticado por x-worker-key
+    pathname.startsWith('/api/sre/escalate') // SRE escalation cron — autenticado por x-worker-key
   ) {
     return NextResponse.next();
   }
