@@ -69,10 +69,10 @@ async function checkPrintQueue(db: ReturnType<typeof getPool>): Promise<CheckRes
   try {
     const r = await db.query(
       `SELECT COUNT(*)::int AS cnt FROM print_queue
-       WHERE status = 'error' AND updated_at < NOW() - INTERVAL '30 minutes'`
+       WHERE status = 'error'`
     );
     const cnt = r.rows[0]?.cnt ?? 0;
-    if (cnt > 0) return { service: 'print_queue', check_name: 'jobs_in_error', status: 'error', error: `${cnt} job(s) em erro há >30min` };
+    if (cnt > 0) return { service: 'print_queue', check_name: 'jobs_in_error', status: 'error', error: `${cnt} job(s) em erro` };
     return { service: 'print_queue', check_name: 'jobs_in_error', status: 'ok' };
   } catch (e: any) {
     return { service: 'print_queue', check_name: 'jobs_in_error', status: 'error', error: e.message };
