@@ -63,6 +63,7 @@ jobs:
             OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
             PRINT_AGENT_KEY=${{ secrets.PRINT_AGENT_KEY }}
             QUEUE_KEY=${{ secrets.QUEUE_KEY }}
+            SRE_WHATSAPP_GROUP=${{ secrets.SRE_WHATSAPP_GROUP }}
             MC_URL=https://mc.wingx.app.br
             DATABASE_SSL=false
             EOF

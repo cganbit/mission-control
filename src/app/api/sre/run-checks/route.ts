@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { sendWhatsApp } from '@/lib/whatsapp';
 
 const WORKER_KEY      = process.env.WORKER_KEY ?? '';
+const SRE_GROUP       = process.env.SRE_WHATSAPP_GROUP ?? '';
 const EVOLUTION_URL   = process.env.EVOLUTION_URL ?? 'http://evolution-api-h4pg-api-1:8080';
 const EVOLUTION_KEY   = process.env.EVOLUTION_API_KEY ?? '';
 const N8N_URL         = process.env.N8N_URL ?? 'http://evolution-api-h4pg-n8n-1:5678';
@@ -198,13 +200,28 @@ export async function POST(req: NextRequest) {
   const sreSquadId = await getSreSquadId(db);
 
   let tasks_created = 0;
+  const newFailures: CheckResult[] = [];
+
   for (const result of results) {
     try {
       const created = await persistCheck(db, result, sreSquadId);
-      if (created) tasks_created++;
+      if (created) {
+        tasks_created++;
+        newFailures.push(result);
+      }
     } catch (e: any) {
       console.error(`[SRE] Erro ao persistir check ${result.service}/${result.check_name}:`, e.message);
     }
+  }
+
+  // Notificar grupo SRE apenas para novas falhas (task recém-criada)
+  if (newFailures.length > 0 && SRE_GROUP) {
+    const emoji: Record<string, string> = { error: '🔴', warning: '🟡', ok: '✅' };
+    const lines = newFailures.map(f =>
+      `${emoji[f.status] ?? '⚠️'} *${f.service}* — ${f.check_name.replace(/_/g, ' ')}\n   ${f.error ?? ''}`
+    ).join('\n\n');
+    const msg = `🚨 *SRE Alert — Mission Control*\n\n${lines}\n\n_Verifique o painel: https://mc.wingx.app.br/sre_`;
+    await sendWhatsApp(msg, SRE_GROUP).catch(() => {});
   }
 
   return NextResponse.json({ checks: results, tasks_created });
