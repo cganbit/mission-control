@@ -8,7 +8,7 @@ interface Job {
   ml_order_id: string;
   ml_shipment_id: string | null;
   seller_nickname: string;
-  status: 'queued' | 'pending' | 'printing' | 'done' | 'error';
+  status: 'queued' | 'pending' | 'printing' | 'done' | 'error' | 'confirmed';
   error_msg: string | null;
   created_at: string;
   updated_at: string;
@@ -16,9 +16,11 @@ interface Job {
   logistic_type: string | null;
   buyer_name: string | null;
   has_label: boolean;
+  token: string | null;
+  qr_code_url: string | null;
 }
 
-type Tab = 'queued' | 'processing' | 'done' | 'error';
+type Tab = 'queued' | 'processing' | 'done' | 'error' | 'confirmed';
 
 function timeAgo(dateStr: string): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -29,27 +31,30 @@ function timeAgo(dateStr: string): string {
 }
 
 const STATUS_BADGE: Record<Job['status'], string> = {
-  queued:   'bg-indigo-900/60 text-indigo-300 border border-indigo-700',
-  pending:  'bg-yellow-900/60 text-yellow-300 border border-yellow-700',
-  printing: 'bg-purple-900/60 text-purple-300 border border-purple-700',
-  done:     'bg-emerald-900/60 text-emerald-300 border border-emerald-700',
-  error:    'bg-red-900/60 text-red-300 border border-red-700',
+  queued:    'bg-indigo-900/60 text-indigo-300 border border-indigo-700',
+  pending:   'bg-yellow-900/60 text-yellow-300 border border-yellow-700',
+  printing:  'bg-purple-900/60 text-purple-300 border border-purple-700',
+  done:      'bg-emerald-900/60 text-emerald-300 border border-emerald-700',
+  error:     'bg-red-900/60 text-red-300 border border-red-700',
+  confirmed: 'bg-teal-900/60 text-teal-300 border border-teal-700',
 };
 
 const STATUS_LABEL: Record<Job['status'], string> = {
-  queued:   'Pendente',
-  pending:  'Na fila',
-  printing: 'Imprimindo',
-  done:     'Impresso',
-  error:    'Erro',
+  queued:    'Pendente',
+  pending:   'Na fila',
+  printing:  'Imprimindo',
+  done:      'Impresso',
+  error:     'Erro',
+  confirmed: 'Confirmado',
 };
 
 const STATUS_ICON: Record<Job['status'], string> = {
-  queued:   '🕐',
-  pending:  '⏳',
-  printing: '🖨️',
-  done:     '✅',
-  error:    '❌',
+  queued:    '🕐',
+  pending:   '⏳',
+  printing:  '🖨️',
+  done:      '✅',
+  error:     '❌',
+  confirmed: '📦',
 };
 
 function FilaContent() {
@@ -62,6 +67,7 @@ function FilaContent() {
   const [loading, setLoading] = useState(true);
   const [invalid, setInvalid] = useState(false);
   const [activating, setActivating] = useState(false);
+  const [reprinting, setReprinting] = useState<number | null>(null);
   const [countdown, setCountdown] = useState(5);
 
   const fetchJobs = useCallback(async () => {
@@ -91,8 +97,9 @@ function FilaContent() {
   const processing = jobs.filter(j => j.status === 'pending' || j.status === 'printing');
   const done       = jobs.filter(j => j.status === 'done');
   const errors     = jobs.filter(j => j.status === 'error');
+  const confirmed  = jobs.filter(j => j.status === 'confirmed');
 
-  const tabJobs: Record<Tab, Job[]> = { queued, processing, done, error: errors };
+  const tabJobs: Record<Tab, Job[]> = { queued, processing, done, error: errors, confirmed };
   const visible = tabJobs[tab];
 
   const allQueuedSelected = queued.length > 0 && queued.every(j => selected.has(j.id));
@@ -126,6 +133,22 @@ function FilaContent() {
     }
   }
 
+  async function handleReprint(jobId: number, e: React.MouseEvent) {
+    e.stopPropagation();
+    setReprinting(jobId);
+    try {
+      await fetch(`/api/print-queue/manage?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [jobId], action: 'reprint' }),
+      });
+      setTab('queued');
+      await fetchJobs();
+    } finally {
+      setReprinting(null);
+    }
+  }
+
   // ─── Invalid ───────────────────────────────────────────────────────────────
   if (invalid) {
     return (
@@ -154,6 +177,7 @@ function FilaContent() {
     { id: 'queued',     label: 'Pendentes',   count: queued.length,     color: 'indigo' },
     { id: 'processing', label: 'Processando', count: processing.length, color: 'yellow' },
     { id: 'done',       label: 'Impressos',   count: done.length,       color: 'emerald' },
+    { id: 'confirmed',  label: 'Confirmados', count: confirmed.length,  color: 'teal' },
     { id: 'error',      label: 'Erros',       count: errors.length,     color: 'red' },
   ];
 
@@ -162,6 +186,7 @@ function FilaContent() {
     yellow:  'bg-yellow-600 text-white',
     emerald: 'bg-emerald-600 text-white',
     red:     'bg-red-600 text-white',
+    teal:    'bg-teal-600 text-white',
   };
 
   return (
@@ -201,7 +226,7 @@ function FilaContent() {
                 {t.count > 0 && (
                   <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center ${
                     tab === t.id ? 'bg-white/25 text-white' : 'bg-slate-700 text-slate-300'
-                  }`}>{t.count}</span>
+                  } ${t.id === 'processing' && tab !== 'processing' ? 'animate-pulse' : ''}`}>{t.count}</span>
                 )}
               </button>
             ))}
@@ -305,18 +330,42 @@ function FilaContent() {
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center justify-between mt-2 gap-2 flex-wrap">
                       <p className="text-xs text-slate-600">{timeAgo(job.created_at)}</p>
-                      {job.status === 'done' && job.has_label && (
-                        <a
-                          href={`/api/print-queue/${job.id}/label?key=${key}`}
-                          target="_blank"
-                          onClick={e => e.stopPropagation()}
-                          className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 transition-all"
-                        >
-                          ⬇ Etiqueta
-                        </a>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {/* Baixar etiqueta (done ou confirmed com label) */}
+                        {(job.status === 'done' || job.status === 'confirmed') && job.has_label && (
+                          <a
+                            href={`/api/print-queue/${job.id}/label?key=${key}`}
+                            target="_blank"
+                            onClick={e => e.stopPropagation()}
+                            className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 transition-all"
+                          >
+                            ⬇ Etiqueta
+                          </a>
+                        )}
+                        {/* Confirmar QR (done com qr_code_url) */}
+                        {job.status === 'done' && job.qr_code_url && (
+                          <a
+                            href={job.qr_code_url}
+                            target="_blank"
+                            onClick={e => e.stopPropagation()}
+                            className="text-[11px] px-2.5 py-1 rounded-lg bg-teal-900/50 border border-teal-700/60 text-teal-400 hover:text-teal-200 hover:border-teal-500 transition-all"
+                          >
+                            📷 Confirmar QR
+                          </a>
+                        )}
+                        {/* Reimprimir (done ou error) */}
+                        {(job.status === 'done' || job.status === 'error') && (
+                          <button
+                            onClick={e => handleReprint(job.id, e)}
+                            disabled={reprinting === job.id}
+                            className="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-900/50 border border-indigo-700/60 text-indigo-400 hover:text-indigo-200 hover:border-indigo-500 disabled:opacity-50 transition-all"
+                          >
+                            {reprinting === job.id ? '⏳' : '🔄 Reimprimir'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

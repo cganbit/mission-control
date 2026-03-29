@@ -1,7 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 
-function html(icon: string, title: string, body: string, color: string, status: number): NextResponse {
+interface StepInfo { label: string; icon: string; active: boolean; done: boolean; }
+
+function html(
+  icon: string, title: string, body: string, color: string, httpStatus: number,
+  opts?: { orderId?: string; steps?: StepInfo[]; errorDetail?: string; actionLabel?: string; actionHref?: string }
+): NextResponse {
+  const stepsHtml = opts?.steps ? `
+    <div class="steps">
+      ${opts.steps.map((s, i) => `
+        <div class="step ${s.done ? 'done' : ''} ${s.active ? 'active' : ''}">
+          <div class="step-dot">${s.done ? '✓' : s.active ? s.icon : (i + 1)}</div>
+          <div class="step-label">${s.label}</div>
+        </div>
+        ${i < opts.steps!.length - 1 ? `<div class="step-line ${s.done ? 'done' : ''}"></div>` : ''}
+      `).join('')}
+    </div>` : '';
+
+  const orderHtml = opts?.orderId
+    ? `<div class="order-id">Pedido #${opts.orderId}</div>` : '';
+
+  const errorHtml = opts?.errorDetail
+    ? `<div class="error-detail">${opts.errorDetail}</div>` : '';
+
+  const actionHtml = opts?.actionLabel && opts?.actionHref
+    ? `<a href="${opts.actionHref}" class="action-btn">${opts.actionLabel}</a>` : '';
+
   const page = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -17,41 +42,113 @@ function html(icon: string, title: string, body: string, color: string, status: 
       min-height: 100vh; padding: 24px;
     }
     .card {
-      background: #1e293b; border: 1px solid ${color}33;
-      border-radius: 20px; padding: 40px 32px;
-      text-align: center; max-width: 360px; width: 100%;
-      box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+      background: #1e293b; border: 1px solid ${color}44;
+      border-radius: 24px; padding: 36px 28px;
+      text-align: center; max-width: 380px; width: 100%;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.6), 0 0 0 1px ${color}11;
     }
-    .icon { font-size: 56px; margin-bottom: 20px; line-height: 1; }
-    h1 { font-size: 20px; font-weight: 700; color: ${color}; margin-bottom: 10px; }
-    p { color: #94a3b8; font-size: 14px; line-height: 1.6; }
-    .badge {
-      display: inline-block; margin-top: 16px;
+    .icon { font-size: 52px; margin-bottom: 16px; line-height: 1; }
+    .order-id {
+      font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      color: #475569; margin-bottom: 12px;
+    }
+    h1 { font-size: 19px; font-weight: 700; color: ${color}; margin-bottom: 8px; }
+    p { color: #94a3b8; font-size: 14px; line-height: 1.6; margin-bottom: 4px; }
+    .steps {
+      display: flex; align-items: center; justify-content: center;
+      margin: 24px 0 8px; gap: 0;
+    }
+    .step { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .step-dot {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700;
+      background: #1e3a5f22; border: 2px solid #334155; color: #475569;
+      transition: all .2s;
+    }
+    .step.done .step-dot { background: #16a34a33; border-color: #16a34a; color: #4ade80; }
+    .step.active .step-dot { background: ${color}22; border-color: ${color}; color: ${color}; box-shadow: 0 0 12px ${color}44; }
+    .step-label { font-size: 10px; color: #475569; font-weight: 600; white-space: nowrap; }
+    .step.done .step-label { color: #4ade80; }
+    .step.active .step-label { color: ${color}; }
+    .step-line {
+      width: 28px; height: 2px; background: #334155;
+      margin-bottom: 16px; flex-shrink: 0;
+    }
+    .step-line.done { background: #16a34a; }
+    .error-detail {
+      margin-top: 12px; padding: 10px 14px; background: #7f1d1d33;
+      border: 1px solid #991b1b44; border-radius: 10px;
+      font-size: 12px; color: #fca5a5; text-align: left; word-break: break-word;
+    }
+    .action-btn {
+      display: inline-block; margin-top: 20px;
       background: ${color}22; color: ${color};
-      border: 1px solid ${color}44; border-radius: 99px;
-      padding: 4px 14px; font-size: 12px; font-weight: 600;
+      border: 1px solid ${color}55; border-radius: 12px;
+      padding: 10px 24px; font-size: 14px; font-weight: 700;
+      text-decoration: none; transition: background .15s;
     }
-    .footer { margin-top: 24px; font-size: 11px; color: #334155; }
+    .action-btn:hover { background: ${color}33; }
+    .footer { margin-top: 24px; font-size: 11px; color: #1e293b; }
+    .footer span { color: #334155; }
   </style>
 </head>
 <body>
   <div class="card">
     <div class="icon">${icon}</div>
+    ${orderHtml}
     <h1>${title}</h1>
     <p>${body}</p>
-    <div class="footer">Mission Control · WingX</div>
+    ${stepsHtml}
+    ${errorHtml}
+    ${actionHtml}
+    <div class="footer"><span>Mission Control · WingX</span></div>
   </div>
 </body>
 </html>`;
-  return new NextResponse(page, { status, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+  return new NextResponse(page, { status: httpStatus, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
 
-// ─── GET /api/print-queue/trigger?token=XXX ──────────────────────────────────
+const FLOW_STEPS = (activeStatus: string): StepInfo[] => {
+  const order = ['pending', 'printing', 'done', 'confirmed'];
+  const labels: Record<string, string> = {
+    pending: 'Na fila', printing: 'Imprimindo', done: 'Impresso', confirmed: 'Confirmado',
+  };
+  const icons: Record<string, string> = {
+    pending: '⏳', printing: '🖨️', done: '✅', confirmed: '📦',
+  };
+  const activeIdx = order.indexOf(activeStatus);
+  return order.map((s, i) => ({
+    label: labels[s],
+    icon: icons[s],
+    active: i === activeIdx,
+    done: i < activeIdx,
+  }));
+};
+
+const QUEUE_KEY = process.env.QUEUE_KEY ?? '';
+
+// ─── GET /api/print-queue/trigger?token=XXX[&action=reprint] ─────────────────
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token');
+  const action = req.nextUrl.searchParams.get('action');
   if (!token) return html('❌', 'Link inválido', 'Token não encontrado.', '#ef4444', 400);
 
   const db = getPool();
+
+  // Reprint: reseta qualquer status de volta para queued
+  if (action === 'reprint') {
+    const r = await db.query(
+      `UPDATE print_queue SET status = 'queued', error_msg = NULL, updated_at = NOW()
+       WHERE token = $1 RETURNING id, ml_order_id`,
+      [token]
+    );
+    if (!r.rows[0]) return html('❌', 'Link expirado', 'Este link não é mais válido.', '#ef4444', 404);
+    return html('🖨️', 'Impressão solicitada!',
+      'A etiqueta entrou na fila e será impressa em instantes.',
+      '#6366f1', 200,
+      { orderId: r.rows[0].ml_order_id, steps: FLOW_STEPS('pending') });
+  }
 
   const result = await db.query(
     `UPDATE print_queue
@@ -63,31 +160,55 @@ export async function GET(req: NextRequest) {
 
   if (result.rowCount === 0) {
     const existing = await db.query(
-      `SELECT status, error_msg FROM print_queue WHERE token = $1`,
+      `SELECT id, status, error_msg, ml_order_id FROM print_queue WHERE token = $1`,
       [token]
     );
     const row = existing.rows[0];
     if (!row) return html('❌', 'Link expirado', 'Este link não é mais válido.', '#ef4444', 404);
 
-    if (row.status === 'done') {
-      return html('✅', 'Já impresso!', 'Esta etiqueta já foi impressa com sucesso.', '#22c55e', 200);
+    const orderId = row.ml_order_id;
+
+    if (row.status === 'confirmed') {
+      return html('📦', 'Coleta confirmada!',
+        'A etiqueta foi impressa e a coleta já foi confirmada.',
+        '#14b8a6', 200,
+        { orderId, steps: FLOW_STEPS('confirmed') });
     }
-    if (row.status === 'pending' || row.status === 'printing') {
-      return html('🖨️', 'Na fila!', 'Impressão já solicitada. O agente está processando.', '#6366f1', 200);
+    if (row.status === 'done') {
+      return html('✅', 'Etiqueta já impressa!',
+        'Aguardando confirmação de coleta.',
+        '#22c55e', 200,
+        { orderId, steps: FLOW_STEPS('done') });
+    }
+    if (row.status === 'printing') {
+      return html('🖨️', 'Imprimindo agora!',
+        'Aguarde.',
+        '#a855f7', 200,
+        { orderId, steps: FLOW_STEPS('printing') });
+    }
+    if (row.status === 'pending') {
+      const reprintUrl = `/api/print-queue/trigger?token=${token}&action=reprint`;
+      return html('⏳', 'Na fila de impressão',
+        'A etiqueta já está na fila. O agente irá imprimir em instantes.',
+        '#6366f1', 200,
+        { orderId, steps: FLOW_STEPS('pending'), actionLabel: '🖨️ Imprimir', actionHref: reprintUrl });
     }
     if (row.status === 'error') {
-      return html('⚠️', 'Erro na impressão', `Ocorreu um erro ao imprimir.<br><small style="opacity:.6">${row.error_msg ?? ''}</small>`, '#f59e0b', 200);
+      return html('⚠️', 'Erro ao imprimir',
+        'Ocorreu um problema durante a impressão. A equipe já foi notificada.',
+        '#f59e0b', 200,
+        { orderId, steps: FLOW_STEPS('error'), errorDetail: row.error_msg ?? '' });
     }
     return html('ℹ️', 'Status desconhecido', `Status atual: ${row.status}`, '#94a3b8', 200);
   }
 
-  const { id, ml_order_id } = result.rows[0];
+  const { ml_order_id } = result.rows[0];
 
   return html(
     '🖨️',
     'Impressão solicitada!',
-    `Pedido <strong style="color:#e2e8f0">#${ml_order_id}</strong> entrou na fila.<br>A etiqueta será impressa em instantes.`,
-    '#6366f1',
-    200
+    'A etiqueta entrou na fila e será impressa em instantes.',
+    '#6366f1', 200,
+    { orderId: ml_order_id, steps: FLOW_STEPS('pending') }
   );
 }

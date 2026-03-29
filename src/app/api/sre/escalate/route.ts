@@ -3,7 +3,7 @@ import { getPool } from '@/lib/db';
 import { sendWhatsApp } from '@/lib/whatsapp';
 
 const WORKER_KEY    = process.env.WORKER_KEY ?? '';
-const MC_URL        = process.env.NEXT_PUBLIC_APP_URL ?? 'http://187.77.43.141:3001';
+const MC_URL        = process.env.MC_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://mc.wingx.app.br';
 const SRE_WA_GROUP  = process.env.SRE_WHATSAPP_GROUP ?? undefined; // ex: '5511999999999-1234567890@g.us'
 
 function formatAge(createdAt: Date): string {

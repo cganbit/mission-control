@@ -64,6 +64,8 @@ jobs:
             PRINT_AGENT_KEY=${{ secrets.PRINT_AGENT_KEY }}
             QUEUE_KEY=${{ secrets.QUEUE_KEY }}
             SRE_WHATSAPP_GROUP=${{ secrets.SRE_WHATSAPP_GROUP }}
+            EVOLUTION_API_KEY=${{ secrets.EVOLUTION_API_KEY }}
+            N8N_API_KEY=${{ secrets.N8N_API_KEY }}
             MC_URL=https://mc.wingx.app.br
             DATABASE_SSL=false
             EOF

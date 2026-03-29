@@ -20,7 +20,8 @@ export async function GET(req: NextRequest) {
   const result = await db.query(`
     SELECT id, ml_order_id, ml_shipment_id, seller_nickname,
            status, error_msg, created_at, updated_at,
-           items_summary, logistic_type, buyer_name, has_label
+           items_summary, logistic_type, buyer_name, has_label,
+           token, qr_code_url
     FROM print_queue
     WHERE created_at > NOW() - INTERVAL '48 hours'
     ORDER BY created_at DESC
@@ -29,7 +30,9 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ jobs: result.rows });
 }
 
-// POST /api/print-queue/manage?key=XXX — ativa jobs em massa (queued → pending)
+// POST /api/print-queue/manage?key=XXX
+// action: 'activate' (default) — queued → pending
+// action: 'reprint'            — done/error → queued
 export async function POST(req: NextRequest) {
   if (!checkKey(req)) return unauthorized();
 
@@ -39,7 +42,20 @@ export async function POST(req: NextRequest) {
   const ids: number[] = Array.isArray(body?.ids) ? body.ids.slice(0, 50) : [];
   if (!ids.length) return NextResponse.json({ error: 'ids array required' }, { status: 400 });
 
+  const action: string = body?.action === 'reprint' ? 'reprint' : 'activate';
   const db = getPool();
+
+  if (action === 'reprint') {
+    const result = await db.query(
+      `UPDATE print_queue
+       SET status = 'queued', error_msg = NULL, updated_at = NOW()
+       WHERE id = ANY($1::int[]) AND status IN ('done', 'error')
+       RETURNING id`,
+      [ids]
+    );
+    return NextResponse.json({ ok: true, requeued: result.rowCount ?? 0 });
+  }
+
   const result = await db.query(
     `UPDATE print_queue
      SET status = 'pending', updated_at = NOW()
