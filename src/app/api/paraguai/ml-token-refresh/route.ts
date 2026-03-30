@@ -66,7 +66,7 @@ async function saveAllAccounts(accounts: MlAccount[]): Promise<void> {
   }
 }
 
-const REFRESH_MARGIN_MS = 2 * 60 * 60 * 1000; // refresh se expira em < 2h
+const REFRESH_MARGIN_MS = 3 * 60 * 60 * 1000; // refresh se expira em < 3h (cron de 4h, tokens de 6h)
 const MAX_RETRIES = 3;
 const RETRY_DELAYS_MS = [2000, 4000, 8000]; // backoff: 2s, 4s, 8s
 const STAGGER_MS = 600; // delay entre contas para evitar rate limit

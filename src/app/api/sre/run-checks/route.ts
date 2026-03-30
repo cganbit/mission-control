@@ -53,13 +53,13 @@ async function checkMlTokens(db: ReturnType<typeof getPool>): Promise<CheckResul
     const row = await db.query(`SELECT value FROM connector_configs WHERE key = 'ml_tokens_json' LIMIT 1`);
     if (!row.rows[0]) return { service: 'ml_tokens', check_name: 'token_expiry_24h', status: 'warning', error: 'ml_tokens_json não encontrado' };
     const accounts: any[] = JSON.parse(row.rows[0].value)?.accounts ?? JSON.parse(row.rows[0].value);
-    const threshold = Date.now() + 24 * 60 * 60 * 1000;
+    const threshold = Date.now() + 4 * 60 * 60 * 1000; // alerta se expira em < 4h (2 ciclos de refresh perdidos)
     const expiring = accounts.filter((a: any) => a.expires_at && new Date(a.expires_at).getTime() < threshold);
     if (expiring.length > 0) {
       const names = expiring.map((a: any) => a.nickname ?? a.seller_id).join(', ');
-      return { service: 'ml_tokens', check_name: 'token_expiry_24h', status: 'warning', error: `Expirando em 24h: ${names}` };
+      return { service: 'ml_tokens', check_name: 'token_expiry_4h', status: 'warning', error: `Expirando em 4h: ${names}` };
     }
-    return { service: 'ml_tokens', check_name: 'token_expiry_24h', status: 'ok' };
+    return { service: 'ml_tokens', check_name: 'token_expiry_4h', status: 'ok' };
   } catch (e: any) {
     return { service: 'ml_tokens', check_name: 'token_expiry_24h', status: 'error', error: e.message };
   }
