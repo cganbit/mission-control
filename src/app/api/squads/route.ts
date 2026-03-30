@@ -10,7 +10,10 @@ export async function GET(req: NextRequest) {
   const squads = await query(`
     SELECT s.*,
       COUNT(DISTINCT a.id) AS agent_count,
-      COUNT(DISTINCT t.id) FILTER (WHERE t.status != 'done') AS open_tasks
+      COUNT(DISTINCT t.id) FILTER (WHERE t.status != 'done' AND t.type = 'task') AS open_tasks,
+      COUNT(DISTINCT t.id) FILTER (WHERE t.type = 'sprint') AS sprint_count,
+      COUNT(DISTINCT t.id) FILTER (WHERE t.type IN ('task','subtask')) AS total_tasks,
+      COUNT(DISTINCT t.id) FILTER (WHERE t.type IN ('task','subtask') AND t.status = 'done') AS done_tasks
     FROM squads s
     LEFT JOIN agents a ON a.squad_id = s.id
     LEFT JOIN tasks t  ON t.squad_id = s.id

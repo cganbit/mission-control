@@ -12,15 +12,28 @@ interface Task {
   description: string;
   status: string;
   priority: string;
+  type: string;
+  parent_id: string | null;
+  squad_id: string;
   agent_name: string;
   squad_name: string;
   squad_color: string;
   due_date: string;
   created_at: string;
+  started_at: string | null;
   auto_created?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function relativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}min atrás`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h atrás`;
+  return `${Math.floor(hrs / 24)}d atrás`;
+}
 
 function relativeDue(dateStr: string): { label: string; color: string } {
   const diff = new Date(dateStr).getTime() - Date.now();
@@ -67,6 +80,12 @@ export default function TasksPage() {
   const [saving, setSaving] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
   const [justDone, setJustDone] = useState<Set<string>>(new Set());
+  const [showJarvis, setShowJarvis] = useState(false);
+  const [jarvisTask, setJarvisTask] = useState('');
+  const [jarvisTaskId, setJarvisTaskId] = useState('');
+  const [jarvisSquadId, setJarvisSquadId] = useState('');
+  const [jarvisLoading, setJarvisLoading] = useState(false);
+  const [jarvisResult, setJarvisResult] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const url = filterSquad ? `/api/tasks?squad_id=${filterSquad}` : '/api/tasks';
@@ -116,6 +135,33 @@ export default function TasksPage() {
     load();
   }
 
+  async function sendToJarvis(e: React.FormEvent) {
+    e.preventDefault();
+    if (!jarvisTask.trim()) return;
+    setJarvisLoading(true);
+    setJarvisResult(null);
+    try {
+      const res = await fetch('/api/jarvis/task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task: jarvisTask, task_id: jarvisTaskId || undefined, squad_id: jarvisSquadId || undefined }),
+      });
+      const data = await res.json();
+      setJarvisResult(res.ok ? `✅ Jarvis iniciou — exit: ${data.exit ?? 0}` : `❌ Erro: ${data.error ?? 'falha'}`);
+    } catch {
+      setJarvisResult('❌ Sem resposta do bridge');
+    }
+    setJarvisLoading(false);
+  }
+
+  function openJarvisForTask(task: Task) {
+    setJarvisTask(task.title + (task.description ? '\n\n' + task.description : ''));
+    setJarvisTaskId(task.id);
+    setJarvisSquadId(task.squad_id);
+    setJarvisResult(null);
+    setShowJarvis(true);
+  }
+
   const squadAgents = agents.filter(a => a.squad_id === form.squad_id);
 
   return (
@@ -135,6 +181,12 @@ export default function TasksPage() {
             {squads.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
           <button
+            onClick={() => { setJarvisTask(''); setJarvisTaskId(''); setJarvisResult(null); setShowJarvis(v => !v); }}
+            className="px-4 py-2 bg-violet-700 hover:bg-violet-600 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            ✨ Jarvis
+          </button>
+          <button
             onClick={() => setShowForm(true)}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
           >
@@ -142,6 +194,32 @@ export default function TasksPage() {
           </button>
         </div>
       </div>
+
+      {showJarvis && (
+        <div className="bg-violet-950/40 border border-violet-700/50 rounded-xl p-5">
+          <h2 className="font-semibold text-violet-300 mb-3">✨ Enviar ao Jarvis</h2>
+          <form onSubmit={sendToJarvis} className="space-y-3">
+            <textarea
+              value={jarvisTask}
+              onChange={e => setJarvisTask(e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 bg-gray-900 border border-violet-700/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
+              placeholder="Descreva a task para o Jarvis executar..."
+              required
+            />
+            {jarvisTaskId && <p className="text-xs text-violet-400">Vinculado à task: {jarvisTaskId}</p>}
+            <div className="flex items-center gap-3">
+              <button type="submit" disabled={jarvisLoading} className="px-4 py-2 bg-violet-700 hover:bg-violet-600 disabled:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors">
+                {jarvisLoading ? 'Enviando...' : 'Executar'}
+              </button>
+              <button type="button" onClick={() => setShowJarvis(false)} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-lg transition-colors">
+                Fechar
+              </button>
+              {jarvisResult && <span className="text-sm text-gray-300">{jarvisResult}</span>}
+            </div>
+          </form>
+        </div>
+      )}
 
       {showForm && (
         <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
@@ -218,6 +296,38 @@ export default function TasksPage() {
         </div>
       )}
 
+      {/* Sprint Epics */}
+      {tasks.filter(t => t.type === 'sprint').length > 0 && (
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Sprints</h2>
+          <div className="grid grid-cols-3 gap-3">
+            {tasks.filter(t => t.type === 'sprint').map(sprint => {
+              const children = tasks.filter(t => t.parent_id === sprint.id);
+              const done = children.filter(t => t.status === 'done').length;
+              const total = children.length;
+              const pct = total > 0 ? Math.round(done / total * 100) : sprint.status === 'done' ? 100 : 0;
+              return (
+                <div key={sprint.id} className="bg-gray-900 border border-gray-800 rounded-lg p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-white font-medium truncate flex-1 mr-2">{sprint.title}</span>
+                    <span className={`text-xs font-bold flex-shrink-0 ${pct === 100 ? 'text-emerald-400' : 'text-indigo-400'}`}>{pct}%</span>
+                  </div>
+                  <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden mb-1">
+                    <div
+                      className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-gray-600">
+                    {total > 0 ? `${done}/${total} tasks · ` : ''}{sprint.status === 'done' ? '✅ concluído' : `criado ${relativeTime(sprint.created_at)}`}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Kanban board */}
       <div className="grid grid-cols-5 gap-3 items-start">
         {STATUSES.map(status => {
@@ -265,10 +375,17 @@ export default function TasksPage() {
                           {isSRE && <span className="mr-1">⚡</span>}
                           {task.title}
                         </p>
-                        <button
-                          onClick={() => deleteTask(task.id)}
-                          className="text-gray-600 hover:text-red-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5"
-                        >✕</button>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5">
+                          <button
+                            onClick={() => openJarvisForTask(task)}
+                            className="text-violet-500 hover:text-violet-300 text-xs"
+                            title="Enviar ao Jarvis"
+                          >✨</button>
+                          <button
+                            onClick={() => deleteTask(task.id)}
+                            className="text-gray-600 hover:text-red-400 text-xs"
+                          >✕</button>
+                        </div>
                       </div>
 
                       {/* Meta row */}
@@ -294,9 +411,23 @@ export default function TasksPage() {
                         )}
                       </div>
 
+                      {/* Agent name */}
+                      {task.agent_name && (
+                        <p className="text-[10px] mt-1.5 text-indigo-400 font-medium truncate">
+                          🤖 {task.agent_name}
+                        </p>
+                      )}
+
+                      {/* Started at */}
+                      {task.started_at && (
+                        <p className="text-[10px] mt-0.5 text-blue-400">
+                          ⚡ atribuído {relativeTime(task.started_at)}
+                        </p>
+                      )}
+
                       {/* Due date */}
                       {due && (
-                        <p className={`text-[10px] mt-1.5 font-medium ${due.color}`}>
+                        <p className={`text-[10px] mt-1 font-medium ${due.color}`}>
                           📅 {due.label}
                         </p>
                       )}

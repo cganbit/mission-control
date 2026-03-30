@@ -11,6 +11,9 @@ interface Squad {
   color: string;
   agent_count: number;
   open_tasks: number;
+  sprint_count: number;
+  total_tasks: number;
+  done_tasks: number;
   created_at: string;
 }
 
@@ -169,10 +172,29 @@ export default function SquadsPage() {
                 <p className="text-gray-400 text-xs mb-3 line-clamp-2">{squad.description}</p>
               )}
 
-              <div className="flex gap-4 text-xs text-gray-500 mb-4">
+              <div className="flex gap-4 text-xs text-gray-500 mb-3">
                 <span>🤖 {squad.agent_count} agentes</span>
-                <span>📋 {squad.open_tasks} tarefas abertas</span>
+                <span>📋 {squad.open_tasks} abertas</span>
+                {squad.sprint_count > 0 && <span>🏃 {squad.sprint_count} sprints</span>}
               </div>
+
+              {Number(squad.total_tasks) > 0 && (
+                <div className="mb-4">
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Progresso geral</span>
+                    <span className="font-semibold text-gray-300">
+                      {Math.round(Number(squad.done_tasks) / Number(squad.total_tasks) * 100)}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-indigo-500 rounded-full transition-all"
+                      style={{ width: `${Math.round(Number(squad.done_tasks) / Number(squad.total_tasks) * 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-gray-600 mt-1">{squad.done_tasks}/{squad.total_tasks} tasks concluídas</p>
+                </div>
+              )}
 
               <Link
                 href={`/squads/${squad.id}`}
