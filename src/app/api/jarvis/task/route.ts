@@ -1,23 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 
-const N8N_JARVIS_WEBHOOK = process.env.N8N_JARVIS_WEBHOOK ?? 'http://evolution-api-h4pg-n8n-1:5678/webhook/jarvis-task';
+const JARVIS_BRIDGE_URL = process.env.JARVIS_BRIDGE_URL ?? 'http://187.77.43.141:3010';
+const JARVIS_SECRET = process.env.JARVIS_SECRET ?? 'jarvis-2026';
 
 // POST /api/jarvis/task
-// Body: { task: string, workdir?: string }
+// Body: { task: string, task_id?: string, squad_id?: string, workdir?: string }
 export async function POST(req: NextRequest) {
   const session = await getSessionFromRequest(req);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { task, workdir } = await req.json();
+  const { task, task_id, squad_id, workdir } = await req.json();
   if (!task || typeof task !== 'string') {
     return NextResponse.json({ error: 'task is required' }, { status: 400 });
   }
 
-  const res = await fetch(N8N_JARVIS_WEBHOOK, {
+  const res = await fetch(`${JARVIS_BRIDGE_URL}/run`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ task, workdir }),
+    headers: {
+      'Content-Type': 'application/json',
+      'x-jarvis-secret': JARVIS_SECRET,
+    },
+    body: JSON.stringify({ task, task_id, squad_id, workdir }),
     signal: AbortSignal.timeout(240000),
   });
 
