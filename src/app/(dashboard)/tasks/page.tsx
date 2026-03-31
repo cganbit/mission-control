@@ -15,12 +15,15 @@ interface Task {
   type: string;
   parent_id: string | null;
   squad_id: string;
+  agent_id: string | null;
   agent_name: string;
   squad_name: string;
   squad_color: string;
   due_date: string;
   created_at: string;
   started_at: string | null;
+  completed_at: string | null;
+  progress_note: string | null;
   auto_created?: boolean;
 }
 
@@ -75,6 +78,7 @@ export default function TasksPage() {
   const [squads, setSquads] = useState<Squad[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [filterSquad, setFilterSquad] = useState('');
+  const [filterAgent, setFilterAgent] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ squad_id: '', agent_id: '', title: '', description: '', priority: 'medium', due_date: '' });
   const [saving, setSaving] = useState(false);
@@ -86,6 +90,9 @@ export default function TasksPage() {
   const [jarvisSquadId, setJarvisSquadId] = useState('');
   const [jarvisLoading, setJarvisLoading] = useState(false);
   const [jarvisResult, setJarvisResult] = useState<string | null>(null);
+  const [expandedSprints, setExpandedSprints] = useState<Set<string>>(new Set());
+  const [viewTask, setViewTask] = useState<Task | null>(null);
+  const [filterSprint, setFilterSprint] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const url = filterSquad ? `/api/tasks?squad_id=${filterSquad}` : '/api/tasks';
@@ -100,6 +107,14 @@ export default function TasksPage() {
   }, [filterSquad]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Auto-poll a cada 5s enquanto há tasks in_progress (Jarvis rodando)
+  useEffect(() => {
+    const hasActive = tasks.some(t => t.status === 'in_progress');
+    if (!hasActive) return;
+    const timer = setInterval(load, 5000);
+    return () => clearInterval(timer);
+  }, [tasks, load]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -147,7 +162,12 @@ export default function TasksPage() {
         body: JSON.stringify({ task: jarvisTask, task_id: jarvisTaskId || undefined, squad_id: jarvisSquadId || undefined }),
       });
       const data = await res.json();
-      setJarvisResult(res.ok ? `✅ Jarvis iniciou — exit: ${data.exit ?? 0}` : `❌ Erro: ${data.error ?? 'falha'}`);
+      if (res.ok) {
+        setJarvisResult('⚙️ Jarvis em execução — acompanhe os cards no Kanban');
+        setTimeout(load, 3000); // força refresh após 3s para mostrar o epic criado
+      } else {
+        setJarvisResult(`❌ Erro: ${data.error ?? 'falha'}`);
+      }
     } catch {
       setJarvisResult('❌ Sem resposta do bridge');
     }
@@ -171,7 +191,13 @@ export default function TasksPage() {
           <h1 className="text-2xl font-bold text-white">Task Board</h1>
           <p className="text-gray-400 text-sm mt-1">Kanban de tarefas por squad</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
+          {tasks.some(t => t.status === 'in_progress') && (
+            <span className="text-[10px] text-amber-400 animate-pulse flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+              atualizando...
+            </span>
+          )}
           <select
             value={filterSquad}
             onChange={e => setFilterSquad(e.target.value)}
@@ -179,6 +205,14 @@ export default function TasksPage() {
           >
             <option value="">Todos os squads</option>
             {squads.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <select
+            value={filterAgent}
+            onChange={e => setFilterAgent(e.target.value)}
+            className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 focus:outline-none"
+          >
+            <option value="">Todos os agentes</option>
+            {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
           <button
             onClick={() => { setJarvisTask(''); setJarvisTaskId(''); setJarvisResult(null); setShowJarvis(v => !v); }}
@@ -318,9 +352,42 @@ export default function TasksPage() {
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <p className="text-[10px] text-gray-600">
-                    {total > 0 ? `${done}/${total} tasks · ` : ''}{sprint.status === 'done' ? '✅ concluído' : `criado ${relativeTime(sprint.created_at)}`}
-                  </p>
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-[10px] text-gray-600">
+                      {total > 0 ? `${done}/${total} tasks · ` : ''}{sprint.status === 'done' ? '✅ concluído' : `criado ${relativeTime(sprint.created_at)}`}
+                    </p>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                      <button
+                        onClick={() => setViewTask(sprint)}
+                        className="text-[10px] text-sky-400 hover:text-sky-300"
+                      >
+                        Ver →
+                      </button>
+                      <button
+                        onClick={() => setFilterSprint(prev => prev === sprint.id ? null : sprint.id)}
+                        className={`text-[10px] font-medium px-1.5 py-0.5 rounded transition-colors ${filterSprint === sprint.id ? 'bg-indigo-600 text-white' : 'text-indigo-400 hover:text-indigo-300'}`}
+                      >
+                        {filterSprint === sprint.id ? '◉ Filtrado' : '⊙ Filtrar'}
+                      </button>
+                      {sprint.progress_note && (
+                        <button
+                          onClick={() => setExpandedSprints(prev => {
+                            const s = new Set(prev);
+                            s.has(sprint.id) ? s.delete(sprint.id) : s.add(sprint.id);
+                            return s;
+                          })}
+                          className="text-[10px] text-indigo-400 hover:text-indigo-300"
+                        >
+                          {expandedSprints.has(sprint.id) ? '▲ Fechar' : '▼ Relatório'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {sprint.progress_note && expandedSprints.has(sprint.id) && (
+                    <div className="mt-2 pt-2 border-t border-gray-700">
+                      <p className="text-[10px] text-gray-400 whitespace-pre-wrap leading-relaxed">{sprint.progress_note}</p>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -328,10 +395,121 @@ export default function TasksPage() {
         </div>
       )}
 
+      {/* Task / Sprint detail modal */}
+      {viewTask && (
+        <div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          onClick={() => setViewTask(null)}
+        >
+          <div
+            className="bg-gray-900 border border-gray-700 rounded-xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="flex-1">
+                <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">{viewTask.type} · {viewTask.squad_name}</p>
+                <h2 className="font-semibold text-white text-base leading-snug">{viewTask.title}</h2>
+              </div>
+              <button onClick={() => setViewTask(null)} className="text-gray-500 hover:text-white flex-shrink-0 text-lg leading-none">✕</button>
+            </div>
+
+            {/* Badges */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${PRIORITY_BADGE[viewTask.priority] ?? PRIORITY_BADGE.medium}`}>
+                {PRIORITY_ICON[viewTask.priority]} {viewTask.priority}
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-gray-800 border border-gray-700 text-gray-400">
+                {STATUS_LABELS[viewTask.status] ?? viewTask.status}
+              </span>
+              {viewTask.agent_name && (
+                <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-900/40 border border-indigo-700/40 text-indigo-300">
+                  🤖 {viewTask.agent_name}
+                </span>
+              )}
+            </div>
+
+            {/* Description */}
+            {viewTask.description && (
+              <div className="mb-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Descrição</p>
+                <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{viewTask.description}</p>
+              </div>
+            )}
+
+            {/* Progress note */}
+            {viewTask.progress_note && (
+              <div className="mb-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Progresso</p>
+                <p className="text-sm text-gray-400 whitespace-pre-wrap leading-relaxed">{viewTask.progress_note}</p>
+              </div>
+            )}
+
+            {/* Dates */}
+            <div className="grid grid-cols-2 gap-3 mb-4 text-[11px] text-gray-500">
+              <div>📅 Criado: <span className="text-gray-400">{formatDate(viewTask.created_at)}</span></div>
+              {viewTask.started_at && <div>⚡ Iniciado: <span className="text-gray-400">{formatDate(viewTask.started_at)}</span></div>}
+              {viewTask.completed_at && <div>✅ Concluído: <span className="text-gray-400">{formatDate(viewTask.completed_at)}</span></div>}
+              {viewTask.due_date && <div>⏰ Prazo: <span className={relativeDue(viewTask.due_date).color}>{relativeDue(viewTask.due_date).label}</span></div>}
+            </div>
+
+            {/* Sprint children */}
+            {viewTask.type === 'sprint' && (() => {
+              const children = tasks.filter(t => t.parent_id === viewTask.id);
+              if (children.length === 0) return null;
+              return (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Tasks ({children.length})</p>
+                  <div className="space-y-1.5">
+                    {children.map(child => (
+                      <div
+                        key={child.id}
+                        className="flex items-center gap-2 px-3 py-2 bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-750"
+                        onClick={() => setViewTask(child)}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${child.status === 'done' ? 'bg-emerald-400' : child.status === 'in_progress' ? 'bg-amber-400' : 'bg-gray-600'}`} />
+                        <span className="text-sm text-gray-300 flex-1 truncate">{child.title}</span>
+                        <span className="text-[10px] text-gray-600">{STATUS_LABELS[child.status] ?? child.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ID */}
+            <p className="mt-4 text-[10px] text-gray-700 font-mono">{viewTask.id}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Sprint filter banner */}
+      {filterSprint && (() => {
+        const sprint = tasks.find(t => t.id === filterSprint);
+        return sprint ? (
+          <div className="flex items-center justify-between bg-indigo-950/50 border border-indigo-700/50 rounded-lg px-4 py-2">
+            <span className="text-sm text-indigo-300">
+              <span className="font-semibold">Sprint filtrado:</span> {sprint.title}
+            </span>
+            <button
+              onClick={() => setFilterSprint(null)}
+              className="text-xs text-indigo-400 hover:text-white transition-colors"
+            >
+              ✕ Limpar filtro
+            </button>
+          </div>
+        ) : null;
+      })()}
+
       {/* Kanban board */}
       <div className="grid grid-cols-5 gap-3 items-start">
         {STATUSES.map(status => {
-          const col = tasks.filter(t => t.status === status);
+          const col = tasks.filter(t =>
+            t.status === status &&
+            t.type !== 'sprint' &&
+            (filterSprint ? t.parent_id === filterSprint : true) &&
+            (filterAgent ? t.agent_id === filterAgent : true)
+          );
           const hasUrgent = col.some(t => t.priority === 'urgent');
           return (
             <div
@@ -376,6 +554,11 @@ export default function TasksPage() {
                           {task.title}
                         </p>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5">
+                          <button
+                            onClick={() => setViewTask(task)}
+                            className="text-sky-500 hover:text-sky-300 text-xs"
+                            title="Ver detalhes"
+                          >👁</button>
                           <button
                             onClick={() => openJarvisForTask(task)}
                             className="text-violet-500 hover:text-violet-300 text-xs"
@@ -422,6 +605,13 @@ export default function TasksPage() {
                       {task.started_at && (
                         <p className="text-[10px] mt-0.5 text-blue-400">
                           ⚡ atribuído {relativeTime(task.started_at)}
+                        </p>
+                      )}
+
+                      {/* Progress note */}
+                      {task.progress_note && (
+                        <p className="text-[10px] mt-1 text-gray-500 truncate" title={task.progress_note}>
+                          💬 {task.progress_note}
                         </p>
                       )}
 

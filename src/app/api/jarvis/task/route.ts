@@ -23,11 +23,12 @@ export async function POST(req: NextRequest) {
       'x-jarvis-secret': JARVIS_SECRET,
     },
     body: JSON.stringify({ task, task_id, squad_id, workdir }),
-    signal: AbortSignal.timeout(240000),
+    signal: AbortSignal.timeout(10000), // bridge responde 202 imediato — timeout curto
   });
 
   const data = await res.json();
-  return NextResponse.json(data, { status: res.ok ? 200 : 502 });
+  // Repassar status real do bridge (202 = queued, 5xx = erro)
+  return NextResponse.json(data, { status: res.ok ? res.status : 502 });
 }
 
 // PATCH /api/jarvis/task — Jarvis reporta conclusão (auth: x-worker-key)
