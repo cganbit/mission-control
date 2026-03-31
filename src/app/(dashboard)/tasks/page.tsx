@@ -241,6 +241,21 @@ export default function TasksPage() {
               placeholder="Descreva a task para o Jarvis executar..."
               required
             />
+            {/* Squad obrigatório quando não veio de um card */}
+            {!jarvisTaskId && (
+              <div>
+                <label className="block text-xs text-violet-400 mb-1">Squad <span className="text-red-400">*</span></label>
+                <select
+                  value={jarvisSquadId}
+                  onChange={e => setJarvisSquadId(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 bg-gray-900 border border-violet-700/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                >
+                  <option value="">Selecione o squad...</option>
+                  {squads.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            )}
             {jarvisTaskId && <p className="text-xs text-violet-400">Vinculado à task: {jarvisTaskId}</p>}
             <div className="flex items-center gap-3">
               <button type="submit" disabled={jarvisLoading} className="px-4 py-2 bg-violet-700 hover:bg-violet-600 disabled:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors">

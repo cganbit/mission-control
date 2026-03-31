@@ -27,7 +27,9 @@ export async function proxy(req: NextRequest) {
     pathname.startsWith('/api/sre/escalate') || // SRE escalation cron — autenticado por x-worker-key
     pathname === '/api/tasks/batch' || // Jarvis — cria tasks em batch via x-worker-key
     pathname.endsWith('/heartbeat') || // Jarvis — heartbeat de tasks via x-worker-key
-    pathname === '/api/jarvis/task' // Jarvis — PATCH de conclusão via x-worker-key (POST requer sessão)
+    pathname === '/api/jarvis/task' || // Jarvis — PATCH de conclusão via x-worker-key (POST requer sessão)
+    pathname === '/api/agents' || // Jarvis — step 0: descobre agent_ids via x-worker-key
+    pathname === '/api/squads' // Jarvis — descobre squad_ids via x-worker-key
   ) {
     return NextResponse.next();
   }

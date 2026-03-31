@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { query } from '@/lib/db';
 
+const WORKER_KEY = process.env.MC_WORKER_KEY ?? '';
+
+function isAuthorized(req: NextRequest) {
+  return req.headers.get('x-worker-key') === WORKER_KEY && WORKER_KEY !== '';
+}
+
 export async function GET(req: NextRequest) {
-  if (!await getSessionFromRequest(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await getSessionFromRequest(req);
+  if (!session && !isAuthorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const squadId = req.nextUrl.searchParams.get('squad_id');
   const params: unknown[] = [];

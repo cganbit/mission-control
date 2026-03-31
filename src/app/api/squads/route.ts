@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { query } from '@/lib/db';
 
+const WORKER_KEY = process.env.MC_WORKER_KEY ?? '';
+
 export async function GET(req: NextRequest) {
-  if (!await getSessionFromRequest(req)) {
+  const session = await getSessionFromRequest(req);
+  const isWorker = req.headers.get('x-worker-key') === WORKER_KEY && WORKER_KEY !== '';
+  if (!session && !isWorker) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
