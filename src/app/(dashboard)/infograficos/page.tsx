@@ -16,6 +16,13 @@ const DOCS = [
     sprint: 'Sprint 39',
   },
   {
+    slug: 'slash-commands',
+    title: 'CLI Slash Commands V3',
+    description: 'Guia visual do fluxo entre /spec, /task, e /close-sprint e sua orquestração dos agentes.',
+    icon: '⌨️',
+    sprint: 'Sprint 39',
+  },
+  {
     slug: 'multi-tenant-accounts',
     title: 'Multi-Tenant ML Accounts',
     description: 'Estado atual vs ajustes necessários vs roadmap SaaS para contas Mercado Livre.',

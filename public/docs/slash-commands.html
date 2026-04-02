@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comandos CLI — Wingx / Mission Control</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'dark',
+            securityLevel: 'loose',
+            flowchart: { htmlLabels: true, curve: 'basis' }
+        });
+    </script>
+    <style>
+        :root { --bg: #0a0e1a; --surface: #111827; --border: #1e2a3a; --text: #e2e8f0; --muted: #64748b; --accent: #10b981; --blue: #3b82f6; }
+        body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); padding: 2rem; display: flex; flex-direction: column; align-items: center; }
+        .container { max-width: 1000px; width: 100%; }
+        h1 { font-size: 2rem; border-bottom: 2px solid var(--border); padding-bottom: 1rem; margin-bottom: 0.5rem; }
+        .subtitle { color: var(--muted); font-size: 1.1rem; margin-bottom: 2rem; }
+        .mermaid { background-color: var(--surface); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); display: flex; justify-content: center; }
+        .card-container { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 2rem; }
+        .card { background-color: var(--surface); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); }
+        .card h3 { margin-top: 0; color: var(--blue); }
+        code { background-color: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 4px; color: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ecossistema de Slash Commands V3</h1>
+        <div class="subtitle">Como invocar as personas corretas nos momentos certos da Sprint.</div>
+
+        <div class="mermaid">
+graph TD
+    classDef command fill:#2563eb,stroke:#3b82f6,stroke-width:3px,color:#fff,font-weight:bold
+    classDef phase fill:#1f2937,stroke:#374151,stroke-width:2px,color:#f3f4f6
+    classDef artifact fill:#047857,stroke:#10b981,stroke-width:2px,color:#d1fae5
+
+    subgraph "Fase 1: O Arquiteto"
+        SPEC["/spec"]:::command -->|Chama| PO(("🧠 Product Owner"))
+        PO -->|Cria Specs| PRD["PRD (docs/prd)"]:::artifact
+    end
+
+    subgraph "Fase 2: Os Operários"
+        TASK["/task"]:::command -->|Chama| JARVIS(("🧠 Jarvis MC"))
+        JARVIS -->|Codifica| CODE["Código NodeJS/React"]:::artifact
+    end
+
+    subgraph "Fase 3: O Cartorário"
+        CLOSE["/close-sprint"]:::command -->|Chama| ORG(("🧠 Organizador"))
+        ORG -->|Relata & Git| SPRINT["Log Sprint & Commit"]:::artifact
+    end
+
+    PRD -.->|Injeta regras para| TASK
+    CODE -.->|Verificado e fechado por| CLOSE
+        </div>
+
+        <div class="card-container">
+            <div class="card">
+                <h3>🛠️ /spec & /task</h3>
+                <p>O <code>/spec</code> planeja os buracos na estrada sem mover uma pedra. O <code>/task</code> é quem engata a primeira e obedece as regras desenhadas pelo /spec antes sem improvisos.</p>
+            </div>
+            <div class="card">
+                <h3>🧹 /close-sprint</h3>
+                <p>O <code>/close-sprint</code> é invocado no final. Ele nunca toca em lógica comercial do app. Apenas varre os arquivos soltos, avisa a página WEB do Kanban que terminou, commita no GitHub e desliga as chaves.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
