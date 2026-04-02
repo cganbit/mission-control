@@ -52,8 +52,13 @@ graph TD
         ORG -->|Relata & Git| SPRINT["Log Sprint & Commit"]:::artifact
     end
 
+    subgraph "Flush de Contexto"
+        COMPACT["/compact55"]:::command -->|Extrai| STATE["Estado Congelado"]:::artifact
+    end
+
     PRD -.->|Injeta regras para| TASK
     CODE -.->|Verificado e fechado por| CLOSE
+    CODE -.->|Salvo antes do crash por| COMPACT
         </div>
 
         <div class="card-container">
@@ -64,6 +69,10 @@ graph TD
             <div class="card">
                 <h3>🧹 /close-sprint</h3>
                 <p>O <code>/close-sprint</code> é invocado no final. Ele nunca toca em lógica comercial do app. Apenas varre os arquivos soltos, avisa a página WEB do Kanban que terminou, commita no GitHub e desliga as chaves.</p>
+            </div>
+            <div class="card">
+                <h3>💾 /compact55</h3>
+                <p>O salva-vidas da sessão. Quando o Agente avisa que sua Token Window bateu em amarelo (>55%), dispare-o para extrair o estado bruto do sistema em Markdown, limpar o CLI e colar numa aba nova!</p>
             </div>
         </div>
     </div>
