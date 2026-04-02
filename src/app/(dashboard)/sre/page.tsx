@@ -212,6 +212,21 @@ export default function SREPage() {
     load(1);
   }
 
+  async function handleReprocess(ev: SreEvent) {
+    if (!confirm(`Reprocessar falha do evento de ${ev.event_type}?`)) return;
+    try {
+      await fetch('/api/sre/run-checks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reprocess', event_id: ev.id, service: ev.event_type })
+      });
+      // Force UI reload to sync visual state
+      handleFilter();
+    } catch {
+      // MVP silence format
+    }
+  }
+
   const hasErrors = data?.has_errors_last_2h ?? false;
   const events = data?.events ?? [];
   const total = data?.total ?? 0;
@@ -389,7 +404,16 @@ export default function SREPage() {
                       {ev.status === 'ok' ? (
                         <span className="text-emerald-400 text-xs font-medium">✅ ok</span>
                       ) : (
-                        <span className="text-red-400 text-xs font-medium">❌ error</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-red-400 text-xs font-medium">❌ error</span>
+                          <button
+                            onClick={() => handleReprocess(ev)}
+                            className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 transition-colors"
+                            title="Aciona o Agente Healer (na sua máquina local) para consertar essa falha automaticamente seguindo o playbook!"
+                          >
+                            Reprocessar
+                          </button>
+                        </div>
                       )}
                     </td>
 

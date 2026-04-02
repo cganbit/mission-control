@@ -177,10 +177,37 @@ async function persistCheck(db: ReturnType<typeof getPool>, result: CheckResult,
 // ─── POST /api/sre/run-checks ─────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  const key = req.headers.get('x-worker-key');
-  if (!WORKER_KEY || key !== WORKER_KEY) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const cloned = req.clone();
+  const body = await cloned.json().catch(() => null);
+  const isReprocessUi = body?.action === 'reprocess';
+
+  if (!isReprocessUi) {
+    const key = req.headers.get('x-worker-key');
+    if (!WORKER_KEY || key !== WORKER_KEY) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
   }
+
+  // Healer Trigger da UI: Se vier action = reprocess, envia pra bridge
+  try {
+    if (body?.action === 'reprocess' && body.service) {
+      const LOCAL_BRIDGE = process.env.LOCAL_BRIDGE_URL ?? 'http://127.0.0.1:3010';
+      const agentMap: Record<string, string> = {
+        'print_queue': 'print-queue-healer',
+        'ml_tokens': 'ml-token-refresher'
+      };
+      const agentName = agentMap[body.service] || 'sre-healer';
+
+      fetch(`${LOCAL_BRIDGE}/api/jarvis/task`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agent_id: agentName, task_id: `reprocess-${body.event_id}`, context: body }),
+        signal: AbortSignal.timeout(3000)
+      }).catch(e => console.error('[SRE] Bridge fail:', e.message));
+
+      return NextResponse.json({ success: true, message: `Healer ${agentName} acionado!` });
+    }
+  } catch (e) { /* continua para run checks normal */ }
 
   const db = getPool();
 
