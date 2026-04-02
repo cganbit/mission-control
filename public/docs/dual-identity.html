@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Identidade Unificada do Jarvis — Wingx / Mission Control</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'dark',
+            securityLevel: 'loose',
+            flowchart: { htmlLabels: true, curve: 'basis' }
+        });
+    </script>
+    <style>
+        :root { --bg: #0a0e1a; --surface: #111827; --border: #1e2a3a; --text: #e2e8f0; --muted: #64748b; --accent: #3b82f6; --purple: #8b5cf6; }
+        body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); padding: 2rem; display: flex; flex-direction: column; align-items: center; }
+        .container { max-width: 1000px; width: 100%; }
+        h1 { font-size: 2rem; border-bottom: 2px solid var(--border); padding-bottom: 1rem; margin-bottom: 0.5rem; }
+        .subtitle { color: var(--muted); font-size: 1.1rem; margin-bottom: 2rem; }
+        .mermaid { background-color: var(--surface); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); display: flex; justify-content: center; }
+        .card-container { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 2rem; }
+        .card { background-color: var(--surface); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); }
+        .card h3 { margin-top: 0; color: var(--purple); }
+        code { background-color: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 4px; color: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Identidade Unificada (Dois Terminais, Um Cérebro)</h1>
+        <div class="subtitle">Como o Jarvis-MC orquestra demandas via CLI Local ou Autônomas via VPS.</div>
+
+        <div class="mermaid">
+graph TD
+    classDef brain fill:#6d28d9,stroke:#8b5cf6,stroke-width:3px,color:#fff,font-weight:bold
+    classDef environment fill:#1f2937,stroke:#374151,stroke-width:2px,color:#f3f4f6
+    classDef action fill:#047857,stroke:#10b981,stroke-width:2px,color:#d1fae5
+    classDef sync fill:#be123c,stroke:#f43f5e,stroke-width:2px,color:#ffe4e6
+
+    subgraph "Terminais de Execução"
+        CLI["💻 CLI PC Local<br/>(/task)"]:::environment
+        VPS["☁️ Webhook Autônomo<br/>(Mission Control API)"]:::environment
+    end
+
+    Brain(("🧠 O Cérebro Único<br/>.claude/agents/jarvis-mc.md")):::brain
+
+    CLI -->|Carrega Persona| Brain
+    VPS -->|Carrega Persona| Brain
+
+    Brain -->|Delega| PO["PO"]:::action
+    PO --> DEV["Dev Team"]:::action
+    DEV --> QA["QA / Review"]:::action
+    QA --> DEVOPS["Deployment"]:::action
+
+    subgraph "State Gate API"
+        DB[("MC PostgreSQL")]:::sync
+        HEARTBEAT{"PATCH /api/tasks/:id/heartbeat"}:::sync
+    end
+
+    Brain -.->|Sincroniza Estado| HEARTBEAT
+    HEARTBEAT -.-> DB
+        </div>
+
+        <div class="card-container">
+            <div class="card">
+                <h3>💻 Visão do Desenvolvedor (CLI)</h3>
+                <p>O Cleiton abre o VSCode e digita <code>/task Implementar Auth</code>. O `jarvis-mc` é carregado e envia disparos ao banco informando o tempo e os nós processados. Ele responde diretamente na tela.</p>
+            </div>
+            <div class="card">
+                <h3>☁️ Visão Autônoma (VPS)</h3>
+                <p>O Painel clica em "Trigger Pipeline". A API aciona o bridge HTTP, que abre o terminal background na máquina e chama o <code>claude --print</code> assumindo exatamente o MESMO papel de `jarvis-mc`. Responde via Webhook!</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

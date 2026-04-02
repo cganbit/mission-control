@@ -9,6 +9,13 @@ const DOCS = [
     sprint: 'Sprint 39',
   },
   {
+    slug: 'dual-identity',
+    title: 'Dual Identity (Dois Terminais, Um Jarvis)',
+    description: 'Como o Jarvis opera via CLI interativa e via orquestração E2E Autônoma simultaneamente.',
+    icon: '🧠',
+    sprint: 'Sprint 39',
+  },
+  {
     slug: 'multi-tenant-accounts',
     title: 'Multi-Tenant ML Accounts',
     description: 'Estado atual vs ajustes necessários vs roadmap SaaS para contas Mercado Livre.',
