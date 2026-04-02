@@ -8,18 +8,21 @@ function isAuthorized(req: NextRequest) {
 }
 
 // PATCH /api/tasks/[id]/heartbeat — Jarvis reporta progresso de uma task
-// Body: { status?: string, tokens_used?: number }
+// Body: { status?: string, tokens_used?: number, progress_note?: string }
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!isAuthorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
-  const { status, tokens_used } = await req.json();
+  const { status, tokens_used, progress_note } = await req.json();
 
   const updates: string[] = ['updated_at = NOW()'];
   const values: unknown[] = [];
 
   if (status) { values.push(status); updates.push(`status = $${values.length}`); }
   if (tokens_used != null) { values.push(tokens_used); updates.push(`tokens_used = $${values.length}`); }
+  if (progress_note != null) { values.push(progress_note); updates.push(`progress_note = $${values.length}`); }
+  if (status === 'in_progress') updates.push(`started_at = COALESCE(started_at, NOW())`);
+  if (status === 'review' || status === 'done') updates.push(`completed_at = NOW()`);
 
   values.push(id);
   await query(`UPDATE tasks SET ${updates.join(', ')} WHERE id = $${values.length}`, values);

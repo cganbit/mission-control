@@ -39,10 +39,16 @@ CREATE TABLE IF NOT EXISTS tasks (
                 CHECK (status IN ('backlog','assigned','in_progress','review','done')),
   priority    VARCHAR(10) DEFAULT 'medium'
                 CHECK (priority IN ('low','medium','high','urgent')),
-  due_date    TIMESTAMPTZ,
-  created_by  VARCHAR(100),
-  created_at  TIMESTAMPTZ DEFAULT NOW(),
-  updated_at  TIMESTAMPTZ DEFAULT NOW()
+  due_date      TIMESTAMPTZ,
+  created_by    VARCHAR(100),
+  tokens_used   INT DEFAULT 0,
+  type          VARCHAR(20) DEFAULT 'task' CHECK (type IN ('task','sprint','subtask')),
+  parent_id     UUID REFERENCES tasks(id) ON DELETE CASCADE,
+  progress_note TEXT,
+  started_at    TIMESTAMPTZ,
+  completed_at  TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Activity log

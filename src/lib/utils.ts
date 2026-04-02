@@ -13,19 +13,23 @@ export function formatDate(date: string | Date) {
 }
 
 export const STATUS_LABELS: Record<string, string> = {
+  not_started: 'Não Iniciado',
   backlog: 'Backlog',
   assigned: 'Atribuído',
   in_progress: 'Em Progresso',
   review: 'Revisão',
   done: 'Concluído',
+  archived: 'Arquivo',
 };
 
 export const STATUS_COLORS: Record<string, string> = {
+  not_started: 'bg-gray-800 text-gray-400',
   backlog: 'bg-slate-700 text-slate-200',
   assigned: 'bg-blue-900 text-blue-200',
   in_progress: 'bg-yellow-900 text-yellow-200',
   review: 'bg-purple-900 text-purple-200',
   done: 'bg-green-900 text-green-200',
+  archived: 'bg-zinc-800 text-zinc-400',
 };
 
 export const PRIORITY_COLORS: Record<string, string> = {

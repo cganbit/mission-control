@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import { STATUS_LABELS, STATUS_COLORS, PRIORITY_COLORS, formatDate } from '@/lib/utils';
 
-const STATUSES = ['backlog', 'assigned', 'in_progress', 'review', 'done'] as const;
+const STATUSES = ['not_started', 'backlog', 'assigned', 'in_progress', 'review', 'done', 'archived'] as const;
 
 interface Task {
   id: string;
@@ -63,11 +63,13 @@ const PRIORITY_ICON: Record<string, string> = {
 };
 
 const COL_ACCENT: Record<string, string> = {
+  not_started:'border-gray-700',
   backlog:    'border-slate-700',
   assigned:   'border-indigo-500/50',
   in_progress:'border-amber-500/50',
   review:     'border-purple-500/50',
   done:       'border-emerald-500/50',
+  archived:   'border-zinc-700',
 };
 
 interface Squad { id: string; name: string; color: string }
@@ -517,7 +519,7 @@ export default function TasksPage() {
       })()}
 
       {/* Kanban board */}
-      <div className="grid grid-cols-5 gap-3 items-start">
+      <div className="grid grid-cols-7 gap-3 items-start">
         {STATUSES.map(status => {
           const col = tasks.filter(t =>
             t.status === status &&

@@ -55,6 +55,12 @@ CREATE TABLE IF NOT EXISTS tasks (
   sre_check_id  INT REFERENCES sre_checks(id),
   auto_created  BOOLEAN DEFAULT false,
   notified_at   TIMESTAMPTZ,
+  tokens_used   INT DEFAULT 0,
+  type          VARCHAR(20) DEFAULT 'task' CHECK (type IN ('task','sprint','subtask')),
+  parent_id     UUID REFERENCES tasks(id) ON DELETE CASCADE,
+  progress_note TEXT,
+  started_at    TIMESTAMPTZ,
+  completed_at  TIMESTAMPTZ,
   created_at    TIMESTAMPTZ DEFAULT NOW(),
   updated_at    TIMESTAMPTZ DEFAULT NOW()
 );

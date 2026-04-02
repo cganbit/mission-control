@@ -13,6 +13,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   );
   if (!task) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+  const autoTimestamps: string[] = [];
+  if (body.status === 'in_progress') autoTimestamps.push(`started_at = COALESCE(started_at, NOW())`);
+  if (body.status === 'review' || body.status === 'done') autoTimestamps.push(`completed_at = NOW()`);
+  const extraSQL = autoTimestamps.length ? ', ' + autoTimestamps.join(', ') : '';
+
   const [updated] = await query(
     `UPDATE tasks SET
       title       = COALESCE($1, title),
@@ -21,7 +26,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       agent_id    = COALESCE($4, agent_id),
       priority    = COALESCE($5, priority),
       due_date    = COALESCE($6, due_date),
-      updated_at  = NOW()
+      updated_at  = NOW()${extraSQL}
      WHERE id = $7 RETURNING *`,
     [body.title, body.description, body.status, body.agent_id, body.priority, body.due_date, id]
   );

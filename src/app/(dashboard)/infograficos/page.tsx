@@ -2,6 +2,13 @@
 
 const DOCS = [
   {
+    slug: 'harness-v3',
+    title: 'Harness V3 (Agent Pipeline)',
+    description: 'Arquitetura do pipeline paralelo com State Gates, comandos de entrada e checkpoints rigorosos.',
+    icon: '⚡',
+    sprint: 'Sprint 39',
+  },
+  {
     slug: 'multi-tenant-accounts',
     title: 'Multi-Tenant ML Accounts',
     description: 'Estado atual vs ajustes necessários vs roadmap SaaS para contas Mercado Livre.',
