@@ -37,28 +37,47 @@ graph TD
     classDef phase fill:#1f2937,stroke:#374151,stroke-width:2px,color:#f3f4f6
     classDef artifact fill:#047857,stroke:#10b981,stroke-width:2px,color:#d1fae5
 
-    subgraph "Fase 1: O Arquiteto"
-        SPEC["/spec"]:::command -->|Chama| PO(("🧠 Product Owner"))
-        PO -->|Cria Specs| PRD["PRD (docs/prd)"]:::artifact
+    subgraph "Fase 1: Desenho & Planejamento"
+        SPEC["/spec<br/><small>'Escreva a documentação e quebre as tasks'</small>"]:::command
+        PO(("🧠 product-owner"))
+        PRD["docs/prd/prd-NNN.md"]:::artifact
+        SPEC -->|Invoca| PO
+        PO -->|Gera/Edita| PRD
     end
 
-    subgraph "Fase 2: Os Operários"
-        TASK["/task"]:::command -->|Chama| JARVIS(("🧠 Jarvis MC"))
-        JARVIS -->|Codifica| CODE["Código NodeJS/React"]:::artifact
+    subgraph "Fase 2: Engenharia & Entrega"
+        TASK["/task<br/><small>'Execute o PRD e faça o deploy'</small>"]:::command
+        JARVIS(("🧠 jarvis-mc"))
+        CODE["Código Fonte & Deploy"]:::artifact
+        TASK -->|Invoca| JARVIS
+        JARVIS -->|Constrói| CODE
     end
 
-    subgraph "Fase 3: O Cartorário"
-        CLOSE["/close-sprint"]:::command -->|Chama| ORG(("🧠 Organizador"))
-        ORG -->|Relata & Git| SPRINT["Log Sprint & Commit"]:::artifact
+    subgraph "Fase 3: Encerramento de Ciclo"
+        CLOSE["/close-sprint<br/><small>'Terminei, limpe a mesa e de commit'</small>"]:::command
+        ORG(("🧠 organizador"))
+        SPRINT["docs/sprints/sprint-NN.md<br/>Git Commit"]:::artifact
+        CLOSE -->|Invoca| ORG
+        ORG -->|Gera/Salva| SPRINT
     end
 
-    subgraph "Flush de Contexto"
-        COMPACT["/compact55"]:::command -->|Extrai| STATE["Estado Congelado"]:::artifact
+    subgraph "SRE & Context Saving"
+        COMPACT["/compact55 & /compact30<br/><small>'Extrair State para nova sessão'</small>"]:::command
+        COMPACT_ART["State Summary<br/>Markdown Block"]:::artifact
+        COMPACT -->|Salva Estágio| COMPACT_ART
     end
 
-    PRD -.->|Injeta regras para| TASK
-    CODE -.->|Verificado e fechado por| CLOSE
-    CODE -.->|Salvo antes do crash por| COMPACT
+    subgraph "Fase 4: Manutenção Corretiva Mensal"
+        REVIEW["/harness-review<br/><small>'Corrija seus erros da arquitetura'</small>"]:::command
+        ORG_REV(("🧠 organizador"))
+        SKILL[".skills/SKILL.md<br/>Retro-Learning"]:::artifact
+        REVIEW -->|Invoca| ORG_REV
+        ORG_REV -->|Atualiza| SKILL
+    end
+
+    PRD -.->|Lido Pelo| TASK
+    CODE -.->|Auditado Pelo| CLOSE
+    CODE -.->|Congelado Pelo| COMPACT
         </div>
 
         <div class="card-container">
@@ -71,8 +90,12 @@ graph TD
                 <p>O <code>/close-sprint</code> é invocado no final. Ele nunca toca em lógica comercial do app. Apenas varre os arquivos soltos, avisa a página WEB do Kanban que terminou, commita no GitHub e desliga as chaves.</p>
             </div>
             <div class="card">
-                <h3>💾 /compact55</h3>
+                <h3>💾 /compact55 & /compact30</h3>
                 <p>O salva-vidas da sessão. Quando o Agente avisa que sua Token Window bateu em amarelo (>55%), dispare-o para extrair o estado bruto do sistema em Markdown, limpar o CLI e colar numa aba nova!</p>
+            </div>
+            <div class="card">
+                <h3>🔧 /harness-review</h3>
+                <p>Executado a cada ~5 sprints. Audita os <em>retro-learning gotchas</em> acumulados pelos agentes e refina o sistema principal — evita que os mesmos erros se repitam indefinidamente.</p>
             </div>
         </div>
     </div>

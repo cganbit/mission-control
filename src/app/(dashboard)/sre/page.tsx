@@ -31,7 +31,7 @@ const SERVICE_LABEL: Record<string, string> = {
   db:          'Banco de Dados',
 };
 
-function HealthCard({ check }: { check: SreCheck }) {
+function HealthCard({ check, onReprocess }: { check: SreCheck, onReprocess?: (check: SreCheck) => void }) {
   const isOk      = check.last_status === 'ok';
   const isWarning = check.last_status === 'warning';
   const isError   = check.last_status === 'error';
@@ -73,7 +73,22 @@ function HealthCard({ check }: { check: SreCheck }) {
       {isWarning && check.last_error && (
         <p className="text-[10px] text-amber-400/80 truncate" title={check.last_error}>{check.last_error}</p>
       )}
-      <p className="text-[10px] text-slate-600 mt-auto">{ago}</p>
+      <div className="mt-auto flex items-end justify-between">
+        <p className="text-[10px] text-slate-600">{ago}</p>
+        {(isError || isWarning) && (
+          <button
+            onClick={() => onReprocess && onReprocess(check)}
+            className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${
+              isError
+                ? 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20'
+                : 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
+            }`}
+            title="Aciona o Agente Healer (na sua máquina local) para consertar essa falha automaticamente seguindo o playbook!"
+          >
+            Reprocessar
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -227,6 +242,20 @@ export default function SREPage() {
     }
   }
 
+  async function handleReprocessService(check: SreCheck) {
+    if (!confirm(`Reprocessar falha geral de ${SERVICE_LABEL[check.service] ?? check.service}?`)) return;
+    try {
+      await fetch('/api/sre/run-checks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reprocess', service: check.service })
+      });
+      loadHealth();
+    } catch {
+      // ignore
+    }
+  }
+
   const hasErrors = data?.has_errors_last_2h ?? false;
   const events = data?.events ?? [];
   const total = data?.total ?? 0;
@@ -250,7 +279,7 @@ export default function SREPage() {
         {/* Service Health Cards */}
         {checks.length > 0 && (
           <div className="flex flex-wrap gap-3">
-            {checks.map(c => <HealthCard key={c.id} check={c} />)}
+            {checks.map(c => <HealthCard key={c.id} check={c} onReprocess={handleReprocessService} />)}
           </div>
         )}
 

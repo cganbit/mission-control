@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Session 29 — Deliverables</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    padding: 40px 32px;
+    min-height: 100vh;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  header .badge {
+    display: inline-block;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 11px;
+    color: #8b949e;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #f0f6fc;
+    margin-bottom: 6px;
+  }
+  header p {
+    font-size: 13px;
+    color: #8b949e;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    max-width: 1100px;
+    margin: 0 auto 40px;
+  }
+
+  .card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .card-header {
+    padding: 18px 20px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #21262d;
+  }
+
+  .card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .card-1 .card-icon { background: #1c2d3a; color: #58a6ff; }
+  .card-2 .card-icon { background: #1e2d1e; color: #3fb950; }
+  .card-3 .card-icon { background: #2d1b2d; color: #bc8cff; }
+
+  .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #f0f6fc;
+  }
+  .card-subtitle {
+    font-size: 11px;
+    color: #8b949e;
+    margin-top: 2px;
+  }
+
+  .card-body {
+    padding: 16px 20px;
+    flex: 1;
+  }
+
+  .file-path {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-family: 'Consolas', monospace;
+    color: #8b949e;
+    margin-bottom: 14px;
+    width: 100%;
+  }
+  .file-path span { color: #58a6ff; }
+
+  .section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #8b949e;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  /* /usage card items */
+  .account-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: #0d1117;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+  .account-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-local { background: #58a6ff; }
+  .dot-vps   { background: #f78166; }
+  .account-label { color: #e6edf3; font-weight: 500; }
+  .account-tag {
+    margin-left: auto;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #21262d;
+    color: #8b949e;
+  }
+
+  .alert-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    background: #1c2113;
+    border: 1px solid #2d3e1e;
+    color: #7ee787;
+  }
+
+  /* /spec AB method */
+  .phase-block {
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .phase-a {
+    background: #1a2332;
+    border-left: 3px solid #58a6ff;
+  }
+  .phase-b {
+    background: #1a2a1a;
+    border-left: 3px solid #3fb950;
+  }
+  .phase-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .phase-a .phase-label { color: #58a6ff; }
+  .phase-b .phase-label { color: #3fb950; }
+  .phase-desc { font-size: 11px; color: #8b949e; line-height: 1.5; }
+
+  .mission-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #21262d;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 10px;
+    color: #8b949e;
+    margin: 2px;
+  }
+  .mission-pill .num {
+    background: #3fb950;
+    color: #0d1117;
+    border-radius: 3px;
+    padding: 0 4px;
+    font-weight: 700;
+  }
+
+  /* ADR-005 patterns */
+  .pattern-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .pattern-box {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 7px;
+    padding: 9px 10px;
+  }
+  .pattern-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: #e6edf3;
+    margin-bottom: 3px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .pattern-icon { font-size: 13px; }
+  .pattern-when { font-size: 10px; color: #8b949e; line-height: 1.4; }
+
+  /* Flow section */
+  .flow-section {
+    max-width: 1100px;
+    margin: 0 auto 40px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 24px 28px;
+  }
+  .flow-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 20px;
+  }
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+  }
+  .flow-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 110px;
+  }
+  .flow-box {
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    width: 110px;
+  }
+  .flow-label {
+    font-size: 10px;
+    color: #8b949e;
+    text-align: center;
+  }
+  .fn-blue   { background: #1c2d3a; color: #58a6ff; border: 1px solid #1f3a52; }
+  .fn-green  { background: #1e2d1e; color: #3fb950; border: 1px solid #1e3a1e; }
+  .fn-purple { background: #2d1b2d; color: #bc8cff; border: 1px solid #3d2152; }
+  .fn-orange { background: #2d2013; color: #ffa657; border: 1px solid #3d2a10; }
+  .fn-gray   { background: #161b22; color: #8b949e; border: 1px solid #30363d; }
+
+  .flow-arrow {
+    color: #30363d;
+    font-size: 20px;
+    padding: 0 4px;
+    margin-bottom: 20px;
+  }
+
+  footer {
+    text-align: center;
+    font-size: 11px;
+    color: #484f58;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding-top: 16px;
+    border-top: 1px solid #21262d;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">Sessão 29 · 2026-03-29</div>
+  <h1>Claude Code Enhancements</h1>
+  <p>3 deliverables — Slash Commands + Decisão Arquitetural</p>
+</header>
+
+<!-- 3 cards -->
+<div class="grid">
+
+  <!-- /usage -->
+  <div class="card card-1">
+    <div class="card-header">
+      <div class="card-icon">📊</div>
+      <div>
+        <div class="card-title">/usage</div>
+        <div class="card-subtitle">Monitor de consumo Claude Pro</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="file-path"><span>cmd</span>.claude/commands/usage.md</div>
+
+      <div class="section-label">Contas monitoradas</div>
+      <div class="account-row">
+        <div class="account-dot dot-local"></div>
+        <div class="account-label">ferrert17@gmail.com</div>
+        <div class="account-tag">Local</div>
+      </div>
+      <div class="account-row">
+        <div class="account-dot dot-vps"></div>
+        <div class="account-label">terto@gmail.com</div>
+        <div class="account-tag">VPS / Jarvis</div>
+      </div>
+
+      <div class="section-label" style="margin-top:14px;">Ações disponíveis</div>
+      <div style="font-size:11px; color:#8b949e; line-height:1.8;">
+        ◦ <code style="color:#58a6ff">/cost</code> — custo da sessão atual<br>
+        ◦ Links diretos para console Anthropic<br>
+        ◦ Verificação de logs Jarvis na VPS<br>
+        ◦ Estimativa de tokens restantes
+      </div>
+
+      <div class="alert-row">
+        ⚡ Se /cost &gt; $5 → usar <code>/compact</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- /spec -->
+  <div class="card card-2">
+    <div class="card-header">
+      <div class="card-icon">📐</div>
+      <div>
+        <div class="card-title">/spec</div>
+        <div class="card-subtitle">AB Method — Spec-Driven Workflow</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="file-path"><span>cmd</span>.claude/commands/spec.md</div>
+
+      <div class="phase-block phase-a">
+        <div class="phase-label">A — SPEC</div>
+        <div class="phase-desc">Escrever spec completo antes de qualquer código. User story, escopo, inputs/outputs, critérios de aceite.</div>
+      </div>
+
+      <div class="phase-block phase-b">
+        <div class="phase-label">B — MISSÕES</div>
+        <div class="phase-desc">Quebrar spec em missões atômicas, cada uma com saída verificável e critério de aceite testável.</div>
+      </div>
+
+      <div class="section-label" style="margin-top:6px;">Ordem de missões</div>
+      <div>
+        <span class="mission-pill"><span class="num">1</span>DB / Schema</span>
+        <span class="mission-pill"><span class="num">2</span>API</span>
+        <span class="mission-pill"><span class="num">3</span>UI</span>
+        <span class="mission-pill"><span class="num">4</span>Testes</span>
+        <span class="mission-pill"><span class="num">5</span>Deploy</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADR-005 -->
+  <div class="card card-3">
+    <div class="card-header">
+      <div class="card-icon">🧠</div>
+      <div>
+        <div class="card-title">ADR-005</div>
+        <div class="card-subtitle">Agentic Workflow Patterns</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="file-path"><span>adr</span>docs/adr/005-agentic-workflow-patterns.md</div>
+
+      <div class="section-label">4 Padrões definidos</div>
+      <div class="pattern-grid">
+        <div class="pattern-box">
+          <div class="pattern-name"><span class="pattern-icon">⚡</span>Single-Shot</div>
+          <div class="pattern-when">Task atômica, 1 arquivo, resultado imediato</div>
+        </div>
+        <div class="pattern-box">
+          <div class="pattern-name"><span class="pattern-icon">🔗</span>Chain</div>
+          <div class="pattern-when">Etapas dependentes com revisão entre elas</div>
+        </div>
+        <div class="pattern-box">
+          <div class="pattern-name"><span class="pattern-icon">📐</span>Spec-First</div>
+          <div class="pattern-when">Feature nova com DB + API + UI</div>
+        </div>
+        <div class="pattern-box">
+          <div class="pattern-name"><span class="pattern-icon">🔍</span>Reflexão</div>
+          <div class="pattern-when">Debug: investigar primeiro, corrigir depois</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Integration flow -->
+<div class="flow-section">
+  <div class="flow-title">Como os 3 se integram — fluxo de uma feature nova</div>
+  <div class="flow-row">
+
+    <div class="flow-node">
+      <div class="flow-box fn-blue">/usage</div>
+      <div class="flow-label">verificar tokens<br>disponíveis</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-node">
+      <div class="flow-box fn-green">/spec</div>
+      <div class="flow-label">gerar PRD<br>+ missões</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-node">
+      <div class="flow-box fn-gray">Missão 1</div>
+      <div class="flow-label">DB / Schema</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-node">
+      <div class="flow-box fn-purple">ADR-005<br><small style="font-size:9px">Padrão</small></div>
+      <div class="flow-label">escolher padrão<br>Jarvis</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-node">
+      <div class="flow-box fn-orange">Jarvis<br>Pipeline</div>
+      <div class="flow-label">executa task<br>na VPS</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-node">
+      <div class="flow-box fn-green">✓ Missão<br>concluída</div>
+      <div class="flow-label">verificar aceite<br>→ próxima</div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  Wingx · Mission Control · Session 29 · 2026-03-29
+</footer>
+
+</body>
+</html>

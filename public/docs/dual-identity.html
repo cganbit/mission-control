@@ -38,28 +38,34 @@ graph TD
     classDef action fill:#047857,stroke:#10b981,stroke-width:2px,color:#d1fae5
     classDef sync fill:#be123c,stroke:#f43f5e,stroke-width:2px,color:#ffe4e6
 
-    subgraph "Terminais de Execução"
-        CLI["💻 CLI PC Local<br/>(/task)"]:::environment
-        VPS["☁️ Webhook Autônomo<br/>(Mission Control API)"]:::environment
+    subgraph "Ambientes Físicos (Terminais)"
+        CLI["💻 CLI PC Local<br/><small>(Você digitando /task)</small>"]:::environment
+        VPS["☁️ Webhook/Background<br/><small>(Mission Control API bate no Bridge)</small>"]:::environment
     end
 
     Brain(("🧠 O Cérebro Único<br/>.claude/agents/jarvis-mc.md")):::brain
 
-    CLI -->|Carrega Persona| Brain
-    VPS -->|Carrega Persona| Brain
+    CLI -->|Carrega Orquestrador| Brain
+    VPS -->|Carrega Orquestrador| Brain
 
-    Brain -->|Delega| PO["PO"]:::action
-    PO --> DEV["Dev Team"]:::action
-    DEV --> QA["QA / Review"]:::action
-    QA --> DEVOPS["Deployment"]:::action
-
-    subgraph "State Gate API"
-        DB[("MC PostgreSQL")]:::sync
-        HEARTBEAT{"PATCH /api/tasks/:id/heartbeat"}:::sync
+    subgraph "Pipeline de Execução (O que ele faz)"
+        PO["product-owner<br/>(PRD)"]:::action
+        DEV["backend / frontend<br/>(CÓDIGO)"]:::action
+        QA["qa / code-reviewer<br/>(TESTES/BUILD)"]:::action
+        DEVOPS["devops / organizador<br/>(DEPLOY/CLOSE)"]:::action
+        PO --> DEV --> QA --> DEVOPS
     end
 
-    Brain -.->|Sincroniza Estado| HEARTBEAT
+    Brain -->|Delega Sub-Agentes| PO
+
+    subgraph "State Gate (A Cola que Une os Dois)"
+        DB[("Mission Control DB / API")]:::sync
+        HEARTBEAT{"Heartbeat & Batch<br/>PATCH /api/tasks/:id/heartbeat"}:::sync
+    end
+
+    Brain -.->|Sincroniza Estado OBRIGATÓRIAMENTE| HEARTBEAT
     HEARTBEAT -.-> DB
+    DB -.->|Exibe progresso na tela do MC| Dashboard_Web("🖥️ Dashboard Mission Control")
         </div>
 
         <div class="card-container">

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Agent Architecture — Before & After</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    padding: 36px 28px;
+  }
+  header { text-align: center; margin-bottom: 40px; }
+  header .badge {
+    display: inline-block;
+    background: #161b22; border: 1px solid #30363d;
+    border-radius: 20px; padding: 4px 14px;
+    font-size: 11px; color: #8b949e;
+    letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;
+  }
+  header h1 { font-size: 26px; font-weight: 700; color: #f0f6fc; margin-bottom: 4px; }
+  header p { font-size: 13px; color: #8b949e; }
+
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr;
+    gap: 0;
+    max-width: 1200px;
+    margin: 0 auto 48px;
+    align-items: start;
+  }
+
+  .col-label {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 8px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+  }
+  .label-before { background: #2d1b1b; color: #f85149; }
+  .label-after  { background: #1a2d1a; color: #3fb950; }
+
+  .arrow-col {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 80px;
+    font-size: 28px;
+    color: #30363d;
+  }
+
+  /* Node styles */
+  .node {
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid transparent;
+  }
+  .node-icon { font-size: 14px; flex-shrink: 0; }
+  .node-label { flex: 1; }
+  .node-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  /* Colors */
+  .n-orch  { background: #1c2838; border-color: #1f4068; color: #58a6ff; }
+  .n-orch .node-tag { background: #1f4068; color: #58a6ff; }
+
+  .n-agent { background: #161b22; border-color: #30363d; color: #e6edf3; }
+  .n-agent .node-tag { background: #21262d; color: #8b949e; }
+
+  .n-sub   { background: #0d1117; border-color: #21262d; color: #8b949e; }
+  .n-sub .node-tag { background: #161b22; color: #6e7681; }
+
+  .n-skill { background: #1a1f2e; border-color: #2d3561; color: #79c0ff; }
+  .n-skill .node-tag { background: #2d3561; color: #79c0ff; }
+
+  .n-new   { background: #1e2d1e; border-color: #2ea043; color: #3fb950; }
+  .n-new .node-tag { background: #2ea043; color: #0d1117; }
+
+  .n-retro { background: #2d2313; border-color: #5a3e1b; color: #e3b341; }
+  .n-retro .node-tag { background: #5a3e1b; color: #e3b341; }
+
+  .n-dead  { background: #1a1010; border-color: #3d1a1a; color: #6e3535; text-decoration: line-through; opacity: 0.5; }
+
+  .n-sre   { background: #2d1b2d; border-color: #6e3d6e; color: #bc8cff; }
+  .n-sre .node-tag { background: #4a2860; color: #bc8cff; }
+
+  /* Indentation */
+  .indent-1 { margin-left: 20px; }
+  .indent-2 { margin-left: 40px; }
+
+  .section-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+    text-transform: uppercase; color: #8b949e;
+    margin: 16px 0 8px;
+  }
+
+  .connector {
+    width: 2px; background: #21262d;
+    margin-left: 26px; height: 8px; margin-bottom: -2px;
+  }
+
+  /* Bottom section */
+  .skills-section {
+    max-width: 1200px;
+    margin: 0 auto 40px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 24px 28px;
+  }
+  .skills-title {
+    font-size: 13px; font-weight: 700; color: #8b949e;
+    text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 16px;
+  }
+  .skills-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .skill-box {
+    background: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .skill-name {
+    font-size: 11px; font-weight: 600; color: #79c0ff; margin-bottom: 4px;
+  }
+  .skill-path {
+    font-size: 10px; color: #6e7681; font-family: monospace;
+  }
+  .skill-agents {
+    margin-top: 6px; font-size: 10px; color: #8b949e;
+  }
+  .skill-agents span {
+    display: inline-block; background: #161b22;
+    border-radius: 3px; padding: 1px 5px; margin: 1px;
+  }
+
+  .retro-box {
+    max-width: 1200px; margin: 0 auto 40px;
+    background: #1e1a0d; border: 1px solid #5a3e1b;
+    border-radius: 12px; padding: 20px 28px;
+  }
+  .retro-title { font-size: 13px; font-weight: 700; color: #e3b341; margin-bottom: 12px; }
+  .retro-flow {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    font-size: 12px; color: #8b949e;
+  }
+  .retro-step {
+    background: #2d2313; border: 1px solid #5a3e1b;
+    border-radius: 6px; padding: 8px 12px; color: #e3b341;
+    font-size: 11px;
+  }
+  .retro-arrow { color: #5a3e1b; font-size: 18px; }
+
+  footer {
+    text-align: center; font-size: 11px; color: #484f58;
+    max-width: 1200px; margin: 0 auto;
+    padding-top: 16px; border-top: 1px solid #21262d;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">Sessão 29 · 2026-03-29</div>
+  <h1>Agent Architecture</h1>
+  <p>Estrutura anterior vs nova — agentes, sub-agentes, skills e retro-aprendizagem</p>
+</header>
+
+<!-- BEFORE / AFTER -->
+<div class="compare">
+
+  <!-- BEFORE -->
+  <div>
+    <div class="col-label label-before">Antes — flat, sem pipeline</div>
+
+    <div class="section-title">Orquestrador</div>
+    <div class="node n-agent"><span class="node-icon">🧠</span><span class="node-label">Claude Code (eu)</span><span class="node-tag">manual</span></div>
+
+    <div class="section-title">Agentes (invocados manualmente)</div>
+    <div class="node n-agent"><span class="node-icon">📋</span><span class="node-label">product-owner</span><span class="node-tag">sem Write</span></div>
+    <div class="node n-agent"><span class="node-icon">💻</span><span class="node-label">dev</span><span class="node-tag">sem tools declaradas</span></div>
+    <div class="node n-agent"><span class="node-icon">⚙️</span><span class="node-label">backend</span></div>
+    <div class="node n-agent"><span class="node-icon">🎨</span><span class="node-label">frontend</span></div>
+    <div class="node n-agent"><span class="node-icon">🔍</span><span class="node-label">code-reviewer</span><span class="node-tag">ref ChatDev</span></div>
+    <div class="node n-agent"><span class="node-icon">🚀</span><span class="node-label">devops</span></div>
+    <div class="node n-agent"><span class="node-icon">🔧</span><span class="node-label">infra</span></div>
+    <div class="node n-agent"><span class="node-icon">🛍️</span><span class="node-label">mercado-livre</span></div>
+    <div class="node n-agent"><span class="node-icon">🐛</span><span class="node-label">debugger</span></div>
+    <div class="node n-agent"><span class="node-icon">✅</span><span class="node-label">qa</span></div>
+    <div class="node n-agent"><span class="node-icon">🔒</span><span class="node-label">security / security-auditor</span></div>
+    <div class="node n-agent"><span class="node-icon">⚡</span><span class="node-label">performance-optimizer</span></div>
+    <div class="node n-agent"><span class="node-icon">🗄️</span><span class="node-label">database-architect</span></div>
+    <div class="node n-agent"><span class="node-icon">🔍</span><span class="node-label">seo-specialist</span></div>
+    <div class="node n-dead"><span class="node-icon">❌</span><span class="node-label">infra</span><span class="node-tag">duplicado de devops</span></div>
+
+    <div class="section-title">SRE (isolado)</div>
+    <div class="node n-sre"><span class="node-icon">🚨</span><span class="node-label">sre-healer</span><span class="node-tag">manual</span></div>
+    <div class="node n-sub indent-1"><span class="node-icon">🔑</span><span class="node-label">ml-token-refresher</span></div>
+    <div class="node n-sub indent-1"><span class="node-icon">🖨️</span><span class="node-label">print-queue-healer</span></div>
+
+    <div class="section-title">Retro-aprendizagem</div>
+    <div class="node n-dead"><span class="node-icon">❌</span><span class="node-label">Nenhuma regra — depende de memória humana</span></div>
+  </div>
+
+  <!-- ARROW -->
+  <div class="arrow-col">→</div>
+
+  <!-- AFTER -->
+  <div>
+    <div class="col-label label-after">Depois — pipelines, sub-agentes, retro</div>
+
+    <div class="section-title">Pipeline 1 — Desenvolvimento</div>
+    <div class="node n-new"><span class="node-icon">🤖</span><span class="node-label">jarvis-mc</span><span class="node-tag">orquestrador (7 passos)</span></div>
+    <div class="connector"></div>
+    <div class="node n-agent indent-1"><span class="node-icon">📋</span><span class="node-label">product-owner</span><span class="node-tag">1. SPEC</span></div>
+    <div class="node n-new indent-1"><span class="node-icon">🗄️</span><span class="node-label">database-architect</span><span class="node-tag">2. DB REVIEW ← NOVO</span></div>
+    <div class="node n-agent indent-1"><span class="node-icon">💻</span><span class="node-label">dev</span><span class="node-tag">3. IMPLEMENT</span></div>
+    <div class="node n-sub indent-2"><span class="node-icon">⚙️</span><span class="node-label">backend</span><span class="node-tag">sub-sub</span></div>
+    <div class="node n-sub indent-2"><span class="node-icon">🎨</span><span class="node-label">frontend</span><span class="node-tag">sub-sub</span></div>
+    <div class="node n-agent indent-1"><span class="node-icon">🛍️</span><span class="node-label">mercado-livre</span><span class="node-tag">3. IMPLEMENT (ML)</span></div>
+    <div class="node n-agent indent-1"><span class="node-icon">🔍</span><span class="node-label">code-reviewer</span><span class="node-tag">4. REVIEW</span></div>
+    <div class="node n-agent indent-1"><span class="node-icon">🚀</span><span class="node-label">devops</span><span class="node-tag">5. DEPLOY</span></div>
+    <div class="node n-sub indent-2"><span class="node-icon">🔧</span><span class="node-label">infra</span><span class="node-tag">sub-sub: n8n/SQL</span></div>
+    <div class="node n-new indent-1"><span class="node-icon">📚</span><span class="node-label">docs-keeper</span><span class="node-tag">6. DOCS ← NOVO</span></div>
+
+    <div class="section-title">Pipeline 2 — SRE / Incidentes</div>
+    <div class="node n-sre"><span class="node-icon">🚨</span><span class="node-label">sre-healer</span><span class="node-tag">orquestrador SRE</span></div>
+    <div class="node n-sub indent-1"><span class="node-icon">🔑</span><span class="node-label">ml-token-refresher</span><span class="node-tag">sub-agente</span></div>
+    <div class="node n-sub indent-1"><span class="node-icon">🖨️</span><span class="node-label">print-queue-healer</span><span class="node-tag">sub-agente</span></div>
+
+    <div class="section-title">Standalone (sob demanda)</div>
+    <div class="node n-agent"><span class="node-icon">🐛</span><span class="node-label">debugger</span><span class="node-tag">investigação</span></div>
+    <div class="node n-agent"><span class="node-icon">✅</span><span class="node-label">qa</span><span class="node-tag">validação</span></div>
+    <div class="node n-agent"><span class="node-icon">🔒</span><span class="node-label">security / security-auditor</span><span class="node-tag">auditoria</span></div>
+    <div class="node n-agent"><span class="node-icon">⚡</span><span class="node-label">performance-optimizer</span><span class="node-tag">pontual</span></div>
+    <div class="node n-agent"><span class="node-icon">🔍</span><span class="node-label">seo-specialist</span><span class="node-tag">futuro: wingx-app</span></div>
+
+    <div class="section-title">Retro-aprendizagem</div>
+    <div class="node n-retro"><span class="node-icon">📝</span><span class="node-label">Regra em todos os agentes</span><span class="node-tag">NOVO</span></div>
+  </div>
+
+</div>
+
+<!-- SKILLS MAP -->
+<div class="skills-section">
+  <div class="skills-title">Skills vinculadas por agente</div>
+  <div class="skills-grid">
+    <div class="skill-box">
+      <div class="skill-name">mission-control-dev</div>
+      <div class="skill-path">.skills/mission-control-dev/</div>
+      <div class="skill-agents"><span>dev</span><span>backend</span><span>frontend</span></div>
+    </div>
+    <div class="skill-box">
+      <div class="skill-name">mercado-livre-api</div>
+      <div class="skill-path">.skills/lib/mercado-livre/</div>
+      <div class="skill-agents"><span>mercado-livre</span></div>
+    </div>
+    <div class="skill-box">
+      <div class="skill-name">n8n-deploy + gotchas</div>
+      <div class="skill-path">.skills/n8n-*/</div>
+      <div class="skill-agents"><span>infra</span></div>
+    </div>
+    <div class="skill-box">
+      <div class="skill-name">vps-diagnostics</div>
+      <div class="skill-path">.skills/vps-diagnostics/</div>
+      <div class="skill-agents"><span>infra</span><span>devops</span></div>
+    </div>
+    <div class="skill-box">
+      <div class="skill-name">deployment-procedures</div>
+      <div class="skill-path">.skills/lib/deployment-procedures/</div>
+      <div class="skill-agents"><span>devops</span></div>
+    </div>
+    <div class="skill-box">
+      <div class="skill-name">systematic-debugging</div>
+      <div class="skill-path">.skills/lib/systematic-debugging/</div>
+      <div class="skill-agents"><span>debugger</span></div>
+    </div>
+    <div class="skill-box">
+      <div class="skill-name">sre</div>
+      <div class="skill-path">.skills/sre/</div>
+      <div class="skill-agents"><span>sre-healer</span></div>
+    </div>
+    <div class="skill-box">
+      <div class="skill-name">print-queue</div>
+      <div class="skill-path">.skills/print-queue/</div>
+      <div class="skill-agents"><span>print-queue-healer</span></div>
+    </div>
+    <div class="skill-box">
+      <div class="skill-name">pipeline-testing</div>
+      <div class="skill-path">.skills/pipeline-testing/</div>
+      <div class="skill-agents"><span>qa</span></div>
+    </div>
+    <div class="skill-box">
+      <div class="skill-name">nextjs-react-expert</div>
+      <div class="skill-path">.skills/lib/nextjs-react-expert/</div>
+      <div class="skill-agents"><span>frontend</span><span>dev</span></div>
+    </div>
+    <div class="skill-box">
+      <div class="skill-name">api-patterns</div>
+      <div class="skill-path">.skills/lib/api-patterns/</div>
+      <div class="skill-agents"><span>backend</span><span>dev</span></div>
+    </div>
+    <div class="skill-box">
+      <div class="skill-name">database-design</div>
+      <div class="skill-path">.skills/lib/database-design/</div>
+      <div class="skill-agents"><span>backend</span><span>database-architect</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- RETRO FLOW -->
+<div class="retro-box">
+  <div class="retro-title">📝 Loop de Retro-Aprendizagem — como funciona</div>
+  <div class="retro-flow">
+    <div class="retro-step">Agente executa task</div>
+    <div class="retro-arrow">→</div>
+    <div class="retro-step">Encontra gotcha / comportamento novo</div>
+    <div class="retro-arrow">→</div>
+    <div class="retro-step">Antes de encerrar:<br>append em SKILL.md</div>
+    <div class="retro-arrow">→</div>
+    <div class="retro-step">Próxima sessão lê SKILL<br>e já sabe o gotcha</div>
+    <div class="retro-arrow">→</div>
+    <div class="retro-step">Zero retrabalho<br>por problema já sofrido</div>
+  </div>
+</div>
+
+<footer>Wingx · Mission Control · Session 29 · 2026-03-29</footer>
+
+</body>
+</html>

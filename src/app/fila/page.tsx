@@ -69,6 +69,8 @@ function FilaContent() {
   const [activating, setActivating] = useState(false);
   const [reprinting, setReprinting] = useState<number | null>(null);
   const [countdown, setCountdown] = useState(5);
+  const [clearModal, setClearModal] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const fetchJobs = useCallback(async () => {
     if (!key) { setInvalid(true); setLoading(false); return; }
@@ -130,6 +132,17 @@ function FilaContent() {
       await fetchJobs();
     } finally {
       setActivating(false);
+    }
+  }
+
+  async function handleClearQueue() {
+    setClearing(true);
+    try {
+      await fetch(`/api/print-queue?key=${key}`, { method: 'DELETE' });
+      setClearModal(false);
+      await fetchJobs();
+    } finally {
+      setClearing(false);
     }
   }
 
@@ -205,9 +218,19 @@ function FilaContent() {
                 <p className="text-xs text-slate-500">{jobs.length} pedido{jobs.length !== 1 ? 's' : ''} · 48h</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-slate-800/80 rounded-full px-3 py-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs text-slate-400 tabular-nums">{countdown}s</span>
+            <div className="flex items-center gap-2">
+              {tab === 'queued' && queued.length > 0 && (
+                <button
+                  onClick={() => setClearModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-950/60 text-red-400 border border-red-800/50 hover:bg-red-900/60 hover:text-red-300 transition-all active:scale-95"
+                >
+                  🗑 Limpar
+                </button>
+              )}
+              <div className="flex items-center gap-2 bg-slate-800/80 rounded-full px-3 py-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs text-slate-400 tabular-nums">{countdown}s</span>
+              </div>
             </div>
           </div>
         </div>
@@ -374,6 +397,38 @@ function FilaContent() {
           })}
         </div>
       </div>
+
+      {/* Modal — Confirmar limpeza da fila */}
+      {clearModal && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+            <div className="text-center space-y-1">
+              <div className="text-4xl">🗑️</div>
+              <h2 className="text-base font-bold text-white">Limpar fila?</h2>
+              <p className="text-sm text-slate-400">
+                Isso vai deletar <span className="font-bold text-red-400">{queued.length} item{queued.length !== 1 ? 's' : ''}</span> pendente{queued.length !== 1 ? 's' : ''} da fila.
+                <br />Itens impressos não serão afetados.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setClearModal(false)}
+                disabled={clearing}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition-all disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleClearQueue}
+                disabled={clearing}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-red-600 hover:bg-red-500 text-white transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {clearing ? <span className="animate-spin">⏳</span> : '🗑'} Deletar tudo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Sticky bottom bar */}
       {selected.size > 0 && (

@@ -27,7 +27,7 @@ async function mlGet(url: string, token: string) {
 
 // ─── Salvar cliente e pedido no banco ────────────────────────────────────────
 
-async function saveClienteAndPedido(order: any, shipment: any, sellerNickname: string) {
+async function saveClienteAndPedido(order: any, shipment: any, sellerNickname: string, token?: string) {
   const db = getPool();
   const buyer = order.buyer ?? {};
 
@@ -37,9 +37,18 @@ async function saveClienteAndPedido(order: any, shipment: any, sellerNickname: s
 
   const nome = [buyer.first_name, buyer.last_name].filter(Boolean).join(' ') || buyer.nickname || null;
   const cpf = buyer.billing_info?.tax_payer_id ?? null;
-  const phone = buyer.phone;
-  const telefone = phone
-    ? `+55${phone.area_code ?? ''}${phone.number ?? ''}`.replace(/\s/g, '')
+
+  // Telefone: tenta payload do webhook; fallback GET /orders/{id}/billing_info
+  // Fonte: .skills/lib/mercado-livre/SKILL.md §8
+  let phoneObj = buyer.phone;
+  if (!phoneObj && order.id && token) {
+    try {
+      const billing = await mlGet(`${ML_API}/orders/${order.id}/billing_info`, token);
+      phoneObj = billing?.buyer?.phone ?? null;
+    } catch { /* não bloqueia o fluxo */ }
+  }
+  const telefone = phoneObj
+    ? `+55${phoneObj.area_code ?? ''}${phoneObj.number ?? ''}`.replace(/\s/g, '')
     : null;
   const endereco = shipment?.receiver_address ?? null;
 
@@ -208,7 +217,7 @@ export async function POST(req: NextRequest) {
     const orderUrl = resource.startsWith('http') ? resource : `${ML_API}${resource}`;
     const order = await mlGet(orderUrl, account.access_token);
 
-    // ── Mudança 1 & 2: capturar payment_required ────────────────────────────
+    // ── payment_required: registrar pedido + notificar uma única vez ─────────
     if (order.status === 'payment_required') {
       const buyer = order.buyer ?? {};
       const ml_buyer_id = buyer.id ?? null;
@@ -219,9 +228,9 @@ export async function POST(req: NextRequest) {
       }));
       const sellerNickname = account.nickname;
 
-      // Salvar/atualizar em ml_pedidos com status payment_required
+      // Salvar/atualizar em ml_pedidos
+      const db = getPool();
       try {
-        const db = getPool();
         await db.query(
           `INSERT INTO ml_pedidos (ml_order_id, ml_buyer_id, seller_nickname, items_json, total, status, shipment_id)
            VALUES ($1, $2, $3, $4, $5, 'payment_required', $6)
@@ -232,35 +241,35 @@ export async function POST(req: NextRequest) {
         console.error('[ML Webhook] Erro ao salvar payment_required:', e.message);
       }
 
-      // Notificação WhatsApp para payment_required
-      const buyerName = buyer.nickname || buyer.first_name || 'Comprador';
-      const firstItem = order.order_items?.[0];
-      const itemTitle = firstItem?.item?.title ?? 'Produto';
-      const itemQty = firstItem?.quantity ?? 1;
-      const totalFormatted = Number(order.total_amount ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+      // Dedup: só notifica uma vez por pedido neste status
+      try {
+        const dupRow = await db.query(
+          `SELECT wa_notified_pr FROM ml_pedidos WHERE ml_order_id = $1`,
+          [order.id]
+        );
+        if (dupRow.rows[0]?.wa_notified_pr) {
+          return NextResponse.json({ ok: true, skipped: true, reason: 'already_notified_pr' });
+        }
+      } catch { /* não bloqueia */ }
 
-      const prMsg = [
-        `⏳ *Nova venda aguardando pagamento*`,
-        ``,
-        `🛒 *Pedido:* #ML-${order.id}`,
-        `👤 *Comprador:* ${buyerName}`,
-        `📦 *Item:* ${itemTitle} (x${itemQty})`,
-        `💰 *Valor:* R$ ${totalFormatted}`,
-        `🏷️ *Conta:* ${sellerNickname}`,
-        ``,
-        `⚠️ Pagamento ainda não confirmado.`,
-        `Etiqueta será gerada após a confirmação.`,
-      ].join('\n');
+      // Mensagem padronizada — mesmo layout da venda paga, sem links de impressão
+      const basePr = formatSaleMessage(order, null, sellerNickname);
+      const linesPr = basePr.split('\n');
+      linesPr.splice(1, 0, '⏳ *Aguardando Pagamento*');
+      const prMsg = linesPr.join('\n');
 
       try {
-        // Buscar notifGroup da conta
-        const db = getPool();
         const cfgRowPr = await db.query(
           `SELECT notification_group FROM ml_account_configs WHERE seller_id = $1`,
           [account.seller_id]
         );
         const notifGroupPr: string | undefined = cfgRowPr.rows[0]?.notification_group || undefined;
         await sendWhatsApp(prMsg, notifGroupPr);
+        // Marcar como notificado para evitar reenvio em retries do ML
+        await db.query(
+          `UPDATE ml_pedidos SET wa_notified_pr = true WHERE ml_order_id = $1`,
+          [order.id]
+        );
       } catch (e: any) {
         console.error('[ML Webhook] Erro ao enviar WhatsApp payment_required:', e.message);
       }
@@ -299,10 +308,21 @@ export async function POST(req: NextRequest) {
       printEnabled
         ? createPrintJob(order.id, shipmentId, account.nickname, order, shipment)
         : Promise.resolve(null),
-      saveClienteAndPedido(order, shipment, account.nickname).catch(e =>
+      saveClienteAndPedido(order, shipment, account.nickname, account.access_token).catch(e =>
         console.error('[ML Webhook] Erro ao salvar cliente:', e.message)
       ),
     ]);
+
+    // Dedup: só notifica uma vez por pedido no status paid
+    try {
+      const paidDupRow = await db.query(
+        `SELECT wa_notified_paid FROM ml_pedidos WHERE ml_order_id = $1`,
+        [order.id]
+      );
+      if (paidDupRow.rows[0]?.wa_notified_paid) {
+        return NextResponse.json({ ok: true, skipped: true, reason: 'already_notified_paid' });
+      }
+    } catch { /* não bloqueia */ }
 
     // Montar link de impressão e incluir na mesma mensagem
     const baseUrl = process.env.MC_URL ?? 'https://mc.wingx.app.br';
@@ -316,6 +336,12 @@ export async function POST(req: NextRequest) {
 
     // Enviar notificação para o grupo configurado por conta (ou padrão)
     await (thumbnail ? sendWhatsAppMedia(thumbnail, message, notifGroup) : sendWhatsApp(message, notifGroup));
+
+    // Marcar como notificado para evitar reenvio em retries do ML
+    await db.query(
+      `UPDATE ml_pedidos SET wa_notified_paid = true WHERE ml_order_id = $1`,
+      [order.id]
+    ).catch((e: any) => console.error('[ML Webhook] Erro ao marcar wa_notified_paid:', e.message));
 
     return NextResponse.json({ ok: true, order_id: order.id });
   } catch (e: any) {

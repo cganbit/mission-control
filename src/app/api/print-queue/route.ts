@@ -28,6 +28,32 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ jobs: result.rows });
 }
 
+// ─── DELETE /api/print-queue — limpar fila (requer QUEUE_KEY) ────────────────
+
+export async function DELETE(req: NextRequest) {
+  const key = req.nextUrl.searchParams.get('key');
+  if (!key || key !== (process.env.QUEUE_KEY ?? '')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  let statusFilter: string | undefined;
+  try {
+    const body = await req.json();
+    statusFilter = body.status;
+  } catch { /* body opcional */ }
+
+  const allowed = ['queued', 'error', 'pending'];
+  const statuses = statusFilter && allowed.includes(statusFilter) ? [statusFilter] : allowed;
+
+  const db = getPool();
+  const result = await db.query(
+    `DELETE FROM print_queue WHERE status = ANY($1) RETURNING id`,
+    [statuses]
+  );
+
+  return NextResponse.json({ deleted: result.rowCount ?? 0 });
+}
+
 // ─── POST /api/print-queue — cria job (chamado internamente pelo webhook) ─────
 
 export async function POST(req: NextRequest) {
