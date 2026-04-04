@@ -29,7 +29,10 @@ export async function proxy(req: NextRequest) {
     pathname.endsWith('/heartbeat') || // Jarvis — heartbeat de tasks via x-worker-key
     pathname === '/api/jarvis/task' || // Jarvis — PATCH de conclusão via x-worker-key (POST requer sessão)
     pathname === '/api/agents' || // Jarvis — step 0: descobre agent_ids via x-worker-key
-    pathname === '/api/squads' // Jarvis — descobre squad_ids via x-worker-key
+    pathname === '/api/squads' || // Jarvis — descobre squad_ids via x-worker-key
+    pathname === '/api/analytics/setup' || // Analytics — criação de schema via x-worker-key
+    pathname === '/api/analytics/sessions' || // Analytics — POST métricas via x-worker-key (GET aceita session)
+    pathname.startsWith('/api/analytics/') // Analytics — todos endpoints aceitam dual auth (worker-key ou session)
   ) {
     return NextResponse.next();
   }

@@ -3,6 +3,11 @@
 :root {
   --background: #030712;
   --foreground: #f9fafb;
+  --chart-1: #6366f1;
+  --chart-2: #22c55e;
+  --chart-3: #f59e0b;
+  --chart-4: #ef4444;
+  --chart-5: #8b5cf6;
 }
 
 body {
