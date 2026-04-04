@@ -12,6 +12,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Validate build (TypeScript + Next.js)
+        run: |
+          npm ci --prefer-offline
+          npm run build
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
