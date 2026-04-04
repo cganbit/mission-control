@@ -48,8 +48,10 @@ export async function GET(req: NextRequest) {
 
     const clientes = rows.rows.map((c: any) => ({
       ...c,
+      name: c.nome,
       cpf: safeDecrypt(c.cpf),
       telefone: safeDecrypt(c.telefone),
+      lojas: c.lojas ? c.lojas.split(', ').filter(Boolean) : [],
     }));
 
     return NextResponse.json({
