@@ -6,6 +6,8 @@ services:
     ports:
       - "3001:3001"
     env_file: .env
+    environment:
+      - MC_WORKER_KEY=3e8f51ad51e291d49e9ff03d32588cbf1f93e96bf8473543
     networks:
       - evolution-api-h4pg_default
 
