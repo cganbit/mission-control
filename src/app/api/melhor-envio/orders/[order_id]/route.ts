@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { getPool } from '@/lib/db';
 
-export async function GET(req: NextRequest, { params }: { params: { order_id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ order_id: string }> }) {
   const session = await getSessionFromRequest(req);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
+    const { order_id } = await params;
     const db = getPool();
     const result = await db.query(
       `SELECT
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest, { params }: { params: { order_id: st
        FROM ml_pedidos
        WHERE ml_order_id = $1
        LIMIT 1`,
-      [params.order_id]
+      [order_id]
     );
 
     if (result.rowCount === 0) {
