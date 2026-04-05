@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { sendWhatsApp } from '@/lib/whatsapp';
 
-const WORKER_KEY      = process.env.WORKER_KEY ?? '';
+const WORKER_KEY      = process.env.MC_WORKER_KEY ?? '';
 const SRE_GROUP       = process.env.SRE_WHATSAPP_GROUP ?? '';
 const EVOLUTION_URL   = process.env.EVOLUTION_URL ?? 'http://evolution-api-h4pg-api-1:8080';
 const EVOLUTION_KEY   = process.env.EVOLUTION_API_KEY ?? '';

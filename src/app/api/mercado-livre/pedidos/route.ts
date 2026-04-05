@@ -32,7 +32,10 @@ export async function GET(req: NextRequest) {
   const result = await db.query(
     `SELECT p.id, p.ml_order_id, p.shipment_id AS ml_shipment_id, p.seller_nickname,
             p.status, p.items_json, p.total, p.logistic_type, p.listing_type,
-            p.shipping_status, p.ml_buyer_id, p.created_at, p.updated_at,
+            p.shipping_status, p.ml_buyer_id, p.seller_id, p.pack_id,
+            p.me_order_id, p.me_tracking_code, p.me_label_url, p.me_status,
+            p.me_carrier, p.me_cost, p.me_delivery_address,
+            p.created_at, p.updated_at,
             pq.status AS print_status, pq.has_label, pq.buyer_name, pq.error_msg
      FROM ml_pedidos p
      LEFT JOIN print_queue pq ON pq.ml_order_id = p.ml_order_id

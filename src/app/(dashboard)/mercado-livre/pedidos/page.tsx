@@ -14,6 +14,8 @@ interface Order {
   ml_order_id: string;
   ml_shipment_id: string | null;
   seller_nickname: string | null;
+  seller_id: number | null;
+  pack_id: string | null;
   status: string;
   items_json: OrderItem[] | null;
   total: number | null;
@@ -26,6 +28,14 @@ interface Order {
   print_status: string | null;
   has_label: boolean | null;
   error_msg: string | null;
+  // Melhor Envio fields
+  me_order_id: string | null;
+  me_tracking_code: string | null;
+  me_label_url: string | null;
+  me_status: string | null;
+  me_carrier: string | null;
+  me_cost: number | null;
+  me_delivery_address: Record<string, string> | null;
 }
 
 interface FreightService {
@@ -186,6 +196,233 @@ function FreightModal({ orderId, onClose }: { orderId: string; onClose: () => vo
 }
 
 
+// ─── ME Status ──────────────────────────────────────────────────────────────
+
+const ME_STATUS_LABEL: Record<string, string> = {
+  pending: 'Pendente',
+  pending_address: 'Aguard. endereço',
+  address_confirmed: 'Endereço OK',
+  simulated: 'Simulado',
+  label_generated: 'Etiqueta gerada',
+  posted: 'Postado',
+  in_transit: 'Em trânsito',
+  delivered: 'Entregue',
+  error: 'Erro',
+};
+
+const ME_STATUS_COLOR: Record<string, string> = {
+  pending: 'bg-slate-700 text-slate-300',
+  pending_address: 'bg-amber-900/60 text-amber-300',
+  address_confirmed: 'bg-sky-900/60 text-sky-300',
+  simulated: 'bg-indigo-900/60 text-indigo-300',
+  label_generated: 'bg-purple-900/60 text-purple-300',
+  posted: 'bg-blue-900/60 text-blue-300',
+  in_transit: 'bg-cyan-900/60 text-cyan-300',
+  delivered: 'bg-emerald-900/60 text-emerald-300',
+  error: 'bg-red-900/60 text-red-400',
+};
+
+const ME_TIMELINE_STEPS = [
+  'pending', 'address_confirmed', 'simulated', 'label_generated', 'posted', 'in_transit', 'delivered',
+];
+
+function getMeStepIndex(status: string | null): number {
+  if (!status) return -1;
+  return ME_TIMELINE_STEPS.indexOf(status);
+}
+
+// ─── ME Detail Drawer ───────────────────────────────────────────────────────
+
+function MeDrawer({
+  order,
+  onClose,
+  onAction,
+}: {
+  order: Order;
+  onClose: () => void;
+  onAction: () => void;
+}) {
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const currentStep = getMeStepIndex(order.me_status);
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  const doAction = async (action: string, url: string, method = 'POST', body?: object) => {
+    setActionLoading(action);
+    setActionError(null);
+    setActionSuccess(null);
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `Erro ${res.status}`);
+      setActionSuccess(action);
+      onAction(); // reload orders
+    } catch (e: any) {
+      setActionError(e.message);
+    }
+    setActionLoading(null);
+  };
+
+  const addr = order.me_delivery_address;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-md bg-slate-900 border-l border-slate-700/50 h-full overflow-y-auto p-6 space-y-5"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-white">Envio Próprio</h2>
+            <p className="text-xs text-slate-500 font-mono">#{order.ml_order_id}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-white text-lg">&times;</button>
+        </div>
+
+        {/* Timeline */}
+        <div className="space-y-1">
+          <h3 className="text-xs text-slate-400 uppercase tracking-wide font-medium">Timeline</h3>
+          <div className="flex items-center gap-1">
+            {ME_TIMELINE_STEPS.map((step, i) => (
+              <div key={step} className="flex items-center">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold
+                    ${i <= currentStep
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-700 text-slate-500'
+                    }
+                    ${i === currentStep ? 'ring-2 ring-emerald-400' : ''}
+                  `}
+                  title={ME_STATUS_LABEL[step] ?? step}
+                >
+                  {i + 1}
+                </div>
+                {i < ME_TIMELINE_STEPS.length - 1 && (
+                  <div className={`w-4 h-0.5 ${i < currentStep ? 'bg-emerald-600' : 'bg-slate-700'}`} />
+                )}
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-slate-400 mt-1">
+            Status: <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${ME_STATUS_COLOR[order.me_status ?? ''] ?? 'bg-slate-700 text-slate-300'}`}>
+              {ME_STATUS_LABEL[order.me_status ?? ''] ?? order.me_status ?? '—'}
+            </span>
+          </p>
+        </div>
+
+        {/* Delivery Address */}
+        <div className="space-y-1">
+          <h3 className="text-xs text-slate-400 uppercase tracking-wide font-medium">Endereço de Entrega</h3>
+          {addr ? (
+            <div className="bg-slate-800 rounded-lg p-3 text-xs text-slate-300 space-y-0.5">
+              <p>{addr.rua || addr.logradouro}, {addr.numero}{addr.complemento ? ` - ${addr.complemento}` : ''}</p>
+              <p>{addr.bairro} — {addr.cidade}/{addr.estado}</p>
+              <p className="font-mono">{addr.cep}</p>
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">Endereço não confirmado</p>
+          )}
+        </div>
+
+        {/* ME Info */}
+        {order.me_order_id && (
+          <div className="space-y-1">
+            <h3 className="text-xs text-slate-400 uppercase tracking-wide font-medium">Etiqueta</h3>
+            <div className="bg-slate-800 rounded-lg p-3 text-xs text-slate-300 space-y-1">
+              <p>Transportadora: <span className="text-white font-medium">{order.me_carrier?.toUpperCase() ?? '—'}</span></p>
+              <p>Custo: <span className="text-white font-medium">R$ {order.me_cost?.toFixed(2) ?? '—'}</span></p>
+              {order.me_tracking_code && (
+                <p>Rastreio: <span className="text-white font-mono font-medium">{order.me_tracking_code}</span></p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="space-y-2">
+          <h3 className="text-xs text-slate-400 uppercase tracking-wide font-medium">Ações</h3>
+
+          {/* Gerar Etiqueta — available when address confirmed */}
+          {(!order.me_order_id || order.me_status === 'error') && addr?.cep && (
+            <div className="flex gap-2">
+              <button
+                disabled={!!actionLoading}
+                onClick={() => doAction('create-pac', '/api/melhor-envio/create-label', 'POST', { ml_order_id: order.ml_order_id, carrier: 'pac' })}
+                className="flex-1 px-3 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-700 text-white text-xs font-medium rounded-lg transition-colors"
+              >
+                {actionLoading === 'create-pac' ? 'Gerando...' : '📦 PAC (grátis)'}
+              </button>
+              <button
+                disabled={!!actionLoading}
+                onClick={() => doAction('create-sedex', '/api/melhor-envio/create-label', 'POST', { ml_order_id: order.ml_order_id, carrier: 'sedex' })}
+                className="flex-1 px-3 py-2 bg-blue-700 hover:bg-blue-600 disabled:bg-slate-700 text-white text-xs font-medium rounded-lg transition-colors"
+              >
+                {actionLoading === 'create-sedex' ? 'Gerando...' : '⚡ SEDEX'}
+              </button>
+            </div>
+          )}
+
+          {/* Enviar Rastreio — available when label generated */}
+          {order.me_tracking_code && order.me_status === 'label_generated' && (
+            <button
+              disabled={!!actionLoading}
+              onClick={() => doAction('send-tracking', `/api/melhor-envio/send-tracking/${order.ml_order_id}`, 'POST')}
+              className="w-full px-3 py-2 bg-indigo-700 hover:bg-indigo-600 disabled:bg-slate-700 text-white text-xs font-medium rounded-lg transition-colors"
+            >
+              {actionLoading === 'send-tracking' ? 'Enviando...' : '📨 Enviar Rastreio ao Comprador'}
+            </button>
+          )}
+
+          {/* Ver Rastreio — available when posted or later */}
+          {order.me_order_id && ['posted', 'in_transit', 'delivered'].includes(order.me_status ?? '') && (
+            <button
+              disabled={!!actionLoading}
+              onClick={() => doAction('track', `/api/melhor-envio/track/${order.ml_order_id}`, 'GET')}
+              className="w-full px-3 py-2 bg-cyan-700 hover:bg-cyan-600 disabled:bg-slate-700 text-white text-xs font-medium rounded-lg transition-colors"
+            >
+              {actionLoading === 'track' ? 'Consultando...' : '🔍 Atualizar Rastreio'}
+            </button>
+          )}
+
+          {/* Label PDF link */}
+          {order.me_label_url && (
+            <a
+              href={order.me_label_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium rounded-lg border border-slate-600 transition-colors"
+            >
+              🖨️ Abrir Etiqueta PDF
+            </a>
+          )}
+
+          {actionError && <p className="text-xs text-red-400">{actionError}</p>}
+          {actionSuccess && <p className="text-xs text-emerald-400">✓ {actionSuccess} executado com sucesso</p>}
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-800 text-slate-300 border border-slate-700/50 hover:border-slate-500 hover:text-slate-100 transition-colors"
+        >
+          Fechar
+        </button>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 const PRINT_STATUS_LABEL: Record<string, string> = {
   queued: 'Na fila',
   pending: 'Pendente',
@@ -222,6 +459,7 @@ export default function PedidosMLPage() {
   const [accounts, setAccounts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [freightModal, setFreightModal] = useState<string | null>(null);
+  const [meDrawerOrder, setMeDrawerOrder] = useState<Order | null>(null);
 
   const [filterAccount, setFilterAccount] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -259,6 +497,13 @@ export default function PedidosMLPage() {
         <FreightModal
           orderId={freightModal}
           onClose={() => setFreightModal(null)}
+        />
+      )}
+      {meDrawerOrder && (
+        <MeDrawer
+          order={meDrawerOrder}
+          onClose={() => setMeDrawerOrder(null)}
+          onAction={() => { load(); setMeDrawerOrder(null); }}
         />
       )}
       {/* Header */}
@@ -364,6 +609,7 @@ export default function PedidosMLPage() {
                   <th className="text-center px-4 py-3 font-medium">Status</th>
                   <th className="text-center px-4 py-3 font-medium">Entrega</th>
                   <th className="text-center px-4 py-3 font-medium">Impressão</th>
+                  <th className="text-center px-4 py-3 font-medium">ME Envio</th>
                   <th className="text-left px-4 py-3 font-medium">Data</th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -424,19 +670,40 @@ export default function PedidosMLPage() {
                           </div>
                         )}
                       </td>
+                      {/* ME Envio status */}
+                      <td className="px-4 py-3 text-center text-xs">
+                        {isEnvioProprio(order.logistic_type) && order.me_status ? (
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${ME_STATUS_COLOR[order.me_status] ?? 'bg-slate-700 text-slate-300'}`}>
+                            {ME_STATUS_LABEL[order.me_status] ?? order.me_status}
+                          </span>
+                        ) : isEnvioProprio(order.logistic_type) ? (
+                          <span className="text-slate-600 text-xs">pendente</span>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
                         {new Date(order.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-3">
+                        <div className="flex items-center justify-end gap-2">
                           {isEnvioProprio(order.logistic_type) && (
-                            <button
-                              onClick={() => setFreightModal(order.ml_order_id)}
-                              className="text-amber-400 hover:text-amber-300 transition-colors text-xs font-medium whitespace-nowrap"
-                              title="Simular frete PAC/SEDEX"
-                            >
-                              Simular Frete
-                            </button>
+                            <>
+                              <button
+                                onClick={() => setFreightModal(order.ml_order_id)}
+                                className="text-amber-400 hover:text-amber-300 transition-colors text-xs font-medium whitespace-nowrap"
+                                title="Simular frete PAC/SEDEX"
+                              >
+                                Cotar
+                              </button>
+                              <button
+                                onClick={() => setMeDrawerOrder(order)}
+                                className="text-indigo-400 hover:text-indigo-300 transition-colors text-xs font-medium whitespace-nowrap"
+                                title="Gerenciar envio próprio"
+                              >
+                                Envio
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>

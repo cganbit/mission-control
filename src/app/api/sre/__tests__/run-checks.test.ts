@@ -3,8 +3,8 @@ import { NextRequest } from 'next/server';
 
 const WORKER_KEY = 'test-worker-key';
 
-// WORKER_KEY precisa estar no process.env ANTES do módulo carregar
-vi.stubEnv('WORKER_KEY', WORKER_KEY);
+// MC_WORKER_KEY precisa estar no process.env ANTES do módulo carregar
+vi.stubEnv('MC_WORKER_KEY', WORKER_KEY);
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 

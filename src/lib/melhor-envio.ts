@@ -50,3 +50,63 @@ export async function meGetBalance() {
 export async function meTestConnection() {
   return meRequest('/me');
 }
+
+// ─── Label Flow: cart → checkout → generate → print ──────────────────────────
+
+interface MeAddress {
+  name: string;
+  phone?: string;
+  email?: string;
+  document?: string;
+  postal_code: string;
+  address: string;
+  number?: string;
+  complement?: string;
+  district: string;
+  city: string;
+  state_abbr: string;
+  country_id?: string;
+}
+
+interface MePackage {
+  weight: number;
+  width: number;
+  height: number;
+  length: number;
+}
+
+export async function meAddToCart(
+  serviceId: number,
+  from: MeAddress,
+  to: MeAddress,
+  pkg: MePackage,
+  insuranceValue = 0
+) {
+  return meRequest('/me/cart', 'POST', {
+    service: serviceId,
+    from,
+    to,
+    package: pkg,
+    options: { insurance_value: insuranceValue, receipt: false, own_hand: false },
+  });
+}
+
+export async function meCheckout(orderIds: string[]) {
+  return meRequest('/me/shipment/checkout', 'POST', { orders: orderIds });
+}
+
+export async function meGenerate(orderIds: string[]) {
+  return meRequest('/me/shipment/generate', 'POST', { orders: orderIds });
+}
+
+export async function mePrint(orderIds: string[]) {
+  return meRequest('/me/shipment/print', 'POST', { orders: orderIds });
+}
+
+export async function meTrackShipment(orderIds: string[]) {
+  return meRequest('/me/shipment/tracking', 'POST', { orders: orderIds });
+}
+
+export async function meCancelShipment(orderIds: string[]) {
+  return meRequest('/me/shipment/cancel', 'POST', { orders: orderIds });
+}

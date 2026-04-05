@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { getArbitragemPool } from '@/lib/db';
 
-const WORKER_KEY = process.env.WORKER_KEY;
+const WORKER_KEY = process.env.MC_WORKER_KEY;
 
 interface CatalogEntry {
   catalog_id: string;

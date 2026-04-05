@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { sendWhatsApp } from '@/lib/whatsapp';
 
-const WORKER_KEY    = process.env.WORKER_KEY ?? '';
+const WORKER_KEY    = process.env.MC_WORKER_KEY ?? '';
 const MC_URL        = process.env.MC_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://mc.wingx.app.br';
 const SRE_WA_GROUP  = process.env.SRE_WHATSAPP_GROUP ?? undefined; // ex: '5511999999999-1234567890@g.us'
 

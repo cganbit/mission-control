@@ -84,6 +84,37 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { ml_shipment_id, seller_nickname, has_label, ml_order_id, logistic_type } = row.rows[0];
 
+  // Melhor Envio labels — fetch from ME label URL stored in ml_pedidos
+  if (logistic_type === 'melhor_envio') {
+    const meRow = await db.query(
+      `SELECT me_label_url FROM ml_pedidos WHERE ml_order_id = $1 LIMIT 1`,
+      [ml_order_id]
+    );
+    const meLabelUrl = meRow.rows[0]?.me_label_url;
+    if (meLabelUrl) {
+      const meRes = await fetch(meLabelUrl, { signal: AbortSignal.timeout(30000) });
+      if (meRes.ok) {
+        const pdf = await meRes.arrayBuffer();
+        await auditLog({
+          event_type: 'label_generated',
+          entity_type: 'print_queue',
+          entity_id: Number(id),
+          seller_nickname,
+          status: 'ok',
+          duration_ms: Date.now() - start,
+        });
+        return new NextResponse(pdf, {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="etiqueta-me-${ml_order_id}.pdf"`,
+            'X-Label-Source': 'melhor-envio',
+          },
+        });
+      }
+    }
+    return NextResponse.json({ error: 'ME label not available' }, { status: 404 });
+  }
+
   // Verificar test_mode por conta
   const accountCfg = await db.query(
     `SELECT test_mode FROM ml_account_configs WHERE nickname = $1 LIMIT 1`,

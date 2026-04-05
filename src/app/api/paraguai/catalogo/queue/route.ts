@@ -3,7 +3,7 @@ import { getSessionFromRequest } from '@/lib/auth';
 import { getArbitragemPool, getPool } from '@/lib/db';
 import { logAudit } from '@/lib/audit';
 
-const WORKER_KEY = process.env.WORKER_KEY;
+const WORKER_KEY = process.env.MC_WORKER_KEY;
 const ML_API = 'https://api.mercadolibre.com';
 
 async function ensureTable(db: any) {

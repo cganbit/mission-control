@@ -1,0 +1,163 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getSessionFromRequest } from '@/lib/auth';
+import { getPool } from '@/lib/db';
+import { meAddToCart, meCheckout, meGenerate, mePrint } from '@/lib/melhor-envio';
+import crypto from 'crypto';
+
+const WORKER_KEY = process.env.MC_WORKER_KEY ?? '';
+const FROM_ZIP = '09051380'; // CEP origem padrão (Santo André)
+const FROM_NAME = 'WingX Baterias';
+const FROM_PHONE = '11999999999';
+
+// Service IDs Melhor Envio
+const SERVICES: Record<string, number> = { pac: 1, sedex: 2 };
+
+export async function POST(req: NextRequest) {
+  // Dual auth: worker-key ou session
+  const workerKey = req.headers.get('x-worker-key');
+  const isWorker = workerKey === WORKER_KEY && WORKER_KEY !== '';
+  if (!isWorker) {
+    const session = await getSessionFromRequest(req);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const db = getPool();
+  let ml_order_id: string | undefined;
+
+  try {
+    const body = await req.json();
+    ml_order_id = body.ml_order_id;
+    const carrier = body.carrier ?? 'pac';
+
+    if (!ml_order_id) {
+      return NextResponse.json({ error: 'ml_order_id obrigatório' }, { status: 400 });
+    }
+
+    const serviceId = SERVICES[carrier];
+    if (!serviceId) {
+      return NextResponse.json({ error: 'carrier deve ser pac ou sedex' }, { status: 400 });
+    }
+
+    // Buscar pedido no DB
+    const pedido = await db.query(
+      `SELECT ml_order_id, me_status, me_delivery_address, me_order_id
+       FROM ml_pedidos WHERE ml_order_id = $1 LIMIT 1`,
+      [ml_order_id]
+    );
+
+    if (pedido.rowCount === 0) {
+      return NextResponse.json({ error: 'Pedido não encontrado' }, { status: 404 });
+    }
+
+    const row = pedido.rows[0];
+
+    // Não gerar etiqueta se já foi gerada
+    if (row.me_order_id && ['label_generated', 'posted', 'in_transit', 'delivered'].includes(row.me_status)) {
+      return NextResponse.json({
+        error: `Etiqueta já existe (status: ${row.me_status})`,
+        me_order_id: row.me_order_id,
+      }, { status: 409 });
+    }
+
+    // Endereço de entrega (JSONB confirmado pelo vendedor)
+    const addr = row.me_delivery_address;
+    if (!addr || !addr.cep) {
+      return NextResponse.json({ error: 'Endereço de entrega não confirmado' }, { status: 400 });
+    }
+
+    // Montar endereços ME
+    const fromAddr = {
+      name: FROM_NAME,
+      phone: FROM_PHONE,
+      postal_code: FROM_ZIP,
+      address: 'Rua das Figueiras',
+      number: '100',
+      district: 'Centro',
+      city: 'Santo André',
+      state_abbr: 'SP',
+    };
+
+    const toAddr = {
+      name: addr.nome || 'Comprador',
+      phone: addr.telefone || '',
+      postal_code: addr.cep,
+      address: addr.rua || addr.logradouro || '',
+      number: addr.numero || '',
+      complement: addr.complemento || '',
+      district: addr.bairro || '',
+      city: addr.cidade || '',
+      state_abbr: addr.estado || '',
+    };
+
+    const pkg = {
+      weight: body.weight ?? 0.5,
+      width: body.width ?? 20,
+      height: body.height ?? 10,
+      length: body.length ?? 20,
+    };
+
+    // 1. Adicionar ao carrinho
+    const cartResult = await meAddToCart(serviceId, fromAddr, toAddr, pkg, body.insurance_value ?? 0);
+    const cartId = cartResult.id;
+    if (!cartId) {
+      return NextResponse.json({ error: 'Falha ao adicionar ao carrinho', detail: cartResult }, { status: 502 });
+    }
+
+    // 2. Checkout (comprar etiqueta)
+    const checkoutResult = await meCheckout([cartId]);
+    const order = checkoutResult?.[cartId] ?? checkoutResult;
+    const meOrderId = order?.id ?? cartId;
+    const meTrackingCode = order?.tracking ?? null;
+    const meCost = order?.price ? parseFloat(order.price) : null;
+    const meProtocol = order?.protocol ?? null;
+
+    // 3. Gerar etiqueta
+    await meGenerate([meOrderId]);
+
+    // 4. Obter URL do PDF
+    const printResult = await mePrint([meOrderId]);
+    const labelUrl = printResult?.url ?? null;
+
+    // Salvar no DB
+    await db.query(
+      `UPDATE ml_pedidos SET
+        me_order_id = $1,
+        me_tracking_code = $2,
+        me_label_url = $3,
+        me_cost = $4,
+        me_carrier = $5,
+        me_status = 'label_generated'
+       WHERE ml_order_id = $6`,
+      [meOrderId, meTrackingCode, labelUrl, meCost, carrier, ml_order_id]
+    );
+
+    // T7: Inserir na fila de impressão
+    const token = crypto.randomBytes(20).toString('hex');
+    await db.query(
+      `INSERT INTO print_queue (ml_order_id, seller_nickname, token, status, logistic_type)
+       VALUES ($1, $2, $3, 'queued', 'melhor_envio')
+       ON CONFLICT DO NOTHING`,
+      [ml_order_id, FROM_NAME, token]
+    );
+
+    return NextResponse.json({
+      ok: true,
+      me_order_id: meOrderId,
+      me_tracking_code: meTrackingCode,
+      me_label_url: labelUrl,
+      me_cost: meCost,
+      me_protocol: meProtocol,
+      carrier,
+      print_queue: true,
+    });
+  } catch (e: any) {
+    console.error('[create-label] Error:', e.message);
+    if (ml_order_id) {
+      await db.query(
+        `UPDATE ml_pedidos SET me_status = 'error' WHERE ml_order_id = $1`,
+        [ml_order_id]
+      ).catch(() => {});
+    }
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
