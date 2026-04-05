@@ -59,6 +59,11 @@ jobs:
           SRE_WHATSAPP_GROUP=${{ secrets.SRE_WHATSAPP_GROUP }}
           EVOLUTION_API_KEY=${{ secrets.EVOLUTION_API_KEY }}
           N8N_API_KEY=${{ secrets.N8N_API_KEY }}
+          MELHOR_ENVIO_ENV=${{ secrets.MELHOR_ENVIO_ENV }}
+          ME_SANDBOX_TOKEN=${{ secrets.ME_SANDBOX_TOKEN }}
+          ME_SANDBOX_CLIENT_SECRET=${{ secrets.ME_SANDBOX_CLIENT_SECRET }}
+          ME_PROD_TOKEN=${{ secrets.ME_PROD_TOKEN }}
+          ME_PROD_CLIENT_SECRET=${{ secrets.ME_PROD_CLIENT_SECRET }}
           ENVEOF"
 
       - name: Build & restart container
