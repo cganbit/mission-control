@@ -2,22 +2,30 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { QRCodeSVG } from 'qrcode.react';
 
-interface Job {
+interface OrderItem {
+  title: string;
+  quantity: number;
+  unit_price: number;
+}
+
+interface Order {
   id: number;
   ml_order_id: string;
   ml_shipment_id: string | null;
   seller_nickname: string | null;
   status: string;
-  error_msg: string | null;
+  items_json: OrderItem[] | null;
+  total: number | null;
+  logistic_type: string | null;
+  listing_type: string | null;
+  shipping_status: string | null;
+  buyer_name: string | null;
   created_at: string;
   updated_at: string;
-  items_summary: string | null;
-  logistic_type: string | null;
-  buyer_name: string | null;
-  has_label: boolean;
-  qr_code_url: string | null;
+  print_status: string | null;
+  has_label: boolean | null;
+  error_msg: string | null;
 }
 
 interface FreightService {
@@ -33,8 +41,48 @@ interface FreightService {
 function isEnvioProprio(logistic: string | null): boolean {
   if (!logistic) return false;
   const lt = logistic.toLowerCase();
-  return lt.includes('self_service') || lt.includes('custom') || lt === 'self_service';
+  return lt === 'self_service' || lt === 'custom';
 }
+
+function translateLogistic(logistic: string | null): { label: string; color: string } {
+  if (!logistic) return { label: '—', color: 'text-slate-500' };
+  const lt = logistic.toLowerCase();
+  if (lt === 'fulfillment') return { label: 'Full', color: 'bg-purple-900/60 text-purple-300 border-purple-700/40' };
+  if (['xd_drop_off', 'drop_off', 'cross_docking'].includes(lt)) return { label: 'Mercado Envios', color: 'bg-blue-900/60 text-blue-300 border-blue-700/40' };
+  if (['self_service', 'custom'].includes(lt)) return { label: 'Envio próprio', color: 'bg-amber-900/60 text-amber-300 border-amber-700/40' };
+  if (['me1', 'flex'].includes(lt)) return { label: 'Flex', color: 'bg-cyan-900/60 text-cyan-300 border-cyan-700/40' };
+  return { label: logistic, color: 'bg-slate-700 text-slate-300 border-slate-600' };
+}
+
+function translateListingType(lt: string | null): { label: string; color: string } | null {
+  if (!lt) return null;
+  if (lt === 'gold_special') return { label: 'Premium', color: 'bg-yellow-900/60 text-yellow-300 border-yellow-700/40' };
+  if (lt === 'gold_pro') return { label: 'Clássico', color: 'bg-sky-900/60 text-sky-300 border-sky-700/40' };
+  if (lt === 'free') return { label: 'Grátis', color: 'bg-slate-700 text-slate-400 border-slate-600' };
+  return { label: lt, color: 'bg-slate-700 text-slate-300 border-slate-600' };
+}
+
+function translateShippingStatus(s: string | null): { label: string; color: string } | null {
+  if (!s) return null;
+  const st = s.toLowerCase();
+  if (st === 'delivered') return { label: 'Entregue', color: 'bg-emerald-900/60 text-emerald-300' };
+  if (st === 'shipped' || st === 'ready_to_ship') return { label: 'A caminho', color: 'bg-blue-900/60 text-blue-300' };
+  if (st === 'not_delivered') return { label: 'Não entregue', color: 'bg-red-900/60 text-red-400' };
+  if (st === 'pending') return { label: 'Pendente', color: 'bg-slate-700 text-slate-300' };
+  return { label: s, color: 'bg-slate-700 text-slate-300' };
+}
+
+const ORDER_STATUS_LABEL: Record<string, string> = {
+  paid: 'Pago',
+  payment_required: 'Aguardando pgto',
+  cancelled: 'Cancelado',
+};
+
+const ORDER_STATUS_COLOR: Record<string, string> = {
+  paid: 'bg-emerald-900 text-emerald-300',
+  payment_required: 'bg-amber-900 text-amber-300',
+  cancelled: 'bg-red-900 text-red-400',
+};
 
 // ─── Freight Simulation Modal ────────────────────────────────────────────────
 
@@ -137,50 +185,8 @@ function FreightModal({ orderId, onClose }: { orderId: string; onClose: () => vo
   );
 }
 
-// ─── QR Modal ─────────────────────────────────────────────────────────────────
 
-function QRModal({ url, orderId, onClose }: { url: string; orderId: string; onClose: () => void }) {
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
-  }, [onClose]);
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="bg-slate-900 border border-slate-700/50 rounded-2xl p-8 max-w-sm w-full mx-4 flex flex-col items-center gap-6 shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="text-center space-y-1">
-          <h2 className="text-base font-bold text-slate-100">📱 QR Confirmar</h2>
-          <p className="text-xs text-slate-500 font-mono">Pedido #{orderId}</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl">
-          <QRCodeSVG value={url} size={200} level="M" />
-        </div>
-
-        <p className="text-xs text-slate-400 text-center leading-relaxed">
-          Escaneie para confirmar embalagem
-        </p>
-
-        <button
-          onClick={onClose}
-          className="w-full px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-800 text-slate-300 border border-slate-700/50 hover:border-slate-500 hover:text-slate-100 transition-colors"
-        >
-          Fechar
-        </button>
-      </div>
-    </div>,
-    document.body
-  );
-}
-
-const STATUS_LABEL: Record<string, string> = {
+const PRINT_STATUS_LABEL: Record<string, string> = {
   queued: 'Na fila',
   pending: 'Pendente',
   printing: 'Imprimindo',
@@ -188,7 +194,7 @@ const STATUS_LABEL: Record<string, string> = {
   error: 'Erro',
 };
 
-const STATUS_COLOR: Record<string, string> = {
+const PRINT_STATUS_COLOR: Record<string, string> = {
   queued: 'bg-slate-700 text-slate-300',
   pending: 'bg-blue-900 text-blue-300',
   printing: 'bg-amber-900 text-amber-300',
@@ -200,22 +206,26 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function sevenDaysAgo() {
+function thirtyDaysAgo() {
   const d = new Date();
-  d.setDate(d.getDate() - 7);
+  d.setDate(d.getDate() - 30);
   return d.toISOString().slice(0, 10);
 }
 
+function formatItems(items: OrderItem[] | null): string {
+  if (!items || items.length === 0) return '—';
+  return items.map(i => `${i.quantity}x ${i.title}`).join(', ');
+}
+
 export default function PedidosMLPage() {
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [accounts, setAccounts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [qrModal, setQrModal] = useState<{ url: string; orderId: string } | null>(null);
   const [freightModal, setFreightModal] = useState<string | null>(null);
 
   const [filterAccount, setFilterAccount] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
-  const [filterFrom, setFilterFrom] = useState(sevenDaysAgo());
+  const [filterFrom, setFilterFrom] = useState(thirtyDaysAgo());
   const [filterTo, setFilterTo] = useState(todayStr());
 
   const load = useCallback(async () => {
@@ -228,7 +238,7 @@ export default function PedidosMLPage() {
     const res = await fetch(`/api/mercado-livre/pedidos?${params}`);
     if (res.ok) {
       const data = await res.json();
-      setJobs(data.jobs);
+      setOrders(data.orders);
       setAccounts(data.accounts);
     }
     setLoading(false);
@@ -236,37 +246,15 @@ export default function PedidosMLPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  function downloadLabel(id: number) {
-    window.open(`/api/print-queue/${id}/label`, '_blank');
-  }
-
-  async function retrigger(id: number) {
-    const res = await fetch('/api/print-queue/retrigger', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: [id] }),
-    });
-    if (res.ok) {
-      setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'pending' } : j));
-    }
-  }
-
   const counts = {
-    queued: jobs.filter(j => j.status === 'queued').length,
-    pending: jobs.filter(j => j.status === 'pending' || j.status === 'printing').length,
-    done: jobs.filter(j => j.status === 'done').length,
-    error: jobs.filter(j => j.status === 'error').length,
+    paid: orders.filter(o => o.status === 'paid').length,
+    pending: orders.filter(o => o.status === 'payment_required').length,
+    delivered: orders.filter(o => o.shipping_status === 'delivered').length,
+    envioProprio: orders.filter(o => isEnvioProprio(o.logistic_type)).length,
   };
 
   return (
     <div className="p-6 space-y-6">
-      {qrModal && (
-        <QRModal
-          url={qrModal.url}
-          orderId={qrModal.orderId}
-          onClose={() => setQrModal(null)}
-        />
-      )}
       {freightModal && (
         <FreightModal
           orderId={freightModal}
@@ -276,8 +264,8 @@ export default function PedidosMLPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">Pedidos — Fila de Impressão</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Histórico de etiquetas por conta e status</p>
+          <h1 className="text-xl font-semibold text-white">Pedidos Mercado Livre</h1>
+          <p className="text-sm text-slate-400 mt-0.5">Todos os pedidos por conta, status e período</p>
         </div>
         <button
           onClick={load}
@@ -290,10 +278,10 @@ export default function PedidosMLPage() {
       {/* Counters */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: 'Na fila', value: counts.queued, color: 'text-slate-300' },
-          { label: 'Processando', value: counts.pending, color: 'text-blue-300' },
-          { label: 'Impresso', value: counts.done, color: 'text-emerald-300' },
-          { label: 'Erro', value: counts.error, color: 'text-red-400' },
+          { label: 'Pagos', value: counts.paid, color: 'text-emerald-300' },
+          { label: 'Aguardando pgto', value: counts.pending, color: 'text-amber-300' },
+          { label: 'Entregues', value: counts.delivered, color: 'text-blue-300' },
+          { label: 'Envio próprio', value: counts.envioProprio, color: 'text-amber-400' },
         ].map(c => (
           <div key={c.label} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
             <div className={`text-2xl font-bold ${c.color}`}>{c.value}</div>
@@ -324,11 +312,8 @@ export default function PedidosMLPage() {
               onChange={e => setFilterStatus(e.target.value)}
             >
               <option value="">Todos</option>
-              <option value="queued">Na fila</option>
-              <option value="pending">Pendente</option>
-              <option value="printing">Imprimindo</option>
-              <option value="done">Impresso</option>
-              <option value="error">Erro</option>
+              <option value="paid">Pago</option>
+              <option value="payment_required">Aguardando pgto</option>
             </select>
           </div>
           <div className="space-y-1">
@@ -362,99 +347,105 @@ export default function PedidosMLPage() {
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-slate-500 text-sm">Carregando...</div>
-        ) : jobs.length === 0 ? (
+        ) : orders.length === 0 ? (
           <div className="p-8 text-center text-slate-500 text-sm">Nenhum pedido encontrado no período.</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wide">
-                <th className="text-left px-4 py-3 font-medium">Pedido</th>
-                <th className="text-left px-4 py-3 font-medium">Conta</th>
-                <th className="text-left px-4 py-3 font-medium">Comprador</th>
-                <th className="text-left px-4 py-3 font-medium">Itens</th>
-                <th className="text-left px-4 py-3 font-medium">Logística</th>
-                <th className="text-center px-4 py-3 font-medium">Status</th>
-                <th className="text-left px-4 py-3 font-medium">Data</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              {jobs.map(job => (
-                <tr key={job.id} className="hover:bg-slate-800/40 transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-slate-300">
-                    #{job.ml_order_id}
-                  </td>
-                  <td className="px-4 py-3 text-white text-xs">{job.seller_nickname ?? '—'}</td>
-                  <td className="px-4 py-3 text-slate-400 text-xs">{job.buyer_name ?? '—'}</td>
-                  <td className="px-4 py-3 text-slate-400 text-xs max-w-[200px] truncate" title={job.items_summary ?? ''}>
-                    {job.items_summary ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-xs">
-                    {isEnvioProprio(job.logistic_type) ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-900/60 text-amber-300 border border-amber-700/40">
-                        Envio proprio
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">{job.logistic_type ?? '—'}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[job.status] ?? 'bg-slate-700 text-slate-300'}`}>
-                      {STATUS_LABEL[job.status] ?? job.status}
-                    </span>
-                    {job.status === 'error' && job.error_msg && (
-                      <div className="text-xs text-red-400 mt-0.5 max-w-[150px] truncate" title={job.error_msg}>
-                        {job.error_msg}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
-                    {new Date(job.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-3">
-                      {job.has_label && (
-                        <button
-                          onClick={() => downloadLabel(job.id)}
-                          className="text-indigo-400 hover:text-indigo-300 transition-colors text-xs font-medium"
-                          title="Baixar etiqueta PDF"
-                        >
-                          Etiqueta
-                        </button>
-                      )}
-                      {job.status === 'done' && job.qr_code_url && (
-                        <button
-                          onClick={() => setQrModal({ url: job.qr_code_url!, orderId: job.ml_order_id })}
-                          className="text-violet-400 hover:text-violet-300 transition-colors text-xs font-medium whitespace-nowrap"
-                          title="Confirmar embalagem via QR Code"
-                        >
-                          📱 QR Confirmar
-                        </button>
-                      )}
-                      {(job.status === 'queued' || job.status === 'error') && (
-                        <button
-                          onClick={() => retrigger(job.id)}
-                          className="text-emerald-400 hover:text-emerald-300 transition-colors text-xs font-medium"
-                          title="Recolocar na fila de impressão"
-                        >
-                          Reimprimir
-                        </button>
-                      )}
-                      {isEnvioProprio(job.logistic_type) && (
-                        <button
-                          onClick={() => setFreightModal(job.ml_order_id)}
-                          className="text-amber-400 hover:text-amber-300 transition-colors text-xs font-medium whitespace-nowrap"
-                          title="Simular frete PAC/SEDEX"
-                        >
-                          Simular Frete
-                        </button>
-                      )}
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wide">
+                  <th className="text-left px-4 py-3 font-medium">Pedido</th>
+                  <th className="text-left px-4 py-3 font-medium">Conta</th>
+                  <th className="text-left px-4 py-3 font-medium">Comprador</th>
+                  <th className="text-left px-4 py-3 font-medium">Itens</th>
+                  <th className="text-right px-4 py-3 font-medium">Valor</th>
+                  <th className="text-left px-4 py-3 font-medium">Logística</th>
+                  <th className="text-center px-4 py-3 font-medium">Anúncio</th>
+                  <th className="text-center px-4 py-3 font-medium">Status</th>
+                  <th className="text-center px-4 py-3 font-medium">Entrega</th>
+                  <th className="text-center px-4 py-3 font-medium">Impressão</th>
+                  <th className="text-left px-4 py-3 font-medium">Data</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {orders.map(order => {
+                  const logistic = translateLogistic(order.logistic_type);
+                  const listing = translateListingType(order.listing_type);
+                  const shipping = translateShippingStatus(order.shipping_status);
+                  return (
+                    <tr key={order.id} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="px-4 py-3 font-mono text-xs text-slate-300">
+                        #{order.ml_order_id}
+                      </td>
+                      <td className="px-4 py-3 text-white text-xs">{order.seller_nickname ?? '—'}</td>
+                      <td className="px-4 py-3 text-slate-400 text-xs">{order.buyer_name ?? '—'}</td>
+                      <td className="px-4 py-3 text-slate-400 text-xs max-w-[220px] truncate" title={formatItems(order.items_json)}>
+                        {formatItems(order.items_json)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-xs font-medium text-white whitespace-nowrap">
+                        {order.total != null ? `R$ ${Number(order.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${logistic.color}`}>
+                          {logistic.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center text-xs">
+                        {listing ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${listing.color}`}>
+                            {listing.label}
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${ORDER_STATUS_COLOR[order.status] ?? 'bg-slate-700 text-slate-300'}`}>
+                          {ORDER_STATUS_LABEL[order.status] ?? order.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center text-xs">
+                        {shipping ? (
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${shipping.color}`}>
+                            {shipping.label}
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-center text-xs">
+                        {order.print_status ? (
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${PRINT_STATUS_COLOR[order.print_status] ?? 'bg-slate-700 text-slate-300'}`}>
+                            {PRINT_STATUS_LABEL[order.print_status] ?? order.print_status}
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
+                        {order.print_status === 'error' && order.error_msg && (
+                          <div className="text-xs text-red-400 mt-0.5 max-w-[120px] truncate" title={order.error_msg}>
+                            {order.error_msg}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
+                        {new Date(order.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                          {isEnvioProprio(order.logistic_type) && (
+                            <button
+                              onClick={() => setFreightModal(order.ml_order_id)}
+                              className="text-amber-400 hover:text-amber-300 transition-colors text-xs font-medium whitespace-nowrap"
+                              title="Simular frete PAC/SEDEX"
+                            >
+                              Simular Frete
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

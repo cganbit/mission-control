@@ -78,12 +78,21 @@ async function saveClienteAndPedido(order: any, shipment: any, sellerNickname: s
     unit_price: i.unit_price,
   }));
 
+  // Extrair campos adicionais do pedido
+  const logisticType = shipment?.logistic_type ?? order.shipping?.logistic_type ?? null;
+  const listingType = order.order_items?.[0]?.listing_type_id ?? null;
+  const shippingStatus = shipment?.status ?? null;
+
   // Upsert pedido — se já existia como payment_required, promove para paid
   await db.query(
-    `INSERT INTO ml_pedidos (ml_order_id, ml_buyer_id, seller_nickname, items_json, total, status, shipment_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT (ml_order_id) DO UPDATE SET status = 'paid'`,
-    [order.id, ml_buyer_id, sellerNickname, JSON.stringify(items), order.total_amount ?? 0, order.status, shipment?.id ?? null]
+    `INSERT INTO ml_pedidos (ml_order_id, ml_buyer_id, seller_nickname, items_json, total, status, shipment_id, logistic_type, listing_type, shipping_status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     ON CONFLICT (ml_order_id) DO UPDATE SET
+       status = 'paid',
+       logistic_type = COALESCE(EXCLUDED.logistic_type, ml_pedidos.logistic_type),
+       listing_type = COALESCE(EXCLUDED.listing_type, ml_pedidos.listing_type),
+       shipping_status = COALESCE(EXCLUDED.shipping_status, ml_pedidos.shipping_status)`,
+    [order.id, ml_buyer_id, sellerNickname, JSON.stringify(items), order.total_amount ?? 0, order.status, shipment?.id ?? null, logisticType, listingType, shippingStatus]
   );
 }
 
@@ -228,14 +237,21 @@ export async function POST(req: NextRequest) {
       }));
       const sellerNickname = account.nickname;
 
+      // Extrair campos adicionais
+      const prLogisticType = order.shipping?.logistic_type ?? null;
+      const prListingType = order.order_items?.[0]?.listing_type_id ?? null;
+
       // Salvar/atualizar em ml_pedidos
       const db = getPool();
       try {
         await db.query(
-          `INSERT INTO ml_pedidos (ml_order_id, ml_buyer_id, seller_nickname, items_json, total, status, shipment_id)
-           VALUES ($1, $2, $3, $4, $5, 'payment_required', $6)
-           ON CONFLICT (ml_order_id) DO UPDATE SET status = 'payment_required'`,
-          [order.id, ml_buyer_id, sellerNickname, JSON.stringify(items), order.total_amount ?? 0, order.shipping?.id ?? null]
+          `INSERT INTO ml_pedidos (ml_order_id, ml_buyer_id, seller_nickname, items_json, total, status, shipment_id, logistic_type, listing_type)
+           VALUES ($1, $2, $3, $4, $5, 'payment_required', $6, $7, $8)
+           ON CONFLICT (ml_order_id) DO UPDATE SET
+             status = 'payment_required',
+             logistic_type = COALESCE(EXCLUDED.logistic_type, ml_pedidos.logistic_type),
+             listing_type = COALESCE(EXCLUDED.listing_type, ml_pedidos.listing_type)`,
+          [order.id, ml_buyer_id, sellerNickname, JSON.stringify(items), order.total_amount ?? 0, order.shipping?.id ?? null, prLogisticType, prListingType]
         );
       } catch (e: any) {
         console.error('[ML Webhook] Erro ao salvar payment_required:', e.message);

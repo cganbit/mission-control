@@ -20,30 +20,32 @@ export async function GET(req: NextRequest) {
   const values: unknown[] = [];
   let i = 1;
 
-  if (account) { conditions.push(`seller_nickname = $${i++}`); values.push(account); }
-  if (status) { conditions.push(`status = $${i++}`); values.push(status); }
-  if (from) { conditions.push(`created_at >= $${i++}`); values.push(from); }
-  if (to) { conditions.push(`created_at < $${i++}`); values.push(to); }
+  if (account) { conditions.push(`p.seller_nickname = $${i++}`); values.push(account); }
+  if (status) { conditions.push(`p.status = $${i++}`); values.push(status); }
+  if (from) { conditions.push(`p.created_at >= $${i++}`); values.push(from); }
+  if (to) { conditions.push(`p.created_at < $${i++}`); values.push(to); }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   values.push(limit);
 
   const db = getPool();
   const result = await db.query(
-    `SELECT id, ml_order_id, ml_shipment_id, seller_nickname,
-            status, error_msg, created_at, updated_at,
-            items_summary, logistic_type, buyer_name, has_label
-     FROM print_queue
+    `SELECT p.id, p.ml_order_id, p.shipment_id AS ml_shipment_id, p.seller_nickname,
+            p.status, p.items_json, p.total, p.logistic_type, p.listing_type,
+            p.shipping_status, p.ml_buyer_id, p.created_at, p.updated_at,
+            pq.status AS print_status, pq.has_label, pq.buyer_name, pq.error_msg
+     FROM ml_pedidos p
+     LEFT JOIN print_queue pq ON pq.ml_order_id = p.ml_order_id
      ${where}
-     ORDER BY created_at DESC
+     ORDER BY p.created_at DESC
      LIMIT $${i}`,
     values
   );
 
   // Lista de contas para o filtro
   const accounts = await db.query(
-    `SELECT DISTINCT seller_nickname FROM print_queue WHERE seller_nickname IS NOT NULL ORDER BY seller_nickname`
+    `SELECT DISTINCT seller_nickname FROM ml_pedidos WHERE seller_nickname IS NOT NULL ORDER BY seller_nickname`
   );
 
-  return NextResponse.json({ jobs: result.rows, accounts: accounts.rows.map((r: { seller_nickname: string }) => r.seller_nickname) });
+  return NextResponse.json({ orders: result.rows, accounts: accounts.rows.map((r: { seller_nickname: string }) => r.seller_nickname) });
 }
