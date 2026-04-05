@@ -263,21 +263,31 @@ function MeDrawer({
       const data = await res.json();
       const src = data.me_delivery_address ?? data.ml_address;
       if (src) {
-        setAddrForm(prev => ({
-          ...prev,
+        const filled = {
           cep: src.cep ?? '', rua: src.rua ?? '', numero: src.numero ?? '',
           complemento: src.complemento ?? '', bairro: src.bairro ?? '',
           cidade: src.cidade ?? '', estado: src.estado ?? '',
           nome: src.nome ?? '', telefone: src.telefone ?? '',
-        }));
+        };
+        setAddrForm(prev => ({ ...prev, ...filled }));
+
+        // Auto-save address if it came from ML API and isn't saved yet
+        if (!data.me_delivery_address && data.ml_address && filled.cep) {
+          fetch(`/api/melhor-envio/confirm-address/${order.ml_order_id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(filled),
+          }).then(() => onAction()).catch(() => {});
+        }
+
         // Auto-simulate if address has CEP and no label yet
-        if (autoSimulate && src.cep && src.cep.length >= 8 && !order.me_order_id) {
-          simulateFreightRef.current?.(src.cep);
+        if (autoSimulate && filled.cep && filled.cep.length >= 8 && !order.me_order_id) {
+          simulateFreightRef.current?.(filled.cep);
         }
       }
     } catch { /* ignore */ }
     setAddrLoading(false);
-  }, [order.ml_order_id, order.me_order_id]);
+  }, [order.ml_order_id, order.me_order_id, onAction]);
 
   const saveAddress = async () => {
     setActionLoading('save-addr');
@@ -363,7 +373,8 @@ function MeDrawer({
     setActionLoading(null);
   };
 
-  const addr = order.me_delivery_address;
+  // Use DB address or fall back to locally loaded address (from ML API)
+  const addr = order.me_delivery_address ?? (addrForm.cep ? addrForm : null);
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
@@ -473,7 +484,7 @@ function MeDrawer({
           ) : addr ? (
             <div className="bg-slate-800 rounded-lg p-3 text-xs text-slate-300 space-y-0.5">
               {addr.nome && <p className="text-white font-medium">{addr.nome}</p>}
-              <p>{addr.rua || addr.logradouro}, {addr.numero}{addr.complemento ? ` - ${addr.complemento}` : ''}</p>
+              <p>{addr.rua || (addr as any).logradouro}, {addr.numero}{addr.complemento ? ` - ${addr.complemento}` : ''}</p>
               <p>{addr.bairro} — {addr.cidade}/{addr.estado}</p>
               <p className="font-mono">{addr.cep}</p>
             </div>
