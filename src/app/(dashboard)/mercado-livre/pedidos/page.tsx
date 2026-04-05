@@ -20,6 +20,123 @@ interface Job {
   qr_code_url: string | null;
 }
 
+interface FreightService {
+  id: number;
+  name: string;
+  price: string;
+  delivery_time: number;
+  delivery_range: { min: number; max: number };
+  error: string | null;
+  adicional: string | null;
+}
+
+function isEnvioProprio(logistic: string | null): boolean {
+  if (!logistic) return false;
+  const lt = logistic.toLowerCase();
+  return lt.includes('self_service') || lt.includes('custom') || lt === 'self_service';
+}
+
+// ─── Freight Simulation Modal ────────────────────────────────────────────────
+
+function FreightModal({ orderId, onClose }: { orderId: string; onClose: () => void }) {
+  const [services, setServices] = useState<FreightService[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [toZip, setToZip] = useState('');
+  const [searched, setSearched] = useState(false);
+
+  const simulate = useCallback(async (zip?: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const body: Record<string, unknown> = { order_id: orderId };
+      if (zip) body.to_zip = zip;
+      const res = await fetch('/api/melhor-envio/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Erro na simulacao');
+      setServices(data.services ?? []);
+      setSearched(true);
+    } catch (e: any) {
+      setError(e.message);
+    }
+    setLoading(false);
+  }, [orderId]);
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-700/50 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="text-center space-y-1 mb-4">
+          <h2 className="text-base font-bold text-slate-100">Simular Frete</h2>
+          <p className="text-xs text-slate-500 font-mono">Pedido #{orderId}</p>
+        </div>
+
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            placeholder="CEP destino (ex: 01001000)"
+            maxLength={9}
+            className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+            value={toZip}
+            onChange={e => setToZip(e.target.value.replace(/\D/g, ''))}
+            onKeyDown={e => { if (e.key === 'Enter' && toZip.length >= 8) simulate(toZip); }}
+          />
+          <button
+            onClick={() => simulate(toZip || undefined)}
+            disabled={loading}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            {loading ? '...' : 'Cotar'}
+          </button>
+        </div>
+
+        {error && <p className="text-xs text-red-400 mb-3">{error}</p>}
+
+        {searched && services.length > 0 && (
+          <div className="space-y-2">
+            {services.map(s => (
+              <div key={s.id} className={`p-3 rounded-xl border ${s.name === 'PAC' ? 'border-emerald-700/50 bg-emerald-950/30' : 'border-blue-700/50 bg-blue-950/30'}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-white">{s.name}</span>
+                  <span className="text-lg font-bold text-white">R$ {s.price}</span>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs text-slate-400">{s.delivery_range.min}-{s.delivery_range.max} dias uteis</span>
+                  {s.adicional && (
+                    <span className="text-xs text-amber-400">+R$ {s.adicional} adicional</span>
+                  )}
+                </div>
+                {s.error && <p className="text-xs text-red-400 mt-1">{s.error}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {searched && services.length === 0 && !error && (
+          <p className="text-xs text-slate-500 text-center">Nenhum servico disponivel para este CEP.</p>
+        )}
+
+        <button
+          onClick={onClose}
+          className="w-full mt-4 px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-800 text-slate-300 border border-slate-700/50 hover:border-slate-500 hover:text-slate-100 transition-colors"
+        >
+          Fechar
+        </button>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 // ─── QR Modal ─────────────────────────────────────────────────────────────────
 
 function QRModal({ url, orderId, onClose }: { url: string; orderId: string; onClose: () => void }) {
@@ -94,6 +211,7 @@ export default function PedidosMLPage() {
   const [accounts, setAccounts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [qrModal, setQrModal] = useState<{ url: string; orderId: string } | null>(null);
+  const [freightModal, setFreightModal] = useState<string | null>(null);
 
   const [filterAccount, setFilterAccount] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -147,6 +265,12 @@ export default function PedidosMLPage() {
           url={qrModal.url}
           orderId={qrModal.orderId}
           onClose={() => setQrModal(null)}
+        />
+      )}
+      {freightModal && (
+        <FreightModal
+          orderId={freightModal}
+          onClose={() => setFreightModal(null)}
         />
       )}
       {/* Header */}
@@ -265,7 +389,15 @@ export default function PedidosMLPage() {
                   <td className="px-4 py-3 text-slate-400 text-xs max-w-[200px] truncate" title={job.items_summary ?? ''}>
                     {job.items_summary ?? '—'}
                   </td>
-                  <td className="px-4 py-3 text-slate-400 text-xs">{job.logistic_type ?? '—'}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {isEnvioProprio(job.logistic_type) ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-900/60 text-amber-300 border border-amber-700/40">
+                        Envio proprio
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">{job.logistic_type ?? '—'}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[job.status] ?? 'bg-slate-700 text-slate-300'}`}>
                       {STATUS_LABEL[job.status] ?? job.status}
@@ -306,6 +438,15 @@ export default function PedidosMLPage() {
                           title="Recolocar na fila de impressão"
                         >
                           Reimprimir
+                        </button>
+                      )}
+                      {isEnvioProprio(job.logistic_type) && (
+                        <button
+                          onClick={() => setFreightModal(job.ml_order_id)}
+                          className="text-amber-400 hover:text-amber-300 transition-colors text-xs font-medium whitespace-nowrap"
+                          title="Simular frete PAC/SEDEX"
+                        >
+                          Simular Frete
                         </button>
                       )}
                     </div>
