@@ -55,7 +55,7 @@ jobs:
           PRINT_AGENT_KEY=${{ secrets.PRINT_AGENT_KEY }}
           QUEUE_KEY=${{ secrets.QUEUE_KEY }}
           DB_ENCRYPTION_KEY=${{ secrets.DB_ENCRYPTION_KEY }}
-          WORKER_KEY=${{ secrets.WORKER_KEY }}
+          MC_WORKER_KEY=${{ secrets.WORKER_KEY }}
           SRE_WHATSAPP_GROUP=${{ secrets.SRE_WHATSAPP_GROUP }}
           EVOLUTION_API_KEY=${{ secrets.EVOLUTION_API_KEY }}
           N8N_API_KEY=${{ secrets.N8N_API_KEY }}
