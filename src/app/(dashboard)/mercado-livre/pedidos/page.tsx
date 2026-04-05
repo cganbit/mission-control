@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 interface OrderItem {
@@ -256,7 +256,7 @@ function MeDrawer({
   const currentStep = getMeStepIndex(order.me_status);
 
   // Auto-fill address from ML API or existing data
-  const loadAddress = useCallback(async () => {
+  const loadAddress = useCallback(async (autoSimulate = false) => {
     setAddrLoading(true);
     try {
       const res = await fetch(`/api/melhor-envio/confirm-address/${order.ml_order_id}`);
@@ -270,10 +270,14 @@ function MeDrawer({
           cidade: src.cidade ?? '', estado: src.estado ?? '',
           nome: src.nome ?? '', telefone: src.telefone ?? '',
         }));
+        // Auto-simulate if address has CEP and no label yet
+        if (autoSimulate && src.cep && src.cep.length >= 8 && !order.me_order_id) {
+          simulateFreightRef.current?.(src.cep);
+        }
       }
     } catch { /* ignore */ }
     setAddrLoading(false);
-  }, [order.ml_order_id]);
+  }, [order.ml_order_id, order.me_order_id]);
 
   const saveAddress = async () => {
     setActionLoading('save-addr');
@@ -301,6 +305,16 @@ function MeDrawer({
     return () => document.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
+  // Ref to avoid circular dependency between loadAddress and simulateFreight
+  const simulateFreightRef = useRef<((cep: string) => Promise<void>) | null>(null);
+
+  // Auto-load address on drawer open
+  useEffect(() => {
+    if (!order.me_delivery_address?.cep) {
+      loadAddress(true);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Auto-simulate freight when address has CEP
   const simulateFreight = useCallback(async (cep: string) => {
     setSimLoading(true);
@@ -319,6 +333,8 @@ function MeDrawer({
     }
     setSimLoading(false);
   }, [order.ml_order_id]);
+
+  simulateFreightRef.current = simulateFreight;
 
   useEffect(() => {
     const cep = order.me_delivery_address?.cep;
@@ -866,22 +882,13 @@ export default function PedidosMLPage() {
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
                           {isEnvioProprio(order.logistic_type) && (
-                            <>
-                              <button
-                                onClick={() => setFreightModal(order.ml_order_id)}
-                                className="text-amber-400 hover:text-amber-300 transition-colors text-xs font-medium whitespace-nowrap"
-                                title="Simular frete PAC/SEDEX"
-                              >
-                                Cotar
-                              </button>
-                              <button
-                                onClick={() => setMeDrawerOrder(order)}
-                                className="text-indigo-400 hover:text-indigo-300 transition-colors text-xs font-medium whitespace-nowrap"
-                                title="Gerenciar envio próprio"
-                              >
-                                Envio
-                              </button>
-                            </>
+                            <button
+                              onClick={() => setMeDrawerOrder(order)}
+                              className="text-indigo-400 hover:text-indigo-300 transition-colors text-xs font-medium whitespace-nowrap"
+                              title="Gerenciar envio próprio (endereço + cotação + etiqueta)"
+                            >
+                              📦 Envio
+                            </button>
                           )}
                         </div>
                       </td>
