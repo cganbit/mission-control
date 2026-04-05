@@ -1,0 +1,50 @@
+name: ME Sandbox E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      carrier:
+        description: 'Carrier to test'
+        required: true
+        default: 'pac'
+        type: choice
+        options:
+          - pac
+          - sedex
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install pg
+
+      - name: Setup SSH & open tunnel
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+          ssh -L 5433:localhost:5432 root@${{ secrets.VPS_HOST }} -fN \
+            -i ~/.ssh/id_ed25519 \
+            -o StrictHostKeyChecking=no
+
+      - name: Run E2E script
+        env:
+          MC_BASE_URL: 'http://localhost:3000'
+          MC_WORKER_KEY: ${{ secrets.MC_WORKER_KEY }}
+          PG_PASSWORD: ${{ secrets.PG_PASSWORD }}
+          PG_USER: evolution
+          PG_DATABASE: mission_control
+          PG_TUNNEL_PORT: '5433'
+          CARRIER: ${{ github.event.inputs.carrier }}
+        run: node scripts/me-sandbox-e2e.mjs
