@@ -245,13 +245,87 @@ function MeDrawer({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [editingAddr, setEditingAddr] = useState(false);
+  const [addrForm, setAddrForm] = useState({
+    cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', nome: '', telefone: '',
+  });
+  const [addrLoading, setAddrLoading] = useState(false);
+  const [simServices, setSimServices] = useState<FreightService[]>([]);
+  const [simLoading, setSimLoading] = useState(false);
+  const [simError, setSimError] = useState<string | null>(null);
   const currentStep = getMeStepIndex(order.me_status);
+
+  // Auto-fill address from ML API or existing data
+  const loadAddress = useCallback(async () => {
+    setAddrLoading(true);
+    try {
+      const res = await fetch(`/api/melhor-envio/confirm-address/${order.ml_order_id}`);
+      const data = await res.json();
+      const src = data.me_delivery_address ?? data.ml_address;
+      if (src) {
+        setAddrForm(prev => ({
+          ...prev,
+          cep: src.cep ?? '', rua: src.rua ?? '', numero: src.numero ?? '',
+          complemento: src.complemento ?? '', bairro: src.bairro ?? '',
+          cidade: src.cidade ?? '', estado: src.estado ?? '',
+          nome: src.nome ?? '', telefone: src.telefone ?? '',
+        }));
+      }
+    } catch { /* ignore */ }
+    setAddrLoading(false);
+  }, [order.ml_order_id]);
+
+  const saveAddress = async () => {
+    setActionLoading('save-addr');
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/melhor-envio/confirm-address/${order.ml_order_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addrForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao salvar');
+      setEditingAddr(false);
+      setActionSuccess('save-addr');
+      onAction();
+    } catch (e: any) {
+      setActionError(e.message);
+    }
+    setActionLoading(null);
+  };
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
   }, [onClose]);
+
+  // Auto-simulate freight when address has CEP
+  const simulateFreight = useCallback(async (cep: string) => {
+    setSimLoading(true);
+    setSimError(null);
+    try {
+      const res = await fetch('/api/melhor-envio/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: order.ml_order_id, to_zip: cep }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Erro na simulação');
+      setSimServices(data.services ?? []);
+    } catch (e: any) {
+      setSimError(e.message);
+    }
+    setSimLoading(false);
+  }, [order.ml_order_id]);
+
+  useEffect(() => {
+    const cep = order.me_delivery_address?.cep;
+    if (cep && cep.length >= 8 && !order.me_order_id) {
+      simulateFreight(cep);
+    }
+  }, [order.me_delivery_address?.cep, order.me_order_id, simulateFreight]);
 
   const doAction = async (action: string, url: string, method = 'POST', body?: object) => {
     setActionLoading(action);
@@ -322,18 +396,122 @@ function MeDrawer({
         </div>
 
         {/* Delivery Address */}
-        <div className="space-y-1">
-          <h3 className="text-xs text-slate-400 uppercase tracking-wide font-medium">Endereço de Entrega</h3>
-          {addr ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs text-slate-400 uppercase tracking-wide font-medium">Endereço de Entrega</h3>
+            {!editingAddr && (
+              <button
+                onClick={() => { setEditingAddr(true); loadAddress(); }}
+                className="text-xs text-indigo-400 hover:text-indigo-300"
+              >
+                {addr ? 'Editar' : 'Preencher'}
+              </button>
+            )}
+          </div>
+
+          {editingAddr ? (
+            <div className="bg-slate-800 rounded-lg p-3 space-y-2">
+              {addrLoading ? (
+                <p className="text-xs text-slate-500">Buscando endereço...</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input placeholder="CEP *" maxLength={9} className="col-span-1 bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                      value={addrForm.cep} onChange={e => setAddrForm(f => ({ ...f, cep: e.target.value.replace(/\D/g, '') }))} />
+                    <input placeholder="Estado (UF) *" maxLength={2} className="col-span-1 bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 uppercase"
+                      value={addrForm.estado} onChange={e => setAddrForm(f => ({ ...f, estado: e.target.value.toUpperCase() }))} />
+                  </div>
+                  <input placeholder="Rua / Logradouro *" className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    value={addrForm.rua} onChange={e => setAddrForm(f => ({ ...f, rua: e.target.value }))} />
+                  <div className="grid grid-cols-3 gap-2">
+                    <input placeholder="Número" className="bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                      value={addrForm.numero} onChange={e => setAddrForm(f => ({ ...f, numero: e.target.value }))} />
+                    <input placeholder="Complemento" className="col-span-2 bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                      value={addrForm.complemento} onChange={e => setAddrForm(f => ({ ...f, complemento: e.target.value }))} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input placeholder="Bairro" className="bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                      value={addrForm.bairro} onChange={e => setAddrForm(f => ({ ...f, bairro: e.target.value }))} />
+                    <input placeholder="Cidade *" className="bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                      value={addrForm.cidade} onChange={e => setAddrForm(f => ({ ...f, cidade: e.target.value }))} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input placeholder="Nome destinatário" className="bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                      value={addrForm.nome} onChange={e => setAddrForm(f => ({ ...f, nome: e.target.value }))} />
+                    <input placeholder="Telefone" className="bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                      value={addrForm.telefone} onChange={e => setAddrForm(f => ({ ...f, telefone: e.target.value }))} />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={saveAddress} disabled={actionLoading === 'save-addr'}
+                      className="flex-1 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-700 text-white text-xs font-medium rounded transition-colors">
+                      {actionLoading === 'save-addr' ? 'Salvando...' : 'Confirmar Endereço'}
+                    </button>
+                    <button onClick={() => setEditingAddr(false)}
+                      className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs rounded transition-colors">
+                      Cancelar
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : addr ? (
             <div className="bg-slate-800 rounded-lg p-3 text-xs text-slate-300 space-y-0.5">
+              {addr.nome && <p className="text-white font-medium">{addr.nome}</p>}
               <p>{addr.rua || addr.logradouro}, {addr.numero}{addr.complemento ? ` - ${addr.complemento}` : ''}</p>
               <p>{addr.bairro} — {addr.cidade}/{addr.estado}</p>
               <p className="font-mono">{addr.cep}</p>
             </div>
           ) : (
-            <p className="text-xs text-slate-500">Endereço não confirmado</p>
+            <p className="text-xs text-slate-500">Endereço não confirmado — clique em &quot;Preencher&quot;</p>
           )}
         </div>
+
+        {/* Freight Simulation — inline card */}
+        {!order.me_order_id && addr?.cep && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs text-slate-400 uppercase tracking-wide font-medium">Simulação de Frete</h3>
+              <button
+                onClick={() => simulateFreight(addr.cep)}
+                disabled={simLoading}
+                className="text-xs text-indigo-400 hover:text-indigo-300 disabled:text-slate-600"
+              >
+                {simLoading ? 'Cotando...' : '↻ Recotar'}
+              </button>
+            </div>
+
+            {simLoading && (
+              <div className="bg-slate-800 rounded-lg p-4 text-center">
+                <p className="text-xs text-slate-400 animate-pulse">Consultando Melhor Envio...</p>
+              </div>
+            )}
+
+            {simError && (
+              <div className="bg-red-950/30 border border-red-800/50 rounded-lg p-3">
+                <p className="text-xs text-red-400">{simError}</p>
+              </div>
+            )}
+
+            {!simLoading && simServices.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                {simServices.map(s => (
+                  <div key={s.id} className={`p-3 rounded-xl border ${s.name === 'PAC' ? 'border-emerald-700/50 bg-emerald-950/30' : 'border-blue-700/50 bg-blue-950/30'}`}>
+                    <p className="text-xs font-semibold text-white mb-1">{s.name}</p>
+                    <p className="text-lg font-bold text-white">R$ {s.price}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">{s.delivery_range.min}–{s.delivery_range.max} dias úteis</p>
+                    {s.adicional && (
+                      <p className="text-[10px] text-amber-400 mt-0.5">+R$ {s.adicional} vs PAC</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!simLoading && simServices.length === 0 && !simError && (
+              <p className="text-xs text-slate-500">Nenhum serviço disponível.</p>
+            )}
+          </div>
+        )}
 
         {/* ME Info */}
         {order.me_order_id && (
@@ -368,7 +546,7 @@ function MeDrawer({
                 onClick={() => doAction('create-sedex', '/api/melhor-envio/create-label', 'POST', { ml_order_id: order.ml_order_id, carrier: 'sedex' })}
                 className="flex-1 px-3 py-2 bg-blue-700 hover:bg-blue-600 disabled:bg-slate-700 text-white text-xs font-medium rounded-lg transition-colors"
               >
-                {actionLoading === 'create-sedex' ? 'Gerando...' : '⚡ SEDEX'}
+                {actionLoading === 'create-sedex' ? 'Gerando...' : `⚡ SEDEX${simServices.find(s => s.name === 'SEDEX')?.adicional ? ` (+R$ ${simServices.find(s => s.name === 'SEDEX')!.adicional})` : ''}`}
               </button>
             </div>
           )}
