@@ -99,8 +99,9 @@ export async function POST(req: NextRequest) {
           });
           if (billing.ok) {
             const bData = await billing.json();
-            const docInfo = bData?.buyer?.billing_info?.doc_number ?? bData?.buyer?.phone?.number ?? '';
-            buyerCpf = String(docInfo).replace(/\D/g, '');
+            const addInfo = bData?.billing_info?.additional_info ?? [];
+            const docEntry = addInfo.find((i: any) => i.type === 'DOC_NUMBER');
+            buyerCpf = String(docEntry?.value ?? '').replace(/\D/g, '');
           }
         }
       } catch { /* best-effort */ }
