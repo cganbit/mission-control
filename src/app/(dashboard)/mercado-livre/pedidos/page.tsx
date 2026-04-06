@@ -341,11 +341,11 @@ function MeDrawer({
       if (!res.ok) throw new Error(data.error ?? 'Erro ao salvar');
       setEditingAddr(false);
       setActionSuccess('save-addr');
-      onAction();
-      // Auto-simulate after saving
+      // Auto-simulate BEFORE reloading (onAction may reset drawer)
       if (addrForm.cep && addrForm.cep.length >= 8 && !order.me_order_id) {
         simulateFreight(addrForm.cep);
       }
+      onAction();
     } catch (e: any) {
       setActionError(e.message);
     }
@@ -651,7 +651,13 @@ function MeDrawer({
           )}
 
           {actionError && <p className="text-xs text-red-400">{actionError}</p>}
-          {actionSuccess && <p className="text-xs text-emerald-400">✓ {actionSuccess} executado com sucesso</p>}
+          {actionSuccess && <p className="text-xs text-emerald-400">✓ {{
+            'save-addr': 'Endereço de entrega salvo com sucesso!',
+            'create-pac': 'Etiqueta PAC gerada! Verifique a fila de impressão.',
+            'create-sedex': 'Etiqueta SEDEX gerada! Verifique a fila de impressão.',
+            'send-tracking': 'Rastreio enviado ao comprador!',
+            'track': 'Rastreio atualizado!',
+          }[actionSuccess] ?? `${actionSuccess} executado com sucesso`}</p>}
         </div>
 
         <button
