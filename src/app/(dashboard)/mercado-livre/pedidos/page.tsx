@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback, Component, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 
 // Error boundary to catch and display render errors
 class DrawerErrorBoundary extends Component<{ children: ReactNode; onClose: () => void }, { error: string | null }> {
@@ -670,6 +671,11 @@ function MeDrawer({
             'track': 'Rastreio atualizado!',
             'cancel-label': 'Etiqueta cancelada! Saldo estornado.',
           }[actionSuccess] ?? `${actionSuccess} executado com sucesso`}</p>}
+          {(actionSuccess === 'create-pac' || actionSuccess === 'create-sedex') && (
+            <Link href="/fila" className="text-blue-400 hover:text-blue-300 underline text-xs">
+              Ver fila de impressão →
+            </Link>
+          )}
         </div>
 
         <button

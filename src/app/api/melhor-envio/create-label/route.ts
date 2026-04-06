@@ -4,6 +4,14 @@ import { getPool } from '@/lib/db';
 import { meAddToCart, meCheckout, meGenerate, mePrint } from '@/lib/melhor-envio';
 import { decrypt } from '@/lib/crypto';
 import crypto from 'crypto';
+import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { join } from 'path';
+
+const LABELS_DIR = join(process.cwd(), 'labels');
+
+function ensureLabelsDir() {
+  if (!existsSync(LABELS_DIR)) mkdirSync(LABELS_DIR, { recursive: true });
+}
 
 const WORKER_KEY = process.env.MC_WORKER_KEY ?? '';
 const FROM_ZIP = '09051380'; // CEP origem padrão (Santo André)
@@ -189,12 +197,34 @@ export async function POST(req: NextRequest) {
 
     // T7: Inserir na fila de impressão
     const token = crypto.randomBytes(20).toString('hex');
-    await db.query(
+    const pqResult = await db.query(
       `INSERT INTO print_queue (ml_order_id, seller_nickname, token, status, logistic_type)
        VALUES ($1, $2, $3, 'queued', 'melhor_envio')
-       ON CONFLICT DO NOTHING`,
+       ON CONFLICT DO NOTHING
+       RETURNING id`,
       [ml_order_id, FROM_NAME, token]
     );
+
+    // T19: Download PDF locally so label can be served from filesystem
+    const pqId = pqResult.rows[0]?.id;
+    if (pqId && labelUrl) {
+      try {
+        const pdfRes = await fetch(labelUrl, { signal: AbortSignal.timeout(30000) });
+        if (pdfRes.ok) {
+          const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+          ensureLabelsDir();
+          writeFileSync(join(LABELS_DIR, `${pqId}.pdf`), pdfBuffer);
+          await db.query(
+            `UPDATE print_queue SET has_label = true WHERE id = $1`,
+            [pqId]
+          );
+        } else {
+          console.warn(`[create-label] PDF download failed: HTTP ${pdfRes.status} for ${labelUrl}`);
+        }
+      } catch (dlErr: any) {
+        console.warn(`[create-label] PDF download error (fallback to proxy): ${dlErr.message}`);
+      }
+    }
 
     return NextResponse.json({
       ok: true,
