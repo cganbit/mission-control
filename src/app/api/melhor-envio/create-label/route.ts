@@ -152,7 +152,8 @@ export async function POST(req: NextRequest) {
     }));
 
     // 1. Adicionar ao carrinho
-    const cartResult = await meAddToCart(serviceId, fromAddr, toAddr, pkg, body.insurance_value ?? Number(row.total ?? 0), products);
+    // Sem seguro (non_commercial) — insurance_value = 0
+    const cartResult = await meAddToCart(serviceId, fromAddr, toAddr, pkg, 0, products);
     const cartId = cartResult.id;
     if (!cartId) {
       return NextResponse.json({ error: 'Falha ao adicionar ao carrinho', detail: cartResult }, { status: 502 });

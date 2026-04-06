@@ -49,12 +49,7 @@ async function saveAccount(account: MlAccount): Promise<void> {
     [newPayload]
   );
 
-  // Sync to file
-  const tokensPath = process.env.ML_TOKENS_PATH || '/opt/ml-data/tokens.json';
-  try {
-    const { writeFileSync } = await import('fs');
-    writeFileSync(tokensPath, JSON.stringify({ accounts }, null, 2));
-  } catch { /* não crítico */ }
+  // tokens.json removido — tudo lê do DB (connector_configs)
 }
 
 function htmlPage(success: boolean, nickname?: string, error?: string): NextResponse {
