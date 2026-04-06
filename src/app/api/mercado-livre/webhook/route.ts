@@ -79,7 +79,9 @@ async function saveClienteAndPedido(order: any, shipment: any, sellerNickname: s
   }));
 
   // Extrair campos adicionais do pedido
-  const logisticType = shipment?.logistic_type ?? order.shipping?.logistic_type ?? null;
+  // Fallback: baterias são sempre envio próprio (self_service) no ML
+  const isBateria = (order.order_items ?? []).some((i: any) => /bateria/i.test(i.item?.title ?? ''));
+  const logisticType = shipment?.logistic_type ?? order.shipping?.logistic_type ?? (isBateria ? 'self_service' : null);
   const listingType = order.order_items?.[0]?.listing_type_id ?? null;
   const shippingStatus = shipment?.status ?? null;
 
