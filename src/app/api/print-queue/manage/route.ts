@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { getSessionFromRequest } from '@/lib/auth';
 
 const QUEUE_KEY = process.env.QUEUE_KEY ?? '';
 
@@ -7,14 +8,17 @@ function unauthorized() {
   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 }
 
-function checkKey(req: NextRequest): boolean {
+async function checkAuth(req: NextRequest): Promise<boolean> {
+  // Accept QUEUE_KEY or session JWT
   const key = req.nextUrl.searchParams.get('key');
-  return !!QUEUE_KEY && key === QUEUE_KEY;
+  if (!!QUEUE_KEY && key === QUEUE_KEY) return true;
+  const session = await getSessionFromRequest(req);
+  return !!session;
 }
 
-// GET /api/print-queue/manage?key=XXX — lista jobs das últimas 48h
+// GET /api/print-queue/manage — lista jobs das últimas 48h
 export async function GET(req: NextRequest) {
-  if (!checkKey(req)) return unauthorized();
+  if (!(await checkAuth(req))) return unauthorized();
 
   const db = getPool();
   const result = await db.query(`
@@ -34,7 +38,7 @@ export async function GET(req: NextRequest) {
 // action: 'activate' (default) — queued → pending
 // action: 'reprint'            — done/error → queued
 export async function POST(req: NextRequest) {
-  if (!checkKey(req)) return unauthorized();
+  if (!await checkAuth(req)) return unauthorized();
 
   let body: any;
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }

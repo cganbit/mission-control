@@ -73,9 +73,9 @@ function FilaContent() {
   const [clearing, setClearing] = useState(false);
 
   const fetchJobs = useCallback(async () => {
-    if (!key) { setInvalid(true); setLoading(false); return; }
     try {
-      const res = await fetch(`/api/print-queue/manage?key=${key}`);
+      const url = `/api/print-queue/manage${key ? `?key=${key}` : ''}`;
+      const res = await fetch(url);
       if (res.status === 401) { setInvalid(true); setLoading(false); return; }
       const data = await res.json();
       setJobs(data.jobs ?? []);
@@ -122,7 +122,7 @@ function FilaContent() {
     if (!selected.size) return;
     setActivating(true);
     try {
-      await fetch(`/api/print-queue/manage?key=${key}`, {
+      await fetch(`/api/print-queue/manage${key ? `?key=${key}` : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: Array.from(selected) }),
@@ -138,7 +138,7 @@ function FilaContent() {
   async function handleClearQueue() {
     setClearing(true);
     try {
-      await fetch(`/api/print-queue?key=${key}`, { method: 'DELETE' });
+      await fetch(`/api/print-queue${key ? `?key=${key}` : ''}`, { method: 'DELETE' });
       setClearModal(false);
       await fetchJobs();
     } finally {
@@ -150,7 +150,7 @@ function FilaContent() {
     e.stopPropagation();
     setReprinting(jobId);
     try {
-      await fetch(`/api/print-queue/manage?key=${key}`, {
+      await fetch(`/api/print-queue/manage${key ? `?key=${key}` : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: [jobId], action: 'reprint' }),
@@ -359,7 +359,7 @@ function FilaContent() {
                         {/* Baixar etiqueta (done ou confirmed com label) */}
                         {(job.status === 'done' || job.status === 'confirmed') && job.has_label && (
                           <a
-                            href={`/api/print-queue/${job.id}/label?key=${key}`}
+                            href={`/api/print-queue/${job.id}/label${key ? `?key=${key}` : ''}`}
                             target="_blank"
                             onClick={e => e.stopPropagation()}
                             className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 transition-all"
