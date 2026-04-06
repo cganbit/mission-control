@@ -638,6 +638,17 @@ function MeDrawer({
             </button>
           )}
 
+          {/* Cancelar Etiqueta — available when label generated but not yet posted */}
+          {order.me_order_id && ['label_generated', 'error'].includes(order.me_status ?? '') && (
+            <button
+              disabled={!!actionLoading}
+              onClick={() => doAction('cancel-label', `/api/melhor-envio/cancel/${order.ml_order_id}`, 'POST')}
+              className="w-full px-3 py-2 bg-red-900/60 hover:bg-red-800 disabled:bg-slate-700 text-red-300 text-xs font-medium rounded-lg border border-red-700/50 transition-colors"
+            >
+              {actionLoading === 'cancel-label' ? 'Cancelando...' : '✕ Cancelar Etiqueta (estorna saldo)'}
+            </button>
+          )}
+
           {/* Label PDF link */}
           {order.me_label_url && (
             <a
@@ -657,6 +668,7 @@ function MeDrawer({
             'create-sedex': 'Etiqueta SEDEX gerada! Verifique a fila de impressão.',
             'send-tracking': 'Rastreio enviado ao comprador!',
             'track': 'Rastreio atualizado!',
+            'cancel-label': 'Etiqueta cancelada! Saldo estornado.',
           }[actionSuccess] ?? `${actionSuccess} executado com sucesso`}</p>}
         </div>
 
