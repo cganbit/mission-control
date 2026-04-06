@@ -73,7 +73,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orde
 
   try {
     const result = await db.query(
-      `SELECT me_delivery_address, me_status, seller_id, buyer_nickname
+      `SELECT me_delivery_address, me_status, seller_id, seller_nickname
        FROM ml_pedidos WHERE ml_order_id = $1 LIMIT 1`,
       [order_id]
     );
@@ -85,12 +85,30 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orde
     const row = result.rows[0];
 
     // Tentar buscar endereço da API ML se não temos endereço confirmado
-    if (!row.me_delivery_address && row.seller_id) {
-      const tokenRow = await db.query(
-        `SELECT access_token FROM ml_tokens_json WHERE seller_id = $1 LIMIT 1`,
-        [row.seller_id]
-      );
-      const token = tokenRow.rows[0]?.access_token;
+    if (!row.me_delivery_address) {
+      // Buscar token: por seller_id ou por nickname
+      let token: string | null = null;
+      if (row.seller_id) {
+        const tokenRow = await db.query(
+          `SELECT access_token FROM ml_tokens_json WHERE seller_id = $1 LIMIT 1`,
+          [row.seller_id]
+        );
+        token = tokenRow.rows[0]?.access_token ?? null;
+      }
+      if (!token && row.seller_nickname) {
+        const tokenRow = await db.query(
+          `SELECT access_token FROM ml_tokens_json WHERE nickname = $1 LIMIT 1`,
+          [row.seller_nickname]
+        );
+        token = tokenRow.rows[0]?.access_token ?? null;
+      }
+      if (!token) {
+        // Fallback: pegar qualquer token ativo
+        const tokenRow = await db.query(
+          `SELECT access_token FROM ml_tokens_json ORDER BY updated_at DESC LIMIT 1`
+        );
+        token = tokenRow.rows[0]?.access_token ?? null;
+      }
 
       if (token) {
         try {

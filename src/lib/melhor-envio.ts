@@ -80,14 +80,16 @@ export async function meAddToCart(
   from: MeAddress,
   to: MeAddress,
   pkg: MePackage,
-  insuranceValue = 0
+  insuranceValue = 0,
+  products: Array<{ name: string; quantity: number; unitary_value: number }> = []
 ) {
   return meRequest('/me/cart', 'POST', {
     service: serviceId,
     from,
     to,
     package: pkg,
-    options: { insurance_value: insuranceValue, receipt: false, own_hand: false },
+    products: products.length > 0 ? products : [{ name: 'Bateria', quantity: 1, unitary_value: insuranceValue || 100 }],
+    options: { insurance_value: insuranceValue, receipt: false, own_hand: false, non_commercial: true },
   });
 }
 

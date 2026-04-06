@@ -1,7 +1,29 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, Component, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+
+// Error boundary to catch and display render errors
+class DrawerErrorBoundary extends Component<{ children: ReactNode; onClose: () => void }, { error: string | null }> {
+  state = { error: null as string | null };
+  static getDerivedStateFromError(e: Error) { return { error: e.message }; }
+  componentDidCatch(e: Error) { console.error('MeDrawer crash:', e); }
+  render() {
+    if (this.state.error) {
+      return createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <div className="bg-slate-900 p-6 rounded-xl max-w-md space-y-3">
+            <p className="text-red-400 font-bold text-sm">Erro no Drawer</p>
+            <pre className="text-xs text-slate-300 whitespace-pre-wrap">{this.state.error}</pre>
+            <button onClick={this.props.onClose} className="px-4 py-2 bg-slate-700 text-white rounded text-sm">Fechar</button>
+          </div>
+        </div>,
+        document.body
+      );
+    }
+    return this.props.children;
+  }
+}
 
 interface OrderItem {
   title: string;
@@ -168,7 +190,7 @@ function FreightModal({ orderId, onClose }: { orderId: string; onClose: () => vo
                   <span className="text-lg font-bold text-white">R$ {s.price}</span>
                 </div>
                 <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs text-slate-400">{s.delivery_range.min}-{s.delivery_range.max} dias uteis</span>
+                  <span className="text-xs text-slate-400">{s.delivery_range ? `${s.delivery_range.min}-${s.delivery_range.max} dias uteis` : '—'}</span>
                   {s.adicional && (
                     <span className="text-xs text-amber-400">+R$ {s.adicional} adicional</span>
                   )}
@@ -255,77 +277,7 @@ function MeDrawer({
   const [simError, setSimError] = useState<string | null>(null);
   const currentStep = getMeStepIndex(order.me_status);
 
-  // Auto-fill address from ML API or existing data
-  const loadAddress = useCallback(async (autoSimulate = false) => {
-    setAddrLoading(true);
-    try {
-      const res = await fetch(`/api/melhor-envio/confirm-address/${order.ml_order_id}`);
-      const data = await res.json();
-      const src = data.me_delivery_address ?? data.ml_address;
-      if (src) {
-        const filled = {
-          cep: src.cep ?? '', rua: src.rua ?? '', numero: src.numero ?? '',
-          complemento: src.complemento ?? '', bairro: src.bairro ?? '',
-          cidade: src.cidade ?? '', estado: src.estado ?? '',
-          nome: src.nome ?? '', telefone: src.telefone ?? '',
-        };
-        setAddrForm(prev => ({ ...prev, ...filled }));
-
-        // Auto-save address if it came from ML API and isn't saved yet
-        if (!data.me_delivery_address && data.ml_address && filled.cep) {
-          fetch(`/api/melhor-envio/confirm-address/${order.ml_order_id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(filled),
-          }).then(() => onAction()).catch(() => {});
-        }
-
-        // Auto-simulate if address has CEP and no label yet
-        if (autoSimulate && filled.cep && filled.cep.length >= 8 && !order.me_order_id) {
-          simulateFreightRef.current?.(filled.cep);
-        }
-      }
-    } catch { /* ignore */ }
-    setAddrLoading(false);
-  }, [order.ml_order_id, order.me_order_id, onAction]);
-
-  const saveAddress = async () => {
-    setActionLoading('save-addr');
-    setActionError(null);
-    try {
-      const res = await fetch(`/api/melhor-envio/confirm-address/${order.ml_order_id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(addrForm),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Erro ao salvar');
-      setEditingAddr(false);
-      setActionSuccess('save-addr');
-      onAction();
-    } catch (e: any) {
-      setActionError(e.message);
-    }
-    setActionLoading(null);
-  };
-
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
-  }, [onClose]);
-
-  // Ref to avoid circular dependency between loadAddress and simulateFreight
-  const simulateFreightRef = useRef<((cep: string) => Promise<void>) | null>(null);
-
-  // Auto-load address on drawer open
-  useEffect(() => {
-    if (!order.me_delivery_address?.cep) {
-      loadAddress(true);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-simulate freight when address has CEP
+  // Simulate freight for a given CEP
   const simulateFreight = useCallback(async (cep: string) => {
     setSimLoading(true);
     setSimError(null);
@@ -344,14 +296,93 @@ function MeDrawer({
     setSimLoading(false);
   }, [order.ml_order_id]);
 
-  simulateFreightRef.current = simulateFreight;
+  // Load address from ML API
+  const loadAddress = useCallback(async () => {
+    setAddrLoading(true);
+    try {
+      const res = await fetch(`/api/melhor-envio/confirm-address/${order.ml_order_id}`);
+      const data = await res.json();
+      const src = data.me_delivery_address ?? data.ml_address;
+      if (src) {
+        const filled = {
+          cep: src.cep ?? '', rua: src.rua ?? '', numero: src.numero ?? '',
+          complemento: src.complemento ?? '', bairro: src.bairro ?? '',
+          cidade: src.cidade ?? '', estado: src.estado ?? '',
+          nome: src.nome ?? '', telefone: src.telefone ?? '',
+        };
+        setAddrForm(prev => ({ ...prev, ...filled }));
+
+        // Auto-save if from ML API and not yet saved
+        if (!data.me_delivery_address && data.ml_address && filled.cep) {
+          fetch(`/api/melhor-envio/confirm-address/${order.ml_order_id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(filled),
+          }).catch(() => {});
+        }
+
+        return filled.cep;
+      }
+    } catch { /* ignore */ }
+    setAddrLoading(false);
+    return null;
+  }, [order.ml_order_id]);
+
+  const saveAddress = async () => {
+    setActionLoading('save-addr');
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/melhor-envio/confirm-address/${order.ml_order_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addrForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao salvar');
+      setEditingAddr(false);
+      setActionSuccess('save-addr');
+      onAction();
+      // Auto-simulate after saving
+      if (addrForm.cep && addrForm.cep.length >= 8 && !order.me_order_id) {
+        simulateFreight(addrForm.cep);
+      }
+    } catch (e: any) {
+      setActionError(e.message);
+    }
+    setActionLoading(null);
+  };
+
+  // Single init effect: load address if needed, then auto-simulate
+  useEffect(() => {
+    let cancelled = false;
+    const init = async () => {
+      // Small delay to let portal mount cleanly
+      await new Promise(r => setTimeout(r, 150));
+      if (cancelled) return;
+
+      const existingCep = order.me_delivery_address?.cep;
+      if (existingCep && existingCep.length >= 8) {
+        // Already have address — just simulate
+        if (!order.me_order_id) {
+          simulateFreight(existingCep);
+        }
+      } else {
+        // No address — try loading from ML API
+        const cep = await loadAddress();
+        if (!cancelled && cep && cep.length >= 8 && !order.me_order_id) {
+          simulateFreight(cep);
+        }
+      }
+    };
+    init();
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const cep = order.me_delivery_address?.cep;
-    if (cep && cep.length >= 8 && !order.me_order_id) {
-      simulateFreight(cep);
-    }
-  }, [order.me_delivery_address?.cep, order.me_order_id, simulateFreight]);
+    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
 
   const doAction = async (action: string, url: string, method = 'POST', body?: object) => {
     setActionLoading(action);
@@ -521,16 +552,23 @@ function MeDrawer({
 
             {!simLoading && simServices.length > 0 && (
               <div className="grid grid-cols-2 gap-2">
-                {simServices.map(s => (
+                {simServices.filter(s => !s.error).map(s => (
                   <div key={s.id} className={`p-3 rounded-xl border ${s.name === 'PAC' ? 'border-emerald-700/50 bg-emerald-950/30' : 'border-blue-700/50 bg-blue-950/30'}`}>
                     <p className="text-xs font-semibold text-white mb-1">{s.name}</p>
                     <p className="text-lg font-bold text-white">R$ {s.price}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">{s.delivery_range.min}–{s.delivery_range.max} dias úteis</p>
+                    {s.delivery_range && (
+                      <p className="text-[10px] text-slate-400 mt-1">{s.delivery_range.min}–{s.delivery_range.max} dias úteis</p>
+                    )}
                     {s.adicional && (
                       <p className="text-[10px] text-amber-400 mt-0.5">+R$ {s.adicional} vs PAC</p>
                     )}
                   </div>
                 ))}
+                {simServices.some(s => s.error) && (
+                  <p className="col-span-2 text-[10px] text-amber-400">
+                    {simServices.filter(s => s.error).map(s => `${s.name}: ${s.error}`).join(' | ')}
+                  </p>
+                )}
               </div>
             )}
 
@@ -558,8 +596,8 @@ function MeDrawer({
         <div className="space-y-2">
           <h3 className="text-xs text-slate-400 uppercase tracking-wide font-medium">Ações</h3>
 
-          {/* Gerar Etiqueta — available when address confirmed */}
-          {(!order.me_order_id || order.me_status === 'error') && addr?.cep && (
+          {/* Gerar Etiqueta — only when address confirmed in DB */}
+          {(!order.me_order_id || order.me_status === 'error') && order.me_delivery_address?.cep && (
             <div className="flex gap-2">
               <button
                 disabled={!!actionLoading}
@@ -573,7 +611,7 @@ function MeDrawer({
                 onClick={() => doAction('create-sedex', '/api/melhor-envio/create-label', 'POST', { ml_order_id: order.ml_order_id, carrier: 'sedex' })}
                 className="flex-1 px-3 py-2 bg-blue-700 hover:bg-blue-600 disabled:bg-slate-700 text-white text-xs font-medium rounded-lg transition-colors"
               >
-                {actionLoading === 'create-sedex' ? 'Gerando...' : `⚡ SEDEX${simServices.find(s => s.name === 'SEDEX')?.adicional ? ` (+R$ ${simServices.find(s => s.name === 'SEDEX')!.adicional})` : ''}`}
+                {actionLoading === 'create-sedex' ? 'Gerando...' : `⚡ SEDEX${simServices.find(s => s.name === 'SEDEX')?.adicional ? ` (+R$ ${simServices.find(s => s.name === 'SEDEX')?.adicional})` : ''}`}
               </button>
             </div>
           )}
@@ -705,11 +743,13 @@ export default function PedidosMLPage() {
         />
       )}
       {meDrawerOrder && (
-        <MeDrawer
-          order={meDrawerOrder}
-          onClose={() => setMeDrawerOrder(null)}
-          onAction={() => { load(); setMeDrawerOrder(null); }}
-        />
+        <DrawerErrorBoundary onClose={() => setMeDrawerOrder(null)}>
+          <MeDrawer
+            order={meDrawerOrder}
+            onClose={() => setMeDrawerOrder(null)}
+            onAction={() => { load(); }}
+          />
+        </DrawerErrorBoundary>
       )}
       {/* Header */}
       <div className="flex items-center justify-between">

@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
     // Buscar pedido no DB
     const pedido = await db.query(
-      `SELECT ml_order_id, me_status, me_delivery_address, me_order_id
+      `SELECT ml_order_id, me_status, me_delivery_address, me_order_id, items_json, total
        FROM ml_pedidos WHERE ml_order_id = $1 LIMIT 1`,
       [ml_order_id]
     );
@@ -96,8 +96,16 @@ export async function POST(req: NextRequest) {
       length: body.length ?? 20,
     };
 
+    // Montar lista de produtos para declaração de conteúdo
+    const items = row.items_json ?? [];
+    const products = items.map((item: any) => ({
+      name: (item.title ?? 'Produto').substring(0, 100),
+      quantity: item.quantity ?? 1,
+      unitary_value: item.unit_price ?? (row.total ? Number(row.total) / items.length : 100),
+    }));
+
     // 1. Adicionar ao carrinho
-    const cartResult = await meAddToCart(serviceId, fromAddr, toAddr, pkg, body.insurance_value ?? 0);
+    const cartResult = await meAddToCart(serviceId, fromAddr, toAddr, pkg, body.insurance_value ?? Number(row.total ?? 0), products);
     const cartId = cartResult.id;
     if (!cartId) {
       return NextResponse.json({ error: 'Falha ao adicionar ao carrinho', detail: cartResult }, { status: 502 });
