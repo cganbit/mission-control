@@ -69,22 +69,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Endereço de entrega não confirmado' }, { status: 400 });
     }
 
-    // Descriptografar CPF do comprador
+    // CPF remetente: env var obrigatória (seu CPF/CNPJ)
+    const fromDoc = process.env.ME_SENDER_DOCUMENT ?? '';
+    if (!fromDoc) {
+      return NextResponse.json({ error: 'ME_SENDER_DOCUMENT não configurado no .env' }, { status: 500 });
+    }
+
+    // CPF destinatário: DB criptografado → ML billing_info → erro
     let buyerCpf = '';
     if (row.buyer_cpf) {
       try { buyerCpf = decrypt(row.buyer_cpf).replace(/\D/g, ''); } catch { /* ignore */ }
     }
-
-    // CPF do remetente (env var) e destinatário (DB ou fallback sandbox)
-    const senderDoc = process.env.ME_SENDER_DOCUMENT ?? '';
-    const isSandbox = process.env.MELHOR_ENVIO_ENV !== 'production';
-    // Sandbox ME aceita CPF de teste válido
-    const sandboxCpf = '01234567890';
-    const fromDoc = senderDoc || (isSandbox ? sandboxCpf : '');
-    const toDoc = buyerCpf || (isSandbox ? sandboxCpf : '');
-
-    if (!fromDoc || !toDoc) {
-      return NextResponse.json({ error: 'CPF do remetente ou destinatário não configurado' }, { status: 400 });
+    if (!buyerCpf) {
+      // Buscar CPF via ML API billing_info
+      try {
+        const tokenRow = await db.query(
+          `SELECT value FROM connector_configs WHERE key = 'ml_tokens_json' LIMIT 1`
+        );
+        const accounts = JSON.parse(tokenRow.rows[0]?.value ?? '[]');
+        const accs = Array.isArray(accounts) ? accounts : (accounts.accounts ?? []);
+        // Buscar seller_id do pedido para pegar token correto
+        const sellerRow = await db.query('SELECT seller_nickname FROM ml_pedidos WHERE ml_order_id = $1', [ml_order_id]);
+        const nickname = sellerRow.rows[0]?.seller_nickname;
+        const account = accs.find((a: any) => a.nickname === nickname) ?? accs[0];
+        if (account?.access_token) {
+          const billing = await fetch(`https://api.mercadolibre.com/orders/${ml_order_id}/billing_info`, {
+            headers: { Authorization: `Bearer ${account.access_token}` },
+            signal: AbortSignal.timeout(10000),
+          });
+          if (billing.ok) {
+            const bData = await billing.json();
+            const docInfo = bData?.buyer?.billing_info?.doc_number ?? bData?.buyer?.phone?.number ?? '';
+            buyerCpf = String(docInfo).replace(/\D/g, '');
+          }
+        }
+      } catch { /* best-effort */ }
+    }
+    if (!buyerCpf) {
+      return NextResponse.json({ error: 'CPF do comprador não encontrado. Verifique dados do pedido.' }, { status: 400 });
     }
 
     // Montar endereços ME
@@ -103,7 +125,7 @@ export async function POST(req: NextRequest) {
     const toAddr = {
       name: addr.nome || 'Comprador',
       phone: addr.telefone || '',
-      document: toDoc,
+      document: buyerCpf,
       postal_code: addr.cep,
       address: addr.rua || addr.logradouro || '',
       number: addr.numero || '',
