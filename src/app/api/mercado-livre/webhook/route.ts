@@ -94,6 +94,21 @@ async function saveClienteAndPedido(order: any, shipment: any, sellerNickname: s
        shipping_status = COALESCE(EXCLUDED.shipping_status, ml_pedidos.shipping_status)`,
     [order.id, ml_buyer_id, sellerNickname, JSON.stringify(items), order.total_amount ?? 0, order.status, shipment?.id ?? null, logisticType, listingType, shippingStatus]
   );
+
+  // Retry: se logistic_type ficou null e tem shipment, tentar novamente após 5s
+  if (!logisticType && order.shipping?.id && token) {
+    setTimeout(async () => {
+      try {
+        const ship = await mlGet(`${ML_API}/shipments/${order.shipping.id}`, token);
+        if (ship?.logistic_type) {
+          await db.query(
+            'UPDATE ml_pedidos SET logistic_type = $1, updated_at = NOW() WHERE ml_order_id = $2 AND logistic_type IS NULL',
+            [ship.logistic_type, order.id]
+          );
+        }
+      } catch { /* best-effort */ }
+    }, 5000);
+  }
 }
 
 // ─── Formatar mensagem WhatsApp ───────────────────────────────────────────────

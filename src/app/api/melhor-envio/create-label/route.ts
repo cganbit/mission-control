@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { getPool } from '@/lib/db';
 import { meAddToCart, meCheckout, meGenerate, mePrint } from '@/lib/melhor-envio';
+import { decrypt } from '@/lib/crypto';
 import crypto from 'crypto';
 
 const WORKER_KEY = process.env.MC_WORKER_KEY ?? '';
@@ -38,10 +39,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'carrier deve ser pac ou sedex' }, { status: 400 });
     }
 
-    // Buscar pedido no DB
+    // Buscar pedido + CPF do comprador
     const pedido = await db.query(
-      `SELECT ml_order_id, me_status, me_delivery_address, me_order_id, items_json, total
-       FROM ml_pedidos WHERE ml_order_id = $1 LIMIT 1`,
+      `SELECT p.ml_order_id, p.me_status, p.me_delivery_address, p.me_order_id, p.items_json, p.total,
+              c.cpf AS buyer_cpf
+       FROM ml_pedidos p
+       LEFT JOIN ml_clientes c ON c.ml_buyer_id = p.ml_buyer_id
+       WHERE p.ml_order_id = $1 LIMIT 1`,
       [ml_order_id]
     );
 
@@ -65,10 +69,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Endereço de entrega não confirmado' }, { status: 400 });
     }
 
+    // Descriptografar CPF do comprador
+    let buyerCpf = '';
+    if (row.buyer_cpf) {
+      try { buyerCpf = decrypt(row.buyer_cpf).replace(/\D/g, ''); } catch { /* ignore */ }
+    }
+
     // Montar endereços ME
     const fromAddr = {
       name: FROM_NAME,
       phone: FROM_PHONE,
+      document: process.env.ME_SENDER_CPF || '00000000000',
       postal_code: FROM_ZIP,
       address: 'Rua das Figueiras',
       number: '100',
@@ -80,6 +91,7 @@ export async function POST(req: NextRequest) {
     const toAddr = {
       name: addr.nome || 'Comprador',
       phone: addr.telefone || '',
+      document: buyerCpf || '00000000000',
       postal_code: addr.cep,
       address: addr.rua || addr.logradouro || '',
       number: addr.numero || '',

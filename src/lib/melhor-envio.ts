@@ -21,7 +21,11 @@ export async function meRequest(endpoint: string, method = 'GET', body?: object)
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data?.message ?? `ME API error ${res.status}`);
+  if (!res.ok) {
+    const detail = JSON.stringify(data?.errors ?? data, null, 2);
+    console.error(`[ME API] ${res.status} ${endpoint}:`, detail);
+    throw new Error(data?.message ?? `ME API error ${res.status}: ${detail.substring(0, 300)}`);
+  }
   return data;
 }
 
