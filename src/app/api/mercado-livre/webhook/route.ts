@@ -79,9 +79,7 @@ async function saveClienteAndPedido(order: any, shipment: any, sellerNickname: s
   }));
 
   // Extrair campos adicionais do pedido
-  // Fallback: baterias são sempre envio próprio (self_service) no ML
-  const isBateria = (order.order_items ?? []).some((i: any) => /bateria/i.test(i.item?.title ?? ''));
-  const logisticType = shipment?.logistic_type ?? order.shipping?.logistic_type ?? (isBateria ? 'self_service' : null);
+  const logisticType = shipment?.logistic_type ?? order.shipping?.logistic_type ?? null;
   const listingType = order.order_items?.[0]?.listing_type_id ?? null;
   const shippingStatus = shipment?.status ?? null;
 
@@ -97,19 +95,40 @@ async function saveClienteAndPedido(order: any, shipment: any, sellerNickname: s
     [order.id, ml_buyer_id, sellerNickname, JSON.stringify(items), order.total_amount ?? 0, order.status, shipment?.id ?? null, logisticType, listingType, shippingStatus]
   );
 
-  // Retry: se logistic_type ficou null e tem shipment, tentar novamente após 5s
-  if (!logisticType && order.shipping?.id && token) {
-    setTimeout(async () => {
-      try {
-        const ship = await mlGet(`${ML_API}/shipments/${order.shipping.id}`, token);
-        if (ship?.logistic_type) {
-          await db.query(
-            'UPDATE ml_pedidos SET logistic_type = $1, updated_at = NOW() WHERE ml_order_id = $2 AND logistic_type IS NULL',
-            [ship.logistic_type, order.id]
-          );
-        }
-      } catch { /* best-effort */ }
-    }, 5000);
+  // Retry: se logistic_type ficou null, tentar buscar do shipment com retries
+  if (!logisticType && token) {
+    const shipId = shipment?.id ?? order.shipping?.id;
+    const orderId = order.id;
+    const retryDelays = [5000, 15000, 30000];
+    for (const delay of retryDelays) {
+      setTimeout(async () => {
+        try {
+          // Verificar se já foi preenchido por um retry anterior
+          const check = await db.query('SELECT logistic_type FROM ml_pedidos WHERE ml_order_id = $1', [orderId]);
+          if (check.rows[0]?.logistic_type) return;
+
+          // Tentar buscar do shipment
+          if (shipId) {
+            const ship = await mlGet(`${ML_API}/shipments/${shipId}`, token);
+            if (ship?.logistic_type) {
+              await db.query(
+                'UPDATE ml_pedidos SET logistic_type = $1, updated_at = NOW() WHERE ml_order_id = $2 AND logistic_type IS NULL',
+                [ship.logistic_type, orderId]
+              );
+              return;
+            }
+          }
+          // Fallback: buscar do order diretamente
+          const freshOrder = await mlGet(`${ML_API}/orders/${orderId}`, token);
+          if (freshOrder?.shipping?.logistic_type) {
+            await db.query(
+              'UPDATE ml_pedidos SET logistic_type = $1, updated_at = NOW() WHERE ml_order_id = $2 AND logistic_type IS NULL',
+              [freshOrder.shipping.logistic_type, orderId]
+            );
+          }
+        } catch { /* best-effort */ }
+      }, delay);
+    }
   }
 }
 
