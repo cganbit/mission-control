@@ -39,7 +39,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ord
     }
 
     // Cancelar no Melhor Envio (estorna saldo)
-    await meCancelShipment([row.me_order_id]);
+    await meCancelShipment(row.me_order_id);
 
     // Resetar campos ME no DB — volta pro fluxo de simulação
     await db.query(

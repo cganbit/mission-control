@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Shield, ClipboardList, Bot, Zap, Calendar, Brain,
   FolderOpen, CircleDollarSign, Plug, Users, BarChart2,
   TrendingUp, Package, ShoppingBag, KeyRound, Activity, UsersRound,
-  PanelLeftClose, PanelLeftOpen, LogOut, ChevronDown, ChevronUp, AppWindow, Sparkles,
+  PanelLeftClose, PanelLeftOpen, LogOut, ChevronDown, ChevronUp, AppWindow, Sparkles, Printer,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -74,6 +74,7 @@ const APPS: NavItem[] = [
   { href: '/mercado-livre/contas', label: 'Contas ML',        icon: KeyRound,    minRole: 'member' },
   { href: '/mercado-livre/pedidos',   label: 'Pedidos ML',   icon: ClipboardList, minRole: 'member' },
   { href: '/mercado-livre/clientes',  label: 'Clientes ML',  icon: Users,         minRole: 'member' },
+  { href: '/fila',                    label: 'Fila de Impressão', icon: Printer,  minRole: 'member' },
 ];
 
 const ROLE_LEVEL: Record<string, number> = { admin: 3, member: 2, viewer: 1 };

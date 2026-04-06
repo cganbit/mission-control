@@ -113,6 +113,8 @@ export async function meTrackShipment(orderIds: string[]) {
   return meRequest('/me/shipment/tracking', 'POST', { orders: orderIds });
 }
 
-export async function meCancelShipment(orderIds: string[]) {
-  return meRequest('/me/shipment/cancel', 'POST', { orders: orderIds });
+export async function meCancelShipment(orderId: string, reasonId = '2', description = 'Cancelamento pelo vendedor') {
+  return meRequest('/me/shipment/cancel', 'POST', {
+    order: { id: orderId, reason_id: reasonId, description },
+  });
 }
