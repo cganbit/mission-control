@@ -75,11 +75,23 @@ export async function POST(req: NextRequest) {
       try { buyerCpf = decrypt(row.buyer_cpf).replace(/\D/g, ''); } catch { /* ignore */ }
     }
 
+    // CPF do remetente (env var) e destinatário (DB ou fallback sandbox)
+    const senderDoc = process.env.ME_SENDER_DOCUMENT ?? '';
+    const isSandbox = process.env.MELHOR_ENVIO_ENV !== 'production';
+    // Sandbox ME aceita CPF de teste válido
+    const sandboxCpf = '01234567890';
+    const fromDoc = senderDoc || (isSandbox ? sandboxCpf : '');
+    const toDoc = buyerCpf || (isSandbox ? sandboxCpf : '');
+
+    if (!fromDoc || !toDoc) {
+      return NextResponse.json({ error: 'CPF do remetente ou destinatário não configurado' }, { status: 400 });
+    }
+
     // Montar endereços ME
     const fromAddr = {
       name: FROM_NAME,
       phone: FROM_PHONE,
-      document: process.env.ME_SENDER_CPF || '00000000000',
+      document: fromDoc,
       postal_code: FROM_ZIP,
       address: 'Rua das Figueiras',
       number: '100',
@@ -91,7 +103,7 @@ export async function POST(req: NextRequest) {
     const toAddr = {
       name: addr.nome || 'Comprador',
       phone: addr.telefone || '',
-      document: buyerCpf || '00000000000',
+      document: toDoc,
       postal_code: addr.cep,
       address: addr.rua || addr.logradouro || '',
       number: addr.numero || '',
