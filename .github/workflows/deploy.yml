@@ -12,6 +12,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check previous deploy status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PREV=$(gh api repos/${{ github.repository }}/actions/workflows/deploy.yml/runs \
+            --jq '.workflow_runs | map(select(.id != ${{ github.run_id }})) | .[0] | {status: .conclusion, id: .id, url: .html_url}' 2>/dev/null || echo '{}')
+          STATUS=$(echo "$PREV" | jq -r '.status // "none"')
+          if [ "$STATUS" = "failure" ]; then
+            echo "::warning::⚠️ Deploy anterior FALHOU ($(echo $PREV | jq -r '.url')). Continuando com cautela."
+          fi
+
+      - name: Validate required secrets
+        run: |
+          MISSING=""
+          [ -z "${{ secrets.VPS_SSH_KEY }}" ] && MISSING="$MISSING VPS_SSH_KEY"
+          [ -z "${{ secrets.VPS_HOST }}" ] && MISSING="$MISSING VPS_HOST"
+          [ -z "${{ secrets.DATABASE_URL }}" ] && MISSING="$MISSING DATABASE_URL"
+          [ -z "${{ secrets.EVOLUTION_URL }}" ] && MISSING="$MISSING EVOLUTION_URL"
+          [ -z "${{ secrets.EVOLUTION_INSTANCE }}" ] && MISSING="$MISSING EVOLUTION_INSTANCE"
+          [ -z "${{ secrets.EVOLUTION_API_KEY }}" ] && MISSING="$MISSING EVOLUTION_API_KEY"
+          [ -z "${{ secrets.SRE_WHATSAPP_GROUP }}" ] && MISSING="$MISSING SRE_WHATSAPP_GROUP"
+          if [ -n "$MISSING" ]; then
+            echo "::warning::Secrets ausentes:$MISSING — SRE WhatsApp alert NÃO funcionará sem eles."
+          fi
+          # Bloqueante apenas para secrets críticos de deploy
+          [ -z "${{ secrets.VPS_SSH_KEY }}" ] && echo "::error::VPS_SSH_KEY é obrigatório" && exit 1
+          [ -z "${{ secrets.VPS_HOST }}" ] && echo "::error::VPS_HOST é obrigatório" && exit 1
+          [ -z "${{ secrets.DATABASE_URL }}" ] && echo "::error::DATABASE_URL é obrigatório" && exit 1
+          echo "✅ Secrets validados"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
