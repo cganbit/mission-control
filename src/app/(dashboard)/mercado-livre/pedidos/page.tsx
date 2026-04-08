@@ -732,9 +732,29 @@ export default function PedidosMLPage() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterFrom, setFilterFrom] = useState(thirtyDaysAgo());
   const [filterTo, setFilterTo] = useState(todayStr());
+  const [sendingToPrint, setSendingToPrint] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  async function handleSendToPrint(order: Order) {
+    setSendingToPrint(order.ml_order_id);
+    try {
+      await fetch('/api/print-queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ml_order_id: order.ml_order_id,
+          ml_shipment_id: order.ml_shipment_id,
+          seller_nickname: order.seller_nickname,
+          immediate: true,
+        }),
+      });
+      await fetchOrders();
+    } finally {
+      setSendingToPrint(null);
+    }
+  }
+
+  const fetchOrders = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     const params = new URLSearchParams();
     if (filterAccount) params.set('account', filterAccount);
     if (filterStatus) params.set('status', filterStatus);
@@ -746,10 +766,21 @@ export default function PedidosMLPage() {
       setOrders(data.orders);
       setAccounts(data.accounts);
     }
-    setLoading(false);
+    if (showLoading) setLoading(false);
   }, [filterAccount, filterStatus, filterFrom, filterTo]);
 
+  // Alias: load com loading spinner (primeira carga + mudança de filtros)
+  const load = useCallback(() => fetchOrders(true), [fetchOrders]);
+
   useEffect(() => { load(); }, [load]);
+
+  // Polling: silent refresh every 5s when there are active print jobs
+  useEffect(() => {
+    const hasActive = orders.some(o => o.print_status === 'pending' || o.print_status === 'printing');
+    if (!hasActive) return;
+    const interval = setInterval(() => fetchOrders(), 5000);
+    return () => clearInterval(interval);
+  }, [orders, fetchOrders]);
 
   const counts = {
     paid: orders.filter(o => o.status === 'paid').length,
@@ -927,7 +958,10 @@ export default function PedidosMLPage() {
                       </td>
                       <td className="px-4 py-3 text-center text-xs">
                         {order.print_status ? (
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${PRINT_STATUS_COLOR[order.print_status] ?? 'bg-slate-700 text-slate-300'}`}>
+                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${PRINT_STATUS_COLOR[order.print_status] ?? 'bg-slate-700 text-slate-300'} ${(order.print_status === 'pending' || order.print_status === 'printing') ? 'animate-pulse' : ''}`}>
+                            {(order.print_status === 'pending' || order.print_status === 'printing') && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-current animate-ping" />
+                            )}
                             {PRINT_STATUS_LABEL[order.print_status] ?? order.print_status}
                           </span>
                         ) : (
@@ -956,7 +990,8 @@ export default function PedidosMLPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {isEnvioProprio(order.logistic_type) && (
+                          {/* Drawer ME — só para pedidos que já usam Melhor Envio */}
+                          {order.me_order_id && (
                             <button
                               onClick={() => setMeDrawerOrder(order)}
                               className="text-indigo-400 hover:text-indigo-300 transition-colors text-xs font-medium whitespace-nowrap"
@@ -964,6 +999,35 @@ export default function PedidosMLPage() {
                             >
                               📦 Envio
                             </button>
+                          )}
+                          {/* Imprimir / status da fila — qualquer pedido que não seja delivered/shipped */}
+                          {!['delivered', 'shipped'].includes(order.shipping_status ?? '') && (
+                            !order.print_status ? (
+                              <button
+                                onClick={() => handleSendToPrint(order)}
+                                disabled={sendingToPrint === order.ml_order_id}
+                                className="text-emerald-400 hover:text-emerald-300 transition-colors text-xs font-medium whitespace-nowrap disabled:opacity-50"
+                                title="Enviar para fila de impressão"
+                              >
+                                {sendingToPrint === order.ml_order_id ? '⏳' : '🖨️ Imprimir'}
+                              </button>
+                            ) : order.print_status === 'error' ? (
+                              <button
+                                onClick={() => handleSendToPrint(order)}
+                                disabled={sendingToPrint === order.ml_order_id}
+                                className="text-amber-400 hover:text-amber-300 transition-colors text-xs font-medium whitespace-nowrap disabled:opacity-50"
+                                title="Reenviar para fila de impressão"
+                              >
+                                {sendingToPrint === order.ml_order_id ? '⏳' : '🔄 Reimprimir'}
+                              </button>
+                            ) : ['pending', 'printing'].includes(order.print_status ?? '') ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-blue-400 animate-pulse">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
+                                Imprimindo...
+                              </span>
+                            ) : order.print_status === 'done' ? (
+                              <span className="text-xs text-emerald-400">✅ Impresso</span>
+                            ) : null
                           )}
                         </div>
                       </td>

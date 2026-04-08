@@ -196,17 +196,24 @@ export async function POST(req: NextRequest) {
     );
 
     // T7: Inserir na fila de impressão
+    // Usar seller_nickname real do pedido (não hardcoded FROM_NAME)
+    const sellerNick = (await db.query(
+      `SELECT seller_nickname FROM ml_pedidos WHERE ml_order_id = $1 LIMIT 1`, [ml_order_id]
+    )).rows[0]?.seller_nickname ?? FROM_NAME;
     const token = crypto.randomBytes(20).toString('hex');
     const pqResult = await db.query(
-      `INSERT INTO print_queue (ml_order_id, seller_nickname, token, status, logistic_type)
-       VALUES ($1, $2, $3, 'queued', 'melhor_envio')
+      `INSERT INTO print_queue (ml_order_id, seller_nickname, token, status, logistic_type, origin)
+       VALUES ($1, $2, $3, 'queued', 'melhor_envio', 'mercadolivre')
        ON CONFLICT DO NOTHING
        RETURNING id`,
-      [ml_order_id, FROM_NAME, token]
+      [ml_order_id, sellerNick, token]
     );
 
     // T19: Download PDF locally so label can be served from filesystem
     const pqId = pqResult.rows[0]?.id;
+    if (!pqId) {
+      console.warn(`[create-label] print_queue INSERT returned no id for ml_order_id=${ml_order_id} (ON CONFLICT?)`);
+    }
     if (pqId && labelUrl) {
       try {
         const pdfRes = await fetch(labelUrl, { signal: AbortSignal.timeout(30000) });

@@ -84,8 +84,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { ml_shipment_id, seller_nickname, has_label, ml_order_id, logistic_type } = row.rows[0];
 
-  // Melhor Envio labels — fetch from ME label URL stored in ml_pedidos
+  // Melhor Envio labels — serve from disk cache or fetch from ME API
   if (logistic_type === 'melhor_envio') {
+    // T19: Check disk cache first
+    ensureLabelsDir();
+    const cachedPath = join(LABELS_DIR, `${id}.pdf`);
+    if (has_label && existsSync(cachedPath)) {
+      const cached = readFileSync(cachedPath);
+      return new NextResponse(new Uint8Array(cached), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="etiqueta-me-${ml_order_id}.pdf"`,
+          'X-Label-Source': 'melhor-envio-cached',
+        },
+      });
+    }
+
     const meRow = await db.query(
       `SELECT me_label_url FROM ml_pedidos WHERE ml_order_id = $1 LIMIT 1`,
       [ml_order_id]
@@ -95,6 +109,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       const meRes = await fetch(meLabelUrl, { signal: AbortSignal.timeout(30000) });
       if (meRes.ok) {
         const pdf = await meRes.arrayBuffer();
+        // T19: Cache to disk for reprint
+        try {
+          writeFileSync(cachedPath, Buffer.from(pdf));
+          await db.query(`UPDATE print_queue SET has_label = true WHERE id = $1`, [id]);
+        } catch (e) { console.warn(`[label] Failed to cache ME label ${id}:`, e); }
         await auditLog({
           event_type: 'label_generated',
           entity_type: 'print_queue',
@@ -214,6 +233,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const pdf = await mlRes.arrayBuffer();
+
+  // T19: Cache ML label to disk for reprint without re-fetching from API
+  try {
+    ensureLabelsDir();
+    writeFileSync(join(LABELS_DIR, `${id}.pdf`), Buffer.from(pdf));
+    await db.query(`UPDATE print_queue SET has_label = true WHERE id = $1`, [id]);
+  } catch (e) { console.warn(`[label] Failed to cache ML label ${id}:`, e); }
 
   // Gerar qr_code_url e salvar (token já existe na linha lida acima)
   const mcUrl = process.env.MC_URL ?? '';

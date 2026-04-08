@@ -8,6 +8,8 @@ services:
     env_file: .env
     environment:
       - MC_WORKER_KEY=3e8f51ad51e291d49e9ff03d32588cbf1f93e96bf8473543
+    volumes:
+      - ./labels:/app/labels
     networks:
       - evolution-api-h4pg_default
 

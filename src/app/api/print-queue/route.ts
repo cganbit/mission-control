@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { getSessionFromRequest, hasRole } from '@/lib/auth';
 import crypto from 'crypto';
 
 const AGENT_KEY = process.env.PRINT_AGENT_KEY ?? '';
@@ -57,26 +58,40 @@ export async function DELETE(req: NextRequest) {
 // ─── POST /api/print-queue — cria job (chamado internamente pelo webhook) ─────
 
 export async function POST(req: NextRequest) {
-  // Somente chamado internamente — verificar origin ou agent key
+  // Aceita session JWT (dashboard) ou x-internal-key (chamada interna)
+  const session = await getSessionFromRequest(req);
+  const isDashboard = !!(session && hasRole(session, 'member'));
   const authHeader = req.headers.get('x-internal-key');
   const internalKey = process.env.INTERNAL_API_KEY ?? '';
-  if (!internalKey || authHeader !== internalKey) {
+  const isInternal = !!internalKey && authHeader === internalKey;
+  if (!isDashboard && !isInternal) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { ml_order_id, ml_shipment_id, seller_nickname } = await req.json();
+  const { ml_order_id, ml_shipment_id, seller_nickname, immediate } = await req.json();
   if (!ml_order_id) {
     return NextResponse.json({ error: 'ml_order_id required' }, { status: 400 });
   }
 
+  // immediate=true (dashboard click) → pending (agent picks up right away)
+  // immediate=false (webhook) → queued (user selects in /fila)
+  const initialStatus = immediate ? 'pending' : 'queued';
   const token = crypto.randomBytes(20).toString('hex');
   const db = getPool();
 
+  // Enriquecer com dados de ml_pedidos (logistic_type, buyer_name)
+  const pedido = await db.query(
+    `SELECT logistic_type, shipment_id FROM ml_pedidos WHERE ml_order_id = $1 LIMIT 1`,
+    [ml_order_id]
+  );
+  const logisticType = pedido.rows[0]?.logistic_type ?? null;
+  const shipmentId = ml_shipment_id ?? pedido.rows[0]?.shipment_id ?? null;
+
   await db.query(
-    `INSERT INTO print_queue (ml_order_id, ml_shipment_id, seller_nickname, token, status)
-     VALUES ($1, $2, $3, $4, 'queued')
+    `INSERT INTO print_queue (ml_order_id, ml_shipment_id, seller_nickname, token, status, logistic_type, origin)
+     VALUES ($1, $2, $3, $4, $5, $6, 'mercadolivre')
      ON CONFLICT DO NOTHING`,
-    [ml_order_id, ml_shipment_id ?? null, seller_nickname ?? null, token]
+    [ml_order_id, shipmentId, seller_nickname ?? null, token, initialStatus, logisticType]
   );
 
   const row = await db.query(

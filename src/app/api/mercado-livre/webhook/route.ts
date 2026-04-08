@@ -162,9 +162,17 @@ function formatSaleMessage(order: any, shipment: any, nickname: string): string 
   const fiscal = formatAddr(order.billing_info?.billing_address ?? buyer.billing_info?.address);
   const enderecosDiferentes = entrega && fiscal && entrega.line1 !== fiscal.line1;
 
-  // Envio
+  // Envio — traduz logistic_type para label legível
   const logisticType = shipment?.logistic_type ?? order.shipping?.logistic_type ?? '';
-  const shippingLabel = logisticType === 'fulfillment' ? 'Full' : logisticType === 'self_service' ? 'Clássico' : 'Correios';
+  const shippingMode = shipment?.mode ?? '';
+  const shippingLabel = (() => {
+    if (logisticType === 'fulfillment') return 'Full';
+    if (logisticType === 'self_service' && shippingMode === 'me2') return 'Mercado Envios';
+    if (logisticType === 'self_service' || logisticType === 'custom') return 'Envio próprio';
+    if (['xd_drop_off', 'drop_off', 'cross_docking'].includes(logisticType)) return 'Mercado Envios';
+    if (['me1', 'flex'].includes(logisticType)) return 'Flex';
+    return logisticType || 'Correios';
+  })();
 
   return [
     `🛍️ *Nova Venda — ${nickname}*`,
@@ -208,21 +216,16 @@ async function createPrintJob(
       .map(i => `${i.item?.title ?? 'Produto'} × ${i.quantity ?? 1}`)
       .join(', ');
 
-    const logisticType = (() => {
-      const lt = shipment?.logistic_type ?? order.shipping?.logistic_type ?? '';
-      if (lt === 'fulfillment') return 'Full';
-      if (lt === 'self_service') return 'Clássico';
-      if (lt === 'xd_drop_off') return 'Flex';
-      return 'Correios';
-    })();
+    // Salvar valor raw na print_queue — tradução só na UI
+    const logisticType = shipment?.logistic_type ?? order.shipping?.logistic_type ?? null;
 
     const buyer = order.buyer ?? {};
     const buyerName = [buyer.first_name, buyer.last_name].filter(Boolean).join(' ') || buyer.nickname || null;
 
     const db = getPool();
     await db.query(
-      `INSERT INTO print_queue (ml_order_id, ml_shipment_id, seller_nickname, token, status, items_summary, logistic_type, buyer_name)
-       VALUES ($1, $2, $3, $4, 'queued', $5, $6, $7)
+      `INSERT INTO print_queue (ml_order_id, ml_shipment_id, seller_nickname, token, status, items_summary, logistic_type, buyer_name, origin)
+       VALUES ($1, $2, $3, $4, 'queued', $5, $6, $7, 'mercadolivre')
        ON CONFLICT DO NOTHING`,
       [orderId, shipmentId, sellerNickname, token, itemsSummary || null, logisticType, buyerName]
     );

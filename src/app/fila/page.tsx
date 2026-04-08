@@ -48,6 +48,18 @@ const STATUS_LABEL: Record<Job['status'], string> = {
   confirmed: 'Confirmado',
 };
 
+function translateLogistic(lt: string | null): string {
+  if (!lt) return '';
+  const v = lt.toLowerCase();
+  if (v === 'fulfillment') return 'Full';
+  if (['xd_drop_off', 'drop_off', 'cross_docking'].includes(v)) return 'Mercado Envios';
+  if (['self_service', 'custom'].includes(v)) return 'Envio próprio';
+  if (['me1', 'flex'].includes(v)) return 'Flex';
+  if (v === 'melhor_envio') return 'Melhor Envio';
+  if (v === 'turbo') return 'Turbo';
+  return lt;
+}
+
 const STATUS_ICON: Record<Job['status'], string> = {
   queued:    '🕐',
   pending:   '⏳',
@@ -71,6 +83,8 @@ function FilaContent() {
   const [countdown, setCountdown] = useState(5);
   const [clearModal, setClearModal] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(false);
 
   const fetchJobs = useCallback(async () => {
     try {
@@ -104,10 +118,10 @@ function FilaContent() {
   const tabJobs: Record<Tab, Job[]> = { queued, processing, done, error: errors, confirmed };
   const visible = tabJobs[tab];
 
-  const allQueuedSelected = queued.length > 0 && queued.every(j => selected.has(j.id));
+  const allVisibleSelected = visible.length > 0 && visible.every(j => selected.has(j.id));
 
   function toggleAll() {
-    setSelected(allQueuedSelected ? new Set() : new Set(queued.map(j => j.id)));
+    setSelected(allVisibleSelected ? new Set() : new Set(visible.map(j => j.id)));
   }
 
   function toggleJob(id: number) {
@@ -132,6 +146,23 @@ function FilaContent() {
       await fetchJobs();
     } finally {
       setActivating(false);
+    }
+  }
+
+  async function handleDeleteSelected() {
+    if (!selected.size) return;
+    setDeleting(true);
+    try {
+      await fetch(`/api/print-queue/manage${key ? `?key=${key}` : ''}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selected), action: 'delete' }),
+      });
+      setSelected(new Set());
+      setDeleteModal(false);
+      await fetchJobs();
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -219,14 +250,6 @@ function FilaContent() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {tab === 'queued' && queued.length > 0 && (
-                <button
-                  onClick={() => setClearModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-950/60 text-red-400 border border-red-800/50 hover:bg-red-900/60 hover:text-red-300 transition-all active:scale-95"
-                >
-                  🗑 Limpar
-                </button>
-              )}
               <div className="flex items-center gap-2 bg-slate-800/80 rounded-full px-3 py-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-xs text-slate-400 tabular-nums">{countdown}s</span>
@@ -239,7 +262,7 @@ function FilaContent() {
         <div className="max-w-2xl mx-auto">
           <div className="flex px-4 pb-3 gap-2 overflow-x-auto scrollbar-none">
             {TABS.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)}
+              <button key={t.id} onClick={() => { setTab(t.id); setSelected(new Set()); }}
                 className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-95 ${
                   tab === t.id
                     ? tabActive[t.color]
@@ -262,17 +285,17 @@ function FilaContent() {
         style={{ paddingBottom: `calc(env(safe-area-inset-bottom) + ${selected.size > 0 ? '100px' : '24px'})` }}>
 
         {/* Selecionar todos */}
-        {tab === 'queued' && queued.length > 0 && (
+        {visible.length > 0 && (
           <div className="flex items-center gap-3 py-4 border-b border-slate-800/60">
             <button onClick={toggleAll}
               className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all flex-shrink-0 ${
-                allQueuedSelected
+                allVisibleSelected
                   ? 'bg-indigo-600 border-indigo-600'
                   : 'border-slate-600 bg-slate-800'
               }`}>
-              {allQueuedSelected && <span className="text-white text-xs font-bold">✓</span>}
+              {allVisibleSelected && <span className="text-white text-xs font-bold">✓</span>}
             </button>
-            <span className="text-sm text-slate-400">Selecionar todos ({queued.length})</span>
+            <span className="text-sm text-slate-400">Selecionar todos ({visible.length})</span>
             {selected.size > 0 && (
               <span className="ml-auto text-xs text-indigo-400 font-medium">{selected.size} selecionado{selected.size > 1 ? 's' : ''}</span>
             )}
@@ -292,30 +315,23 @@ function FilaContent() {
         <div className="mt-3 space-y-2.5 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
           {visible.map(job => {
             const isSelected = selected.has(job.id);
-            const isQueued = job.status === 'queued';
             return (
               <div key={job.id}
-                onClick={() => isQueued && toggleJob(job.id)}
-                className={`relative rounded-2xl border p-4 transition-all ${
-                  isQueued ? 'cursor-pointer active:scale-[0.98]' : ''
-                } ${
+                onClick={() => toggleJob(job.id)}
+                className={`relative rounded-2xl border p-4 transition-all cursor-pointer active:scale-[0.98] ${
                   isSelected
                     ? 'border-indigo-500/60 bg-indigo-950/40 shadow-lg shadow-indigo-500/10'
                     : 'border-slate-800/80 bg-slate-900/80 hover:border-slate-700'
                 }`}>
 
                 <div className="flex items-start gap-3">
-                  {/* Checkbox / Icon */}
+                  {/* Checkbox */}
                   <div className="flex-shrink-0 mt-0.5">
-                    {isQueued ? (
-                      <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                        isSelected ? 'bg-indigo-600 border-indigo-600' : 'border-slate-600 bg-slate-800'
-                      }`}>
-                        {isSelected && <span className="text-white text-xs font-bold">✓</span>}
-                      </div>
-                    ) : (
-                      <span className="text-xl">{STATUS_ICON[job.status]}</span>
-                    )}
+                    <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                      isSelected ? 'bg-indigo-600 border-indigo-600' : 'border-slate-600 bg-slate-800'
+                    }`}>
+                      {isSelected && <span className="text-white text-xs font-bold">✓</span>}
+                    </div>
                   </div>
 
                   {/* Info */}
@@ -343,7 +359,7 @@ function FilaContent() {
                     {/* Frete */}
                     {job.logistic_type && (
                       <span className="inline-block mt-1.5 text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
-                        {job.logistic_type}
+                        {translateLogistic(job.logistic_type)}
                       </span>
                     )}
 
@@ -430,18 +446,57 @@ function FilaContent() {
         </div>
       )}
 
+      {/* Modal — Confirmar delete selecionados */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+            <div className="text-center space-y-1">
+              <div className="text-4xl">🗑️</div>
+              <h2 className="text-base font-bold text-white">Remover da fila?</h2>
+              <p className="text-sm text-slate-400">
+                <span className="font-bold text-red-400">{selected.size} item{selected.size !== 1 ? 's' : ''}</span> {selected.size === 1 ? 'será removido' : 'serão removidos'} da fila de impressão.
+                <br /><span className="text-slate-500">Os pedidos continuam disponíveis na aba de Pedidos.</span>
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteModal(false)}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition-all disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteSelected}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-red-600 hover:bg-red-500 text-white transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {deleting ? <span className="animate-spin">⏳</span> : '🗑'} Remover
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sticky bottom bar */}
       {selected.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-slate-900/95 backdrop-blur-md border-t border-slate-800"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          <div className="max-w-2xl mx-auto px-4 py-3">
-            <button onClick={handleActivate} disabled={activating}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-60 text-white font-bold rounded-2xl text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+          <div className="max-w-2xl mx-auto px-4 py-3 flex gap-3">
+            {tab === 'queued' && (
+              <button onClick={handleActivate} disabled={activating}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-60 text-white font-bold rounded-2xl text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                style={{ height: '56px' }}>
+                {activating
+                  ? <><span className="animate-spin">⏳</span> Enviando...</>
+                  : <>🖨️ Imprimir {selected.size}</>
+                }
+              </button>
+            )}
+            <button onClick={() => setDeleteModal(true)}
+              className={`${tab === 'queued' ? 'w-16' : 'flex-1'} bg-red-600/80 hover:bg-red-500 active:bg-red-700 text-white font-bold rounded-2xl text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2`}
               style={{ height: '56px' }}>
-              {activating
-                ? <><span className="animate-spin">⏳</span> Enviando para impressão...</>
-                : <>🖨️ Imprimir {selected.size} {selected.size === 1 ? 'etiqueta' : 'etiquetas'}</>
-              }
+              {tab === 'queued' ? '🗑' : <>🗑 Remover {selected.size}</>}
             </button>
           </div>
         </div>

@@ -46,8 +46,16 @@ export async function POST(req: NextRequest) {
   const ids: number[] = Array.isArray(body?.ids) ? body.ids.slice(0, 50) : [];
   if (!ids.length) return NextResponse.json({ error: 'ids array required' }, { status: 400 });
 
-  const action: string = body?.action === 'reprint' ? 'reprint' : 'activate';
+  const action: string = ['reprint', 'delete'].includes(body?.action) ? body.action : 'activate';
   const db = getPool();
+
+  if (action === 'delete') {
+    const result = await db.query(
+      `DELETE FROM print_queue WHERE id = ANY($1::int[]) RETURNING id`,
+      [ids]
+    );
+    return NextResponse.json({ ok: true, deleted: result.rowCount ?? 0 });
+  }
 
   if (action === 'reprint') {
     const result = await db.query(
