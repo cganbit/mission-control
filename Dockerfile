@@ -4,7 +4,7 @@ FROM node:20-alpine AS base
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm install
+RUN npm install && npm install lightningcss-linux-x64-musl
 
 # Build the source code
 FROM base AS builder
