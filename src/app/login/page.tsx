@@ -45,7 +45,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <div className="text-4xl mb-2">🎯</div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Mission Control</h1>
-          <p className="text-[var(--text-secondary)] mt-1">OpenClaw Command Center</p>
+          <p className="text-[var(--text-secondary)] mt-1">WingX</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-[var(--bg-surface)] rounded-xl p-8 border border-[var(--border)] shadow-2xl space-y-5">
