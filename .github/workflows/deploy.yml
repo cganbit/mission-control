@@ -50,8 +50,7 @@ jobs:
 
       - name: Validate build (TypeScript + Next.js)
         run: |
-          npm cache clean --force
-          npm ci
+          npm install
           npm run build
 
       - name: Setup SSH
