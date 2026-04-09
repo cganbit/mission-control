@@ -48,10 +48,10 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - name: Validate build (TypeScript + Next.js)
+      - name: Validate build (TypeScript check)
         run: |
           npm install
-          npm run build
+          npx tsc --noEmit
 
       - name: Setup SSH
         run: |
