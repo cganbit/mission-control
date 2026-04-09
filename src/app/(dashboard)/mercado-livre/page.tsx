@@ -45,10 +45,10 @@ interface DREAccount {
 
 function StatBox({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center p-3 bg-slate-800/50 rounded-lg min-w-0">
-      <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1 truncate w-full text-center">{label}</span>
-      <span className="text-lg font-black text-white w-full text-center truncate leading-tight" title={String(value)}>{value}</span>
-      {sub && <span className="text-[10px] text-slate-600 mt-0.5">{sub}</span>}
+    <div className="flex flex-col items-center justify-center p-3 bg-[var(--bg-muted)]/50 rounded-lg min-w-0">
+      <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-widest mb-1 truncate w-full text-center">{label}</span>
+      <span className="text-lg font-black text-[var(--text-primary)] w-full text-center truncate leading-tight" title={String(value)}>{value}</span>
+      {sub && <span className="text-[10px] text-[var(--text-muted)] mt-0.5">{sub}</span>}
     </div>
   );
 }
@@ -57,15 +57,15 @@ function StoreCard({ store, periodLabel }: { store: StoreStats; periodLabel: str
   const isError = store.status === 'error';
   return (
     <div className={cn(
-      "bg-slate-900/50 border rounded-xl overflow-hidden shadow-xl transition-all duration-300 group",
-      isError ? "border-rose-800/50" : "border-slate-800 hover:border-indigo-500/50"
+      "bg-[var(--bg-surface)]/50 border rounded-xl overflow-hidden shadow-xl transition-all duration-300 group",
+      isError ? "border-rose-800/50" : "border-[var(--border)] hover:border-[var(--accent)]/50"
     )}>
-      <div className="px-5 py-3.5 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between">
-        <h3 className="font-bold text-base text-slate-100 group-hover:text-indigo-400 transition-colors tracking-wide">
+      <div className="px-5 py-3.5 bg-[var(--bg-surface)]/80 border-b border-[var(--border)] flex items-center justify-between">
+        <h3 className="font-bold text-base text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors tracking-wide">
           {store.nickname}
         </h3>
         <div className="flex items-center gap-2">
-          <a href="/mercado-livre/contas" className="text-slate-500 hover:text-slate-300 transition-colors" title="Configurar conta">
+          <a href="/mercado-livre/contas" className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors" title="Configurar conta">
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
           {isError ? <AlertCircle className="h-4 w-4 text-rose-500" /> : <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
@@ -87,7 +87,7 @@ function StoreCard({ store, periodLabel }: { store: StoreStats; periodLabel: str
             </div>
           )}
           <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2 text-slate-400">
+            <div className="flex items-center gap-2 text-[var(--text-secondary)]">
               <MessageSquare className="h-3.5 w-3.5 text-amber-400" />
               <span className="text-xs font-medium">Perguntas pendentes</span>
             </div>
@@ -152,7 +152,7 @@ function ListingsTab({ accounts }: { accounts: StoreStats[] }) {
       <div className="flex items-center gap-3">
         <div className="relative">
           <select
-            className="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 pr-8 appearance-none focus:border-indigo-500 outline-none"
+            className="bg-[var(--bg-muted)] border border-[var(--border)] text-[var(--text-primary)] text-sm rounded-lg px-3 py-2 pr-8 appearance-none focus:border-[var(--accent)] outline-none"
             onChange={e => fetchListings(Number(e.target.value))}
             defaultValue=""
           >
@@ -161,23 +161,23 @@ function ListingsTab({ accounts }: { accounts: StoreStats[] }) {
               <option key={a.seller_id} value={a.seller_id}>{a.nickname}</option>
             ))}
           </select>
-          <ChevronDown className="absolute right-2 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
+          <ChevronDown className="absolute right-2 top-2.5 h-4 w-4 text-[var(--text-secondary)] pointer-events-none" />
         </div>
-        {sellerId && <span className="text-xs text-slate-500">{total} anúncios</span>}
+        {sellerId && <span className="text-xs text-[var(--text-muted)]">{total} anúncios</span>}
         {msg && <span className="text-xs text-emerald-400">{msg}</span>}
       </div>
 
       {loading && (
-        <div className="flex items-center gap-2 text-slate-500 text-sm p-4">
+        <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm p-4">
           <Loader2 className="h-4 w-4 animate-spin" /> Carregando anúncios…
         </div>
       )}
 
       {!loading && listings.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-slate-800">
+        <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-slate-500 text-[11px] uppercase tracking-wider">
+              <tr className="border-b border-[var(--border)] text-[var(--text-muted)] text-[11px] uppercase tracking-wider">
                 <th className="px-4 py-3 text-left">Anúncio</th>
                 <th className="px-4 py-3 text-right">Preço</th>
                 <th className="px-4 py-3 text-right">Estoque</th>
@@ -186,61 +186,61 @@ function ListingsTab({ accounts }: { accounts: StoreStats[] }) {
                 <th className="px-4 py-3 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/50">
+            <tbody className="divide-y divide-[var(--border)]/50">
               {listings.map(item => (
-                <tr key={item.id} className="hover:bg-slate-800/30 transition-colors">
+                <tr key={item.id} className="hover:bg-[var(--bg-muted)]/30 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {item.thumbnail && (
-                        <img src={item.thumbnail} alt="" className="w-10 h-10 rounded object-cover bg-slate-800 flex-shrink-0" />
+                        <img src={item.thumbnail} alt="" className="w-10 h-10 rounded object-cover bg-[var(--bg-muted)] flex-shrink-0" />
                       )}
                       <div>
                         <a href={item.permalink} target="_blank" rel="noopener noreferrer"
-                          className="text-slate-200 hover:text-indigo-400 font-medium line-clamp-2 transition-colors text-xs leading-snug">
+                          className="text-[var(--text-primary)] hover:text-[var(--accent)] font-medium line-clamp-2 transition-colors text-xs leading-snug">
                           {item.title}
                         </a>
-                        <span className="text-slate-600 text-[10px]">{item.id}</span>
+                        <span className="text-[var(--text-muted)] text-[10px]">{item.id}</span>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-200 font-semibold">
+                  <td className="px-4 py-3 text-right tabular-nums text-[var(--text-primary)] font-semibold">
                     {editing === item.id ? (
                       <input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)}
                         placeholder={String(item.price)}
-                        className="w-24 bg-slate-700 border border-slate-600 text-slate-200 rounded px-2 py-1 text-xs text-right" />
+                        className="w-24 bg-[var(--bg-muted)] border border-[var(--border-strong)] text-[var(--text-primary)] rounded px-2 py-1 text-xs text-right" />
                     ) : fmtBRL(item.price)}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-300">
+                  <td className="px-4 py-3 text-right tabular-nums text-[var(--text-primary)]">
                     {editing === item.id ? (
                       <input type="number" value={editQty} onChange={e => setEditQty(e.target.value)}
                         placeholder={String(item.available_quantity)}
-                        className="w-16 bg-slate-700 border border-slate-600 text-slate-200 rounded px-2 py-1 text-xs text-right" />
+                        className="w-16 bg-[var(--bg-muted)] border border-[var(--border-strong)] text-[var(--text-primary)] rounded px-2 py-1 text-xs text-right" />
                     ) : item.available_quantity}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-400">{item.sold_quantity}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-[var(--text-secondary)]">{item.sold_quantity}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={cn(
                       "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider",
                       item.status === 'active' ? "bg-emerald-900/30 text-emerald-400 border border-emerald-800/50" :
                       item.status === 'paused' ? "bg-amber-900/30 text-amber-400 border border-amber-800/50" :
-                      "bg-slate-800 text-slate-500 border border-slate-700"
+                      "bg-[var(--bg-muted)] text-[var(--text-muted)] border border-[var(--border)]"
                     )}>{item.status}</span>
                   </td>
                   <td className="px-4 py-3 text-center">
                     {editing === item.id ? (
                       <div className="flex items-center justify-center gap-2">
                         <button onClick={() => saveEdit(item.id)} disabled={saving}
-                          className="text-[10px] px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold disabled:opacity-50">
+                          className="text-[10px] px-2 py-1 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded font-bold disabled:opacity-50">
                           {saving ? '…' : 'Salvar'}
                         </button>
                         <button onClick={() => { setEditing(null); setEditPrice(''); setEditQty(''); }}
-                          className="text-[10px] px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded">
+                          className="text-[10px] px-2 py-1 bg-[var(--bg-muted)] hover:bg-[var(--border)] text-[var(--text-primary)] rounded">
                           Cancelar
                         </button>
                       </div>
                     ) : (
                       <button onClick={() => { setEditing(item.id); setEditPrice(''); setEditQty(''); }}
-                        className="text-slate-500 hover:text-indigo-400 transition-colors p-1.5 rounded hover:bg-slate-800">
+                        className="text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors p-1.5 rounded hover:bg-[var(--bg-muted)]">
                         <Edit2 className="h-3.5 w-3.5" />
                       </button>
                     )}
@@ -253,13 +253,13 @@ function ListingsTab({ accounts }: { accounts: StoreStats[] }) {
       )}
 
       {!loading && !listings.length && sellerId && (
-        <div className="text-slate-600 text-sm p-8 text-center border border-dashed border-slate-800 rounded-xl">
+        <div className="text-[var(--text-muted)] text-sm p-8 text-center border border-dashed border-[var(--border)] rounded-xl">
           Nenhum anúncio ativo encontrado.
         </div>
       )}
 
       {!sellerId && (
-        <div className="text-slate-600 text-sm p-12 text-center border border-dashed border-slate-800 rounded-xl">
+        <div className="text-[var(--text-muted)] text-sm p-12 text-center border border-dashed border-[var(--border)] rounded-xl">
           Selecione uma conta para ver os anúncios.
         </div>
       )}
@@ -306,46 +306,46 @@ function QuestionsTab({ accounts }: { accounts: StoreStats[] }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-slate-400">{questions.length} pergunta(s) pendente(s)</span>
+        <span className="text-sm text-[var(--text-secondary)]">{questions.length} pergunta(s) pendente(s)</span>
         <div className="flex items-center gap-3">
-          {msg && <span className="text-xs text-emerald-400">{msg}</span>}
+          {msg && <span className="text-xs text-[var(--accent)]">{msg}</span>}
           <button onClick={fetchQuestions}
-            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 border border-slate-700 hover:border-slate-600 px-3 py-1.5 rounded-lg transition-all">
+            className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)] hover:border-[var(--border-strong)] px-3 py-1.5 rounded-lg transition-all">
             <RefreshCw className="h-3 w-3" /> Atualizar
           </button>
         </div>
       </div>
 
       {loading && (
-        <div className="flex items-center gap-2 text-slate-500 text-sm p-4">
+        <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm p-4">
           <Loader2 className="h-4 w-4 animate-spin" /> Carregando perguntas…
         </div>
       )}
 
       {!loading && questions.length === 0 && (
-        <div className="text-slate-500 text-sm p-12 text-center border border-dashed border-slate-800 rounded-xl">
-          <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-3" />
+        <div className="text-[var(--text-muted)] text-sm p-12 text-center border border-dashed border-[var(--border)] rounded-xl">
+          <CheckCircle2 className="h-8 w-8 text-[var(--accent)] mx-auto mb-3" />
           Nenhuma pergunta pendente. Todas respondidas!
         </div>
       )}
 
       <div className="space-y-3">
         {questions.map(q => (
-          <div key={q.question_id} className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 space-y-3">
+          <div key={q.question_id} className="bg-[var(--bg-surface)]/50 border border-[var(--border)] rounded-xl p-4 space-y-3">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1 flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] px-2 py-0.5 bg-indigo-900/50 text-indigo-400 border border-indigo-800/50 rounded-full font-bold uppercase tracking-wider">
+                  <span className="text-[10px] px-2 py-0.5 bg-[var(--accent-muted)] text-[var(--accent)] border border-[var(--accent)]/30 rounded-full font-bold uppercase tracking-wider">
                     {q.nickname}
                   </span>
-                  <span className="text-[10px] text-slate-600 truncate max-w-xs">{q.item_title}</span>
+                  <span className="text-[10px] text-[var(--text-muted)] truncate max-w-xs">{q.item_title}</span>
                 </div>
-                <p className="text-slate-200 text-sm font-medium">{q.question_text}</p>
+                <p className="text-[var(--text-primary)] text-sm font-medium">{q.question_text}</p>
                 {q.item_description && (
-                  <p className="text-slate-600 text-xs line-clamp-2">{q.item_description}</p>
+                  <p className="text-[var(--text-muted)] text-xs line-clamp-2">{q.item_description}</p>
                 )}
               </div>
-              <span className="text-[10px] text-slate-600 flex-shrink-0">
+              <span className="text-[10px] text-[var(--text-muted)] flex-shrink-0">
                 {new Date(q.date_created).toLocaleDateString('pt-BR')}
               </span>
             </div>
@@ -357,23 +357,23 @@ function QuestionsTab({ accounts }: { accounts: StoreStats[] }) {
                   onChange={e => setAnswerText(e.target.value)}
                   placeholder="Digite sua resposta…"
                   rows={3}
-                  className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 resize-none focus:border-indigo-500 outline-none"
+                  className="w-full bg-[var(--bg-muted)] border border-[var(--border)] text-[var(--text-primary)] text-sm rounded-lg px-3 py-2 resize-none focus:border-[var(--accent)] outline-none"
                 />
                 <div className="flex items-center gap-2">
                   <button onClick={() => sendAnswer(q)} disabled={sending || !answerText.trim()}
-                    className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-bold disabled:opacity-50 transition-colors">
+                    className="flex items-center gap-1.5 text-xs bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white px-3 py-1.5 rounded-lg font-bold disabled:opacity-50 transition-colors">
                     {sending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                     Enviar
                   </button>
                   <button onClick={() => { setAnswering(null); setAnswerText(''); }}
-                    className="text-xs text-slate-500 hover:text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors">
+                    className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-3 py-1.5 rounded-lg border border-[var(--border)] transition-colors">
                     Cancelar
                   </button>
                 </div>
               </div>
             ) : (
               <button onClick={() => setAnswering(q.question_id)}
-                className="text-xs text-indigo-400 hover:text-indigo-300 border border-indigo-800/50 hover:border-indigo-600 px-3 py-1.5 rounded-lg transition-all">
+                className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] border border-[var(--accent)]/30 hover:border-[var(--accent)] px-3 py-1.5 rounded-lg transition-all">
                 Responder
               </button>
             )}
@@ -420,29 +420,29 @@ function FinanceiroTab() {
             className={cn(
               "text-xs px-4 py-1.5 rounded-lg border font-medium transition-all",
               period === p
-                ? "bg-indigo-600 border-indigo-500 text-white"
-                : "border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-300"
+                ? "bg-[var(--accent)] border-[var(--accent)] text-white"
+                : "border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
             )}>
             {p === 'current' ? 'Mês Atual' : 'Mês Anterior'}
           </button>
         ))}
-        {loading && <Loader2 className="h-4 w-4 animate-spin text-slate-500" />}
+        {loading && <Loader2 className="h-4 w-4 animate-spin text-[var(--text-muted)]" />}
       </div>
 
       {/* Consolidado */}
       {dre?.consolidated && (
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-center">
-            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Faturamento Bruto</p>
-            <p className="text-2xl font-black text-white">{fmtBRL(dre.consolidated.faturamento_bruto)}</p>
+          <div className="bg-[var(--bg-surface)]/60 border border-[var(--border)] rounded-xl p-4 text-center">
+            <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-widest mb-1">Faturamento Bruto</p>
+            <p className="text-2xl font-black text-[var(--text-primary)]">{fmtBRL(dre.consolidated.faturamento_bruto)}</p>
           </div>
-          <div className="bg-slate-900/60 border border-amber-900/30 rounded-xl p-4 text-center">
-            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Comissão ML (~18%)</p>
-            <p className="text-2xl font-black text-amber-400">- {fmtBRL(dre.consolidated.comissao_ml)}</p>
+          <div className="bg-[var(--bg-surface)]/60 border border-[var(--brand)]/30 rounded-xl p-4 text-center">
+            <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-widest mb-1">Comissão ML (~18%)</p>
+            <p className="text-2xl font-black text-[var(--brand)]">- {fmtBRL(dre.consolidated.comissao_ml)}</p>
           </div>
-          <div className="bg-slate-900/60 border border-emerald-900/30 rounded-xl p-4 text-center">
-            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Faturamento Líquido</p>
-            <p className="text-2xl font-black text-emerald-400">{fmtBRL(dre.consolidated.faturamento_liquido)}</p>
+          <div className="bg-[var(--bg-surface)]/60 border border-[var(--accent)]/30 rounded-xl p-4 text-center">
+            <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-widest mb-1">Faturamento Líquido</p>
+            <p className="text-2xl font-black text-[var(--accent)]">{fmtBRL(dre.consolidated.faturamento_liquido)}</p>
           </div>
         </div>
       )}
@@ -451,32 +451,32 @@ function FinanceiroTab() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {dre?.accounts.map(acc => (
           <div key={acc.seller_id} className={cn(
-            "bg-slate-900/50 border rounded-xl overflow-hidden",
-            acc.error ? "border-rose-800/50" : "border-slate-800"
+            "bg-[var(--bg-surface)]/50 border rounded-xl overflow-hidden",
+            acc.error ? "border-rose-800/50" : "border-[var(--border)]"
           )}>
-            <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between">
-              <span className="font-bold text-sm text-slate-100">{acc.nickname}</span>
-              <span className="text-[10px] text-slate-500">{acc.total_orders} pedidos</span>
+            <div className="px-4 py-3 bg-[var(--bg-surface)]/80 border-b border-[var(--border)] flex items-center justify-between">
+              <span className="font-bold text-sm text-[var(--text-primary)]">{acc.nickname}</span>
+              <span className="text-[10px] text-[var(--text-muted)]">{acc.total_orders} pedidos</span>
             </div>
             {acc.error ? (
               <div className="p-4 text-sm text-rose-400">{acc.error}</div>
             ) : (
               <div className="p-4 space-y-2">
                 <div className="flex justify-between text-xs">
-                  <span className="text-slate-500">Bruto</span>
-                  <span className="text-slate-200 font-semibold">{fmtBRL(acc.faturamento_bruto)}</span>
+                  <span className="text-[var(--text-muted)]">Bruto</span>
+                  <span className="text-[var(--text-primary)] font-semibold">{fmtBRL(acc.faturamento_bruto)}</span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-slate-500">Comissão ML</span>
-                  <span className="text-amber-400">- {fmtBRL(acc.comissao_ml)}</span>
+                  <span className="text-[var(--text-muted)]">Comissão ML</span>
+                  <span className="text-[var(--brand)]">- {fmtBRL(acc.comissao_ml)}</span>
                 </div>
-                <div className="flex justify-between text-xs border-t border-slate-800 pt-2 mt-2">
-                  <span className="text-slate-400 font-bold">Líquido</span>
-                  <span className="text-emerald-400 font-bold">{fmtBRL(acc.faturamento_liquido)}</span>
+                <div className="flex justify-between text-xs border-t border-[var(--border)] pt-2 mt-2">
+                  <span className="text-[var(--text-secondary)] font-bold">Líquido</span>
+                  <span className="text-[var(--accent)] font-bold">{fmtBRL(acc.faturamento_liquido)}</span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-slate-600">Ticket médio</span>
-                  <span className="text-slate-500">{fmtBRL(acc.ticket_medio)}</span>
+                  <span className="text-[var(--text-muted)]">Ticket médio</span>
+                  <span className="text-[var(--text-muted)]">{fmtBRL(acc.ticket_medio)}</span>
                 </div>
               </div>
             )}
@@ -538,13 +538,13 @@ function NotificacoesCard() {
   const hasActive = activeSubs.length > 0;
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-      <div className="px-5 py-3.5 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between">
+    <div className="bg-[var(--bg-surface)]/50 border border-[var(--border)] rounded-xl overflow-hidden">
+      <div className="px-5 py-3.5 bg-[var(--bg-surface)]/80 border-b border-[var(--border)] flex items-center justify-between">
         <div className="flex items-center gap-2">
           {hasActive
-            ? <Bell className="h-4 w-4 text-emerald-400" />
-            : <BellOff className="h-4 w-4 text-slate-500" />}
-          <h3 className="font-bold text-sm text-slate-100">Notificações de Venda</h3>
+            ? <Bell className="h-4 w-4 text-[var(--accent)]" />
+            : <BellOff className="h-4 w-4 text-[var(--text-muted)]" />}
+          <h3 className="font-bold text-sm text-[var(--text-primary)]">Notificações de Venda</h3>
         </div>
         {hasActive && (
           <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-emerald-900/30 text-emerald-400 border border-emerald-800/50">
@@ -555,7 +555,7 @@ function NotificacoesCard() {
 
       <div className="p-5 space-y-4">
         {loading ? (
-          <div className="flex items-center gap-2 text-slate-500 text-xs">
+          <div className="flex items-center gap-2 text-[var(--text-muted)] text-xs">
             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Verificando webhooks…
           </div>
         ) : activeSubs.length > 0 ? (
@@ -563,37 +563,37 @@ function NotificacoesCard() {
             {activeSubs.map((s, i) => (
               <div key={s.id ?? i} className="flex items-center justify-between gap-3 text-xs">
                 <div className="flex items-center gap-2 min-w-0">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
-                  <span className="text-slate-400 truncate">{s.callback_url ?? s.callbackUrl ?? 'orders_v2'}</span>
+                  <CheckCircle2 className="h-3.5 w-3.5 text-[var(--accent)] flex-shrink-0" />
+                  <span className="text-[var(--text-secondary)] truncate">{s.callback_url ?? s.callbackUrl ?? 'orders_v2'}</span>
                 </div>
                 <button onClick={() => remove(s.id)}
-                  className="text-rose-500 hover:text-rose-400 text-[10px] flex-shrink-0 px-2 py-0.5 border border-rose-900/50 hover:border-rose-700 rounded transition-colors">
+                  className="text-[var(--destructive)] hover:text-[var(--destructive)] text-[10px] flex-shrink-0 px-2 py-0.5 border border-[var(--destructive)]/30 hover:border-[var(--destructive)] rounded transition-colors">
                   Remover
                 </button>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-slate-600 text-xs">Nenhum webhook ativo. Registre abaixo para receber notificações de venda no WhatsApp.</p>
+          <p className="text-[var(--text-muted)] text-xs">Nenhum webhook ativo. Registre abaixo para receber notificações de venda no WhatsApp.</p>
         )}
 
-        <div className="space-y-2 pt-2 border-t border-slate-800">
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Registrar Webhook</p>
+        <div className="space-y-2 pt-2 border-t border-[var(--border)]">
+          <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest">Registrar Webhook</p>
           <div className="flex items-center gap-2">
             <input
               type="url"
               value={callbackUrl}
               onChange={e => setCallbackUrl(e.target.value)}
               placeholder="https://seu-dominio.com/api/mercado-livre/webhook"
-              className="flex-1 bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-2 focus:border-indigo-500 outline-none placeholder:text-slate-600"
+              className="flex-1 bg-[var(--bg-muted)] border border-[var(--border)] text-[var(--text-primary)] text-xs rounded-lg px-3 py-2 focus:border-[var(--accent)] outline-none placeholder:text-[var(--text-muted)]"
             />
             <button onClick={register} disabled={saving || !callbackUrl.trim()}
-              className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg font-bold disabled:opacity-50 transition-colors flex-shrink-0">
+              className="flex items-center gap-1.5 text-xs bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white px-3 py-2 rounded-lg font-bold disabled:opacity-50 transition-colors flex-shrink-0">
               {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />}
               Ativar
             </button>
           </div>
-          <p className="text-[10px] text-slate-600 flex items-center gap-1">
+          <p className="text-[10px] text-[var(--text-muted)] flex items-center gap-1">
             <ExternalLink className="h-3 w-3" />
             ML exige HTTPS. Use um domínio com SSL ou configure Nginx + Let&apos;s Encrypt no VPS.
           </p>
@@ -644,23 +644,23 @@ function ClientesTab() {
           onChange={e => setSearch(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && fetchClientes(search)}
           placeholder="Buscar por nome, CPF ou telefone…"
-          className="flex-1 bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:border-indigo-500 outline-none placeholder:text-slate-600"
+          className="flex-1 bg-[var(--bg-muted)] border border-[var(--border)] text-[var(--text-primary)] text-sm rounded-lg px-3 py-2 focus:border-[var(--accent)] outline-none placeholder:text-[var(--text-muted)]"
         />
         <button onClick={() => fetchClientes(search)}
-          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 border border-slate-700 hover:border-slate-600 px-3 py-2 rounded-lg transition-all">
+          className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] hover:border-[var(--border-strong)] px-3 py-2 rounded-lg transition-all">
           <RefreshCw className="h-3.5 w-3.5" /> Buscar
         </button>
-        <span className="text-xs text-slate-600 flex-shrink-0">{total} cliente(s)</span>
+        <span className="text-xs text-[var(--text-muted)] flex-shrink-0">{total} cliente(s)</span>
       </div>
 
       {loading && (
-        <div className="flex items-center gap-2 text-slate-500 text-sm p-4">
+        <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm p-4">
           <Loader2 className="h-4 w-4 animate-spin" /> Carregando clientes…
         </div>
       )}
 
       {!loading && clientes.length === 0 && (
-        <div className="text-slate-600 text-sm p-12 text-center border border-dashed border-slate-800 rounded-xl">
+        <div className="text-[var(--text-muted)] text-sm p-12 text-center border border-dashed border-[var(--border)] rounded-xl">
           <Users className="h-8 w-8 mx-auto mb-3 opacity-30" />
           Nenhum cliente ainda. Os compradores aparecem aqui automaticamente após a primeira venda.
         </div>
@@ -668,18 +668,18 @@ function ClientesTab() {
 
       <div className="space-y-2">
         {clientes.map(c => (
-          <div key={c.id} className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+          <div key={c.id} className="bg-[var(--bg-surface)]/50 border border-[var(--border)] rounded-xl overflow-hidden">
             {/* Linha principal */}
             <button
               onClick={() => setExpanded(expanded === c.id ? null : c.id)}
-              className="w-full px-5 py-3.5 flex items-center gap-4 hover:bg-slate-800/30 transition-colors text-left"
+              className="w-full px-5 py-3.5 flex items-center gap-4 hover:bg-[var(--bg-muted)]/30 transition-colors text-left"
             >
-              <div className="w-8 h-8 rounded-full bg-indigo-900/50 border border-indigo-800/50 flex items-center justify-center flex-shrink-0">
-                <span className="text-indigo-400 text-xs font-bold">{(c.nome ?? '?')[0]?.toUpperCase()}</span>
+              <div className="w-8 h-8 rounded-full bg-[var(--accent-muted)] border border-[var(--accent)]/30 flex items-center justify-center flex-shrink-0">
+                <span className="text-[var(--accent)] text-xs font-bold">{(c.nome ?? '?')[0]?.toUpperCase()}</span>
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-slate-200 font-medium text-sm truncate">{c.nome ?? 'Sem nome'}</p>
+                  <p className="text-[var(--text-primary)] font-medium text-sm truncate">{c.nome ?? 'Sem nome'}</p>
                   {c.lead && (
                     <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-amber-900/40 text-amber-400 border border-amber-800/50 flex-shrink-0">
                       🔋 Lead
@@ -687,30 +687,30 @@ function ClientesTab() {
                   )}
                 </div>
                 <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                  {c.telefone && <span className="text-slate-500 text-xs">📱 {c.telefone}</span>}
-                  {c.cpf && <span className="text-slate-500 text-xs">🪪 {c.cpf}</span>}
+                  {c.telefone && <span className="text-[var(--text-muted)] text-xs">📱 {c.telefone}</span>}
+                  {c.cpf && <span className="text-[var(--text-muted)] text-xs">🪪 {c.cpf}</span>}
                 </div>
               </div>
               <div className="text-right flex-shrink-0 space-y-0.5">
-                <p className="text-emerald-400 font-bold text-sm">
+                <p className="text-[var(--accent)] font-bold text-sm">
                   R$ {Number(c.total_gasto ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
                 </p>
-                <p className="text-slate-600 text-[10px]">{c.total_pedidos} pedido(s)</p>
+                <p className="text-[var(--text-muted)] text-[10px]">{c.total_pedidos} pedido(s)</p>
               </div>
-              <div className="text-slate-600 text-[10px] text-right flex-shrink-0 hidden md:block w-24">
+              <div className="text-[var(--text-muted)] text-[10px] text-right flex-shrink-0 hidden md:block w-24">
                 {c.ultima_compra ? new Date(c.ultima_compra).toLocaleDateString('pt-BR') : '—'}
               </div>
               {expanded === c.id
-                ? <ChevronDownIcon className="h-4 w-4 text-slate-500 flex-shrink-0" />
-                : <ChevronRight className="h-4 w-4 text-slate-500 flex-shrink-0" />}
+                ? <ChevronDownIcon className="h-4 w-4 text-[var(--text-muted)] flex-shrink-0" />
+                : <ChevronRight className="h-4 w-4 text-[var(--text-muted)] flex-shrink-0" />}
             </button>
 
             {/* Histórico expandido */}
             {expanded === c.id && (
-              <div className="border-t border-slate-800 px-5 py-4 space-y-3">
+              <div className="border-t border-[var(--border)] px-5 py-4 space-y-3">
                 {/* Endereço */}
                 {c.endereco_json && (
-                  <div className="text-xs text-slate-500 flex items-start gap-1.5">
+                  <div className="text-xs text-[var(--text-muted)] flex items-start gap-1.5">
                     <span>📍</span>
                     <span>
                       {c.endereco_json.street_name}, {c.endereco_json.street_number}
@@ -721,25 +721,25 @@ function ClientesTab() {
                 )}
 
                 {/* Pedidos */}
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Histórico de Pedidos</p>
+                <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest">Histórico de Pedidos</p>
                 <div className="space-y-2">
                   {(c.pedidos ?? []).map((p, i) => (
-                    <div key={p.order_id ?? i} className="bg-slate-800/50 rounded-lg px-4 py-3 space-y-1.5">
+                    <div key={p.order_id ?? i} className="bg-[var(--bg-muted)]/50 rounded-lg px-4 py-3 space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-400 font-medium">Pedido #{p.order_id}</span>
+                        <span className="text-xs text-[var(--text-secondary)] font-medium">Pedido #{p.order_id}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-slate-600">{p.seller}</span>
-                          <span className="text-emerald-400 font-bold text-xs">
+                          <span className="text-[10px] text-[var(--text-muted)]">{p.seller}</span>
+                          <span className="text-[var(--accent)] font-bold text-xs">
                             R$ {Number(p.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </span>
                         </div>
                       </div>
                       {(p.items ?? []).map((item, j) => (
-                        <p key={j} className="text-xs text-slate-500">
+                        <p key={j} className="text-xs text-[var(--text-muted)]">
                           • {item.quantity}x {item.title}
                         </p>
                       ))}
-                      <p className="text-[10px] text-slate-700">
+                      <p className="text-[10px] text-[var(--text-muted)]">
                         {p.data ? new Date(p.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
                       </p>
                     </div>
@@ -811,9 +811,9 @@ export default function MercadoLivrePage() {
   if (loading && !stats.length) {
     return (
       <div className="p-8 space-y-6 animate-pulse">
-        <div className="h-10 w-72 bg-slate-800 rounded-lg" />
-        <div className="grid grid-cols-3 gap-4">{[1,2,3].map(i => <div key={i} className="h-6 bg-slate-800 rounded-lg" />)}</div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">{[1,2,3].map(i => <div key={i} className="h-52 bg-slate-900 border border-slate-800 rounded-xl" />)}</div>
+        <div className="h-10 w-72 bg-[var(--bg-muted)] rounded-lg" />
+        <div className="grid grid-cols-3 gap-4">{[1,2,3].map(i => <div key={i} className="h-6 bg-[var(--bg-muted)] rounded-lg" />)}</div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">{[1,2,3].map(i => <div key={i} className="h-52 bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl" />)}</div>
       </div>
     );
   }
@@ -824,13 +824,13 @@ export default function MercadoLivrePage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <ShoppingCart className="h-6 w-6 text-indigo-400" />
+            <ShoppingCart className="h-6 w-6 text-[var(--accent)]" />
             Gestão Mercado Livre
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <p className="text-[var(--text-muted)] text-sm mt-1">
             {activeCount} {activeCount === 1 ? 'loja ativa' : 'lojas ativas'}
             {lastUpdate && (
-              <span className="ml-2 text-slate-600">
+              <span className="ml-2 text-[var(--text-muted)]">
                 · Atualizado às {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
@@ -838,30 +838,30 @@ export default function MercadoLivrePage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
           {/* Filtro de período */}
-          <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-1">
             {(['today', '7d', '30d', '90d', 'custom'] as Period[]).map(p => (
               <button key={p} onClick={() => handlePeriod(p)}
                 className={cn(
                   "px-2.5 py-1 rounded text-xs font-medium transition-all",
-                  period === p ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-slate-200"
+                  period === p ? "bg-[var(--accent)] text-white" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 )}>
                 {PERIOD_LABELS[p]}
               </button>
             ))}
           </div>
           <a href="/api/mercado-livre/oauth/authorize"
-            className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 border border-indigo-700/50 hover:border-indigo-500 px-3 py-1.5 rounded-lg transition-all font-medium">
+            className="flex items-center gap-1.5 text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] border border-[var(--accent)]/50 hover:border-[var(--accent)] px-3 py-1.5 rounded-lg transition-all font-medium">
             <PlusCircle className="h-3.5 w-3.5" /> Conectar conta
           </a>
           <button onClick={() => fetchStats(period, customFrom || undefined, customTo || undefined)}
-            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 border border-slate-700 hover:border-slate-600 px-3 py-1.5 rounded-lg transition-all">
+            className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] border border-[var(--border)] hover:border-[var(--border-strong)] px-3 py-1.5 rounded-lg transition-all">
             <RefreshCw className="h-3 w-3" /> Atualizar
           </button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-slate-800 pb-0">
+      <div className="flex items-center gap-1 border-b border-[var(--border)] pb-0">
         {tabs.map(t => {
           const Icon = t.icon;
           return (
@@ -869,8 +869,8 @@ export default function MercadoLivrePage() {
               className={cn(
                 "flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px",
                 tab === t.id
-                  ? "text-indigo-400 border-indigo-500"
-                  : "text-slate-500 border-transparent hover:text-slate-300 hover:border-slate-700"
+                  ? "text-[var(--accent)] border-[var(--accent)]"
+                  : "text-[var(--text-muted)] border-transparent hover:text-[var(--text-secondary)] hover:border-[var(--border)]"
               )}>
               <Icon className="h-4 w-4" />
               {t.label}
@@ -889,15 +889,15 @@ export default function MercadoLivrePage() {
         <div className="space-y-5">
           {/* Datas personalizadas */}
           {showCustom && (
-            <div className="flex items-center gap-2 bg-slate-900/60 border border-slate-800 rounded-xl p-3">
-              <span className="text-xs text-slate-400 font-medium flex-shrink-0">De</span>
+            <div className="flex items-center gap-2 bg-[var(--bg-surface)]/60 border border-[var(--border)] rounded-xl p-3">
+              <span className="text-xs text-[var(--text-secondary)] font-medium flex-shrink-0">De</span>
               <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
-                className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:border-indigo-500 outline-none" />
-              <span className="text-xs text-slate-400 font-medium flex-shrink-0">até</span>
+                className="bg-[var(--bg-surface)] border border-[var(--border-strong)] text-[var(--text-primary)] text-xs rounded-lg px-2 py-1.5 focus:border-[var(--accent)] outline-none" />
+              <span className="text-xs text-[var(--text-secondary)] font-medium flex-shrink-0">até</span>
               <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
-                className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:border-indigo-500 outline-none" />
+                className="bg-[var(--bg-surface)] border border-[var(--border-strong)] text-[var(--text-primary)] text-xs rounded-lg px-2 py-1.5 focus:border-[var(--accent)] outline-none" />
               <button onClick={() => fetchStats('custom', customFrom || undefined, customTo || undefined)} disabled={!customFrom}
-                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-all">
+                className="px-3 py-1.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-all">
                 Buscar
               </button>
             </div>
@@ -905,22 +905,22 @@ export default function MercadoLivrePage() {
 
           {activeCount > 0 && (
             <div className={cn("grid grid-cols-3 gap-3 transition-opacity duration-200", loading && "opacity-40")}>
-              <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-center">
-                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1 flex items-center justify-center gap-1">
+              <div className="bg-[var(--bg-surface)]/60 border border-[var(--border)] rounded-xl p-4 text-center">
+                <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-widest mb-1 flex items-center justify-center gap-1">
                   Vendas — {periodLabel}
                   {loading && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
                 </p>
                 <p className="text-3xl font-black text-white">{fmt(totalVendas)}</p>
               </div>
-              <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-center">
-                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1 flex items-center justify-center gap-1">
+              <div className="bg-[var(--bg-surface)]/60 border border-[var(--border)] rounded-xl p-4 text-center">
+                <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-widest mb-1 flex items-center justify-center gap-1">
                   Faturamento — {periodLabel}
                   {loading && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
                 </p>
                 <p className="text-2xl font-black text-emerald-400">{fmtBRL(totalRevenue)}</p>
               </div>
-              <div className={cn("border rounded-xl p-4 text-center", totalPerguntas > 0 ? "bg-red-900/20 border-red-800/50" : "bg-slate-900/60 border-slate-800")}>
-                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Perguntas Pendentes</p>
+              <div className={cn("border rounded-xl p-4 text-center", totalPerguntas > 0 ? "bg-[var(--destructive)]/20 border-[var(--destructive)]/50" : "bg-[var(--bg-surface)]/60 border-[var(--border)]")}>
+                <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-widest mb-1">Perguntas Pendentes</p>
                 <p className={cn("text-3xl font-black", totalPerguntas > 0 ? "text-red-400" : "text-emerald-400")}>{totalPerguntas}</p>
               </div>
             </div>

@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
             p.me_order_id, p.me_tracking_code, p.me_label_url, p.me_status,
             p.me_carrier, p.me_cost, p.me_delivery_address,
             p.created_at, p.updated_at,
-            pq.status AS print_status, pq.has_label, pq.buyer_name, pq.error_msg
+            pq.status AS print_status, pq.has_label, COALESCE(p.buyer_name, pq.buyer_name) AS buyer_name, pq.error_msg
      FROM ml_pedidos p
      LEFT JOIN print_queue pq ON pq.ml_order_id = p.ml_order_id
      ${where}

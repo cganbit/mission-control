@@ -59,12 +59,12 @@ export default function SquadsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Squads</h1>
-          <p className="text-gray-400 text-sm mt-1">Cada squad é um projeto/cliente isolado</p>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Squads</h1>
+          <p className="text-[var(--text-secondary)] text-sm mt-1">Cada squad é um projeto/cliente isolado</p>
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+          className="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] text-sm font-medium rounded-lg transition-colors"
         >
           + Novo Squad
         </button>
@@ -72,22 +72,22 @@ export default function SquadsPage() {
 
       {/* Create form */}
       {showForm && (
-        <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
-          <h2 className="font-semibold text-white mb-4">Criar Squad</h2>
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-xl p-6">
+          <h2 className="font-semibold text-[var(--text-primary)] mb-4">Criar Squad</h2>
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Nome *</label>
+                <label className="block text-sm text-[var(--text-secondary)] mb-1">Nome *</label>
                 <input
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 bg-[var(--bg-muted)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                   placeholder="Ex: Paraguai Arbitrage Engine"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Cor</label>
+                <label className="block text-sm text-[var(--text-secondary)] mb-1">Cor</label>
                 <div className="flex gap-2">
                   {COLORS.map(c => (
                     <button
@@ -102,21 +102,21 @@ export default function SquadsPage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Descrição</label>
+              <label className="block text-sm text-[var(--text-secondary)] mb-1">Descrição</label>
               <input
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-[var(--bg-muted)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 placeholder="Breve descrição do projeto"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Missão</label>
+              <label className="block text-sm text-[var(--text-secondary)] mb-1">Missão</label>
               <textarea
                 value={form.mission}
                 onChange={e => setForm(f => ({ ...f, mission: e.target.value }))}
                 rows={2}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                className="w-full px-3 py-2 bg-[var(--bg-muted)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] resize-none"
                 placeholder="Qual o objetivo principal deste squad?"
               />
             </div>
@@ -124,14 +124,14 @@ export default function SquadsPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors"
+                className="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:bg-[var(--bg-muted)] text-[var(--text-primary)] text-sm font-medium rounded-lg transition-colors"
               >
                 {saving ? 'Criando...' : 'Criar Squad'}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-lg transition-colors"
+                className="px-4 py-2 bg-[var(--bg-muted)] hover:bg-[var(--bg-muted)] text-[var(--text-primary)] text-sm rounded-lg transition-colors"
               >
                 Cancelar
               </button>
@@ -142,37 +142,37 @@ export default function SquadsPage() {
 
       {/* Squads grid */}
       {loading ? (
-        <div className="text-center text-gray-500 py-12">Carregando...</div>
+        <div className="text-center text-[var(--text-muted)] py-12">Carregando...</div>
       ) : squads.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">
+        <div className="text-center py-16 text-[var(--text-muted)]">
           <div className="text-4xl mb-3">🛡️</div>
           <p>Nenhum squad criado ainda.</p>
-          <button onClick={() => setShowForm(true)} className="mt-3 text-indigo-400 hover:text-indigo-300 text-sm">
+          <button onClick={() => setShowForm(true)} className="mt-3 text-[var(--accent)] hover:text-[var(--accent-hover)] text-sm">
             Criar primeiro squad →
           </button>
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-4">
           {squads.map(squad => (
-            <div key={squad.id} className="bg-gray-900 rounded-xl border border-gray-800 p-5 hover:border-gray-700 transition-colors">
+            <div key={squad.id} className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border)] p-5 hover:border-[var(--border-strong)] transition-colors">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: squad.color }} />
-                  <h3 className="font-semibold text-white text-sm">{squad.name}</h3>
+                  <h3 className="font-semibold text-[var(--text-primary)] text-sm">{squad.name}</h3>
                 </div>
                 <button
                   onClick={() => handleDelete(squad.id)}
-                  className="text-gray-600 hover:text-red-400 text-xs transition-colors"
+                  className="text-[var(--text-muted)] hover:text-[var(--destructive)] text-xs transition-colors"
                 >
                   ✕
                 </button>
               </div>
 
               {squad.description && (
-                <p className="text-gray-400 text-xs mb-3 line-clamp-2">{squad.description}</p>
+                <p className="text-[var(--text-secondary)] text-xs mb-3 line-clamp-2">{squad.description}</p>
               )}
 
-              <div className="flex gap-4 text-xs text-gray-500 mb-3">
+              <div className="flex gap-4 text-xs text-[var(--text-muted)] mb-3">
                 <span>🤖 {squad.agent_count} agentes</span>
                 <span>📋 {squad.open_tasks} abertas</span>
                 {squad.sprint_count > 0 && <span>🏃 {squad.sprint_count} sprints</span>}
@@ -180,25 +180,25 @@ export default function SquadsPage() {
 
               {Number(squad.total_tasks) > 0 && (
                 <div className="mb-4">
-                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <div className="flex justify-between text-xs text-[var(--text-muted)] mb-1">
                     <span>Progresso geral</span>
-                    <span className="font-semibold text-gray-300">
+                    <span className="font-semibold text-[var(--text-primary)]">
                       {Math.round(Number(squad.done_tasks) / Number(squad.total_tasks) * 100)}%
                     </span>
                   </div>
-                  <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-[var(--bg-muted)] rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-indigo-500 rounded-full transition-all"
+                      className="h-full bg-[var(--accent)] rounded-full transition-all"
                       style={{ width: `${Math.round(Number(squad.done_tasks) / Number(squad.total_tasks) * 100)}%` }}
                     />
                   </div>
-                  <p className="text-[10px] text-gray-600 mt-1">{squad.done_tasks}/{squad.total_tasks} tasks concluídas</p>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1">{squad.done_tasks}/{squad.total_tasks} tasks concluídas</p>
                 </div>
               )}
 
               <Link
                 href={`/squads/${squad.id}`}
-                className="block w-full text-center py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded-lg transition-colors"
+                className="block w-full text-center py-1.5 bg-[var(--bg-muted)] hover:bg-[var(--bg-muted)] text-[var(--text-primary)] text-xs rounded-lg transition-colors"
               >
                 Ver Squad →
               </Link>

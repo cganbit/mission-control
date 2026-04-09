@@ -125,11 +125,11 @@ function formatBRL(v: any) {
   return isNaN(n) ? 'R$ 0,00' : `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`; 
 }
 function margemColor(m: number | null) {
-  if (m == null) return 'text-gray-400';
-  if (m >= 30) return 'text-emerald-400';
-  if (m >= 20) return 'text-green-400';
-  if (m >= 10) return 'text-yellow-400';
-  return 'text-red-400';
+  if (m == null) return 'text-[var(--text-secondary)]';
+  if (m >= 30) return 'text-[var(--success)]';
+  if (m >= 20) return 'text-[var(--success)]';
+  if (m >= 10) return 'text-[var(--warning)]';
+  return 'text-[var(--destructive)]';
 }
 
 function cn(...inputs: any[]) {
@@ -162,54 +162,54 @@ function CarrinhoDrawer({
   return createPortal(
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/60" onClick={onClose} />
-      <div className="w-[480px] bg-gray-900 border-l border-gray-700 flex flex-col h-full overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
+      <div className="w-[480px] bg-[var(--bg-base)] border-l border-[var(--border-default)] flex flex-col h-full overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-default)]">
           <div>
-            <h2 className="text-white font-bold text-lg">🛒 Lista de Compras</h2>
-            <p className="text-gray-400 text-xs">{items.length} produto(s) — {formatUSD(totalUSD)} total</p>
+            <h2 className="text-[var(--text-primary)] font-bold text-lg">🛒 Lista de Compras</h2>
+            <p className="text-[var(--text-secondary)] text-xs">{items.length} produto(s) — {formatUSD(totalUSD)} total</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">✕</button>
+          <button onClick={onClose} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xl">✕</button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {items.length === 0 && (
-            <p className="text-gray-500 text-center mt-10">Carrinho vazio</p>
+            <p className="text-[var(--text-muted)] text-center mt-10">Carrinho vazio</p>
           )}
           {items.map(item => (
-            <div key={item.id} className="bg-gray-800 rounded-lg p-3">
+            <div key={item.id} className="bg-[var(--bg-surface)] rounded-lg p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm font-medium truncate">{item.titulo_amigavel}</p>
-                  <p className="text-gray-400 text-xs">{item.fornecedor_nome} — {formatUSD(item.preco_usd)}/un</p>
+                  <p className="text-[var(--text-primary)] text-sm font-medium truncate">{item.titulo_amigavel}</p>
+                  <p className="text-[var(--text-secondary)] text-xs">{item.fornecedor_nome} — {formatUSD(item.preco_usd)}/un</p>
                   {item.preco_ml_real && (
                     <p className="text-xs mt-0.5">
                       ML: {formatBRL(item.preco_ml_real)}
-                      {item.has_catalog && <span className="ml-1 text-emerald-400 font-semibold">CATÁLOGO</span>}
+                      {item.has_catalog && <span className="ml-1 text-[var(--success)] font-semibold">CATÁLOGO</span>}
                       {item.margem_pct != null && <span className={cn("ml-1", margemColor(item.margem_pct))}>{item.margem_pct}%</span>}
                     </p>
                   )}
                 </div>
-                <button onClick={() => onRemove(item.id)} className="text-gray-600 hover:text-red-400 text-sm">🗑</button>
+                <button onClick={() => onRemove(item.id)} className="text-[var(--text-muted)] hover:text-[var(--destructive)] text-sm">🗑</button>
               </div>
               <div className="flex items-center gap-3 mt-2">
                 <div className="flex items-center gap-1">
                   <button onClick={() => onUpdateQty(item.id, Math.max(1, item.qty - 1))}
-                    className="w-6 h-6 rounded bg-gray-700 text-white text-xs hover:bg-gray-600">−</button>
-                  <span className="text-white text-sm w-6 text-center">{item.qty}</span>
+                    className="w-6 h-6 rounded bg-[var(--bg-muted)] text-[var(--text-primary)] text-xs hover:bg-white/10">−</button>
+                  <span className="text-[var(--text-primary)] text-sm w-6 text-center">{item.qty}</span>
                   <button onClick={() => onUpdateQty(item.id, item.qty + 1)}
-                    className="w-6 h-6 rounded bg-gray-700 text-white text-xs hover:bg-gray-600">+</button>
+                    className="w-6 h-6 rounded bg-[var(--bg-muted)] text-[var(--text-primary)] text-xs hover:bg-white/10">+</button>
                 </div>
-                <span className="text-gray-400 text-xs">= {formatUSD(item.preco_usd * item.qty)}</span>
+                <span className="text-[var(--text-secondary)] text-xs">= {formatUSD(item.preco_usd * item.qty)}</span>
                 <div className="ml-auto flex gap-1">
                   {['pendente','comprado','descartado'].map(s => (
                     <button key={s} onClick={() => onUpdateStatus(item.id, s)}
                       className={cn(
                         "text-[10px] px-2 py-0.5 rounded font-medium transition-colors",
                         item.status === s
-                          ? s === 'comprado' ? 'bg-emerald-600 text-white'
-                            : s === 'descartado' ? 'bg-red-700 text-white'
-                            : 'bg-indigo-600 text-white'
-                          : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                          ? s === 'comprado' ? 'bg-[var(--accent)] text-white'
+                            : s === 'descartado' ? 'bg-[var(--destructive)] text-white'
+                            : 'bg-[var(--accent)] text-white'
+                          : 'bg-[var(--bg-muted)] text-[var(--text-secondary)] hover:bg-white/10'
                       )}>
                       {s}
                     </button>
@@ -220,12 +220,12 @@ function CarrinhoDrawer({
           ))}
         </div>
 
-        <div className="border-t border-gray-700 p-4">
+        <div className="border-t border-[var(--border-default)] p-4">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Total estimado</span>
-            <span className="text-white font-bold">{formatUSD(totalUSD)}</span>
+            <span className="text-[var(--text-secondary)]">Total estimado</span>
+            <span className="text-[var(--text-primary)] font-bold">{formatUSD(totalUSD)}</span>
           </div>
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
+          <div className="flex justify-between text-xs text-[var(--text-muted)] mt-1">
             <span>Com impostos (15%)</span>
             <span>≈ {formatBRL(totalUSD * cambio * 1.15)}</span>
           </div>
@@ -260,36 +260,36 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative z-10 bg-gray-900 border border-gray-700 rounded-xl w-[400px] p-6 space-y-4">
-        <h2 className="text-white font-bold text-lg">⚙️ Configurações de Alertas</h2>
+      <div className="relative z-10 bg-[var(--bg-base)] border border-[var(--border-default)] rounded-xl w-[400px] p-6 space-y-4">
+        <h2 className="text-[var(--text-primary)] font-bold text-lg">⚙️ Configurações de Alertas</h2>
 
         <div>
-          <label className="text-gray-400 text-xs mb-1 block">Número WhatsApp (ex: 5511961975664)</label>
+          <label className="text-[var(--text-secondary)] text-xs mb-1 block">Número WhatsApp (ex: 5511961975664)</label>
           <input value={settings.whatsapp_number}
             onChange={e => setSettings(s => ({ ...s, whatsapp_number: e.target.value }))}
-            className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+            className="w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm"
             placeholder="5511999999999" />
         </div>
 
         <div>
-          <label className="text-gray-400 text-xs mb-1 block">Margem mínima para alertas automáticos (%)</label>
+          <label className="text-[var(--text-secondary)] text-xs mb-1 block">Margem mínima para alertas automáticos (%)</label>
           <input type="number" min={0} max={100} value={settings.min_margem}
             onChange={e => setSettings(s => ({ ...s, min_margem: parseFloat(e.target.value) || 0 }))}
-            className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm" />
+            className="w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm" />
         </div>
 
         <div className="flex items-center gap-3">
           <button onClick={() => setSettings(s => ({ ...s, whatsapp_alerts_global: !s.whatsapp_alerts_global }))}
-            className={cn("w-10 h-6 rounded-full transition-colors", settings.whatsapp_alerts_global ? 'bg-emerald-600' : 'bg-gray-600')}>
+            className={cn("w-10 h-6 rounded-full transition-colors", settings.whatsapp_alerts_global ? 'bg-[var(--accent)]' : 'bg-[var(--bg-muted)]')}>
             <div className={cn("w-4 h-4 bg-white rounded-full mx-1 transition-transform", settings.whatsapp_alerts_global ? 'translate-x-4' : '')} />
           </button>
-          <span className="text-gray-300 text-sm">Alertas automáticos via WhatsApp</span>
+          <span className="text-[var(--text-secondary)] text-sm">Alertas automáticos via WhatsApp</span>
         </div>
 
         <div className="flex gap-3 pt-2">
-          <button onClick={onClose} className="flex-1 px-4 py-2 rounded-lg bg-gray-700 text-gray-300 text-sm hover:bg-gray-600">Cancelar</button>
+          <button onClick={onClose} className="flex-1 px-4 py-2 rounded-lg bg-[var(--bg-muted)] text-[var(--text-secondary)] text-sm hover:bg-white/10">Cancelar</button>
           <button onClick={save} disabled={saving}
-            className="flex-1 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500 disabled:opacity-50">
+            className="flex-1 px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-sm hover:bg-[var(--accent-hover)] disabled:opacity-50">
             {saving ? 'Salvando...' : 'Salvar'}
           </button>
         </div>
@@ -308,8 +308,8 @@ function CatalogUrlList({ urls, onChange }: { urls: string[]; onChange: (urls: s
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-gray-400 text-xs">URLs de Catálogos ML <span className="text-gray-600">(opcional)</span></label>
-        <button type="button" onClick={add} className="text-indigo-400 hover:text-indigo-300 text-xs">+ URL</button>
+        <label className="text-[var(--text-secondary)] text-xs">URLs de Catálogos ML <span className="text-[var(--text-muted)]">(opcional)</span></label>
+        <button type="button" onClick={add} className="text-[var(--accent)] hover:text-[var(--accent-hover)] text-xs">+ URL</button>
       </div>
       {urls.map((u, i) => {
         const id = extractId(u);
@@ -317,16 +317,16 @@ function CatalogUrlList({ urls, onChange }: { urls: string[]; onChange: (urls: s
           <div key={i} className="flex gap-2 items-center">
             <div className="flex-1">
               <input value={u} onChange={e => update(i, e.target.value)}
-                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm"
                 placeholder="https://www.mercadolivre.com.br/p/MLB..." />
-              {id && <p className="text-indigo-400 text-[10px] mt-0.5 font-mono">{id}</p>}
-              {u && !id && <p className="text-yellow-500 text-[10px] mt-0.5">URL inválida</p>}
+              {id && <p className="text-[var(--accent)] text-[10px] mt-0.5 font-mono">{id}</p>}
+              {u && !id && <p className="text-[var(--warning)] text-[10px] mt-0.5">URL inválida</p>}
             </div>
-            <button type="button" onClick={() => remove(i)} className="text-gray-600 hover:text-red-400 text-lg leading-none mt-[-8px]">✕</button>
+            <button type="button" onClick={() => remove(i)} className="text-[var(--text-muted)] hover:text-[var(--destructive)] text-lg leading-none mt-[-8px]">✕</button>
           </div>
         );
       })}
-      {urls.length === 0 && <p className="text-gray-600 text-xs italic">Clique em "+ URL" para adicionar catálogos</p>}
+      {urls.length === 0 && <p className="text-[var(--text-muted)] text-xs italic">Clique em "+ URL" para adicionar catálogos</p>}
     </div>
   );
 }
@@ -403,19 +403,19 @@ function EditProductModal({ item, onClose, onSaved }: { item: Oportunidade; onCl
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative z-10 bg-gray-900 border border-gray-700 rounded-xl w-[540px] max-h-[85vh] flex flex-col">
+      <div className="relative z-10 bg-[var(--bg-base)] border border-[var(--border-default)] rounded-xl w-[540px] max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-3">
-          <h2 className="text-white font-bold text-base">✏️ Editar Produto</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+          <h2 className="text-[var(--text-primary)] font-bold text-base">✏️ Editar Produto</h2>
+          <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl leading-none">×</button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-700 px-6">
+        <div className="flex border-b border-[var(--border-default)] px-6">
           {(['info', 'catalogs'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={cn("px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
-                tab === t ? "border-indigo-500 text-indigo-400" : "border-transparent text-gray-500 hover:text-gray-300")}>
+                tab === t ? "border-[var(--accent)] text-[var(--accent)]" : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]")}>
               {t === 'info' ? '📋 Informações' : `📦 Catálogos (${catalogs.length})`}
             </button>
           ))}
@@ -425,27 +425,27 @@ function EditProductModal({ item, onClose, onSaved }: { item: Oportunidade; onCl
           {tab === 'info' ? (
             <>
               <div>
-                <label className="text-gray-400 text-xs mb-1 block">Título</label>
+                <label className="text-[var(--text-secondary)] text-xs mb-1 block">Título</label>
                 <input value={titulo} onChange={e => setTitulo(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm" />
-                <p className="text-gray-600 text-[10px] mt-1 font-mono">fingerprint: {item.fingerprint}</p>
+                  className="w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm" />
+                <p className="text-[var(--text-muted)] text-[10px] mt-1 font-mono">fingerprint: {item.fingerprint}</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-gray-400 text-xs mb-1 block">Preço USD</label>
+                  <label className="text-[var(--text-secondary)] text-xs mb-1 block">Preço USD</label>
                   <input type="number" min={0} step={0.01} value={precoUsd} onChange={e => setPrecoUsd(e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm" />
+                    className="w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm" />
                 </div>
                 <div>
-                  <label className="text-gray-400 text-xs mb-1 block">Fornecedor</label>
+                  <label className="text-[var(--text-secondary)] text-xs mb-1 block">Fornecedor</label>
                   <input value={fornecedor} onChange={e => setFornecedor(e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm" />
+                    className="w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm" />
                 </div>
               </div>
               <div>
-                <label className="text-gray-400 text-xs mb-1 block">Categoria</label>
+                <label className="text-[var(--text-secondary)] text-xs mb-1 block">Categoria</label>
                 <select value={categoria} onChange={e => setCategoria(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                  className="w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm">
                   {CATEGORIAS.map(c => <option key={c} value={c}>{CATEGORIA_EMOJI[c]} {c}</option>)}
                 </select>
               </div>
@@ -453,61 +453,61 @@ function EditProductModal({ item, onClose, onSaved }: { item: Oportunidade; onCl
           ) : (
             <>
               <div className="space-y-1.5">
-                {catalogs.length === 0 && <p className="text-gray-600 text-xs italic py-2">Nenhum catálogo. Adicione abaixo ou clique em ⚡ na tabela.</p>}
+                {catalogs.length === 0 && <p className="text-[var(--text-muted)] text-xs italic py-2">Nenhum catálogo. Adicione abaixo ou clique em ⚡ na tabela.</p>}
                 {catalogs.map(c => (
-                  <div key={c.catalog_id} className={cn("flex items-center gap-2 px-3 py-2.5 rounded-lg", c.is_winner ? "bg-indigo-500/10 border border-indigo-500/30" : "bg-gray-800")}>
+                  <div key={c.catalog_id} className={cn("flex items-center gap-2 px-3 py-2.5 rounded-lg", c.is_winner ? "bg-[var(--accent-muted)] border border-[var(--accent)]/30" : "bg-[var(--bg-surface)]")}>
                     <button onClick={() => !c.is_winner && pinCatalog(c.catalog_id)}
-                      className={cn("text-base shrink-0 transition-colors", c.is_winner ? "cursor-default" : "text-gray-500 hover:text-yellow-400")}
+                      className={cn("text-base shrink-0 transition-colors", c.is_winner ? "cursor-default" : "text-[var(--text-muted)] hover:text-[var(--warning)]")}
                       title={c.is_winner ? "Principal" : "Definir como principal"}>
                       {c.is_winner ? '⭐' : '☆'}
                     </button>
                     <div className="flex-1 min-w-0">
-                      <p className="text-white text-xs truncate">{c.title}</p>
-                      <p className="text-gray-500 font-mono text-[10px]">{c.catalog_id}</p>
+                      <p className="text-[var(--text-primary)] text-xs truncate">{c.title}</p>
+                      <p className="text-[var(--text-muted)] font-mono text-[10px]">{c.catalog_id}</p>
                     </div>
                     <div className="text-right text-[11px] shrink-0 space-y-0.5">
-                      {c.price_premium ? <div className="flex items-center gap-1"><span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-600 text-white text-[9px] font-bold">P</span><span className="text-gray-300">{c.price_premium.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div> : null}
-                      {c.price_classic ? <div className="flex items-center gap-1"><span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-orange-600 text-white text-[9px] font-bold">C</span><span className="text-gray-400">{c.price_classic.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div> : null}
-                      {!c.price_premium && !c.price_classic && <div className="text-gray-600 text-[10px]">sem preço</div>}
+                      {c.price_premium ? <div className="flex items-center gap-1"><span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-600 text-white text-[9px] font-bold">P</span><span className="text-[var(--text-secondary)]">{c.price_premium.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div> : null}
+                      {c.price_classic ? <div className="flex items-center gap-1"><span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-orange-600 text-white text-[9px] font-bold">C</span><span className="text-[var(--text-secondary)]">{c.price_classic.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div> : null}
+                      {!c.price_premium && !c.price_classic && <div className="text-[var(--text-muted)] text-[10px]">sem preço</div>}
                     </div>
                     <button onClick={() => removeCatalog(c.catalog_id)} disabled={removingId === c.catalog_id}
-                      className="text-gray-600 hover:text-red-400 transition-colors disabled:opacity-40 text-base leading-none ml-1 shrink-0"
+                      className="text-[var(--text-muted)] hover:text-[var(--destructive)] transition-colors disabled:opacity-40 text-base leading-none ml-1 shrink-0"
                       title="Remover">
                       {removingId === c.catalog_id ? '⏳' : '✕'}
                     </button>
                   </div>
                 ))}
               </div>
-              <div className="border-t border-gray-700/50 pt-3 space-y-2">
-                <label className="text-gray-400 text-xs block">Adicionar catálogo por URL</label>
+              <div className="border-t border-[var(--border-default)]/50 pt-3 space-y-2">
+                <label className="text-[var(--text-secondary)] text-xs block">Adicionar catálogo por URL</label>
                 <div className="flex gap-2">
                   <input value={newUrl} onChange={e => setNewUrl(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && addCatalog()}
-                    className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                    className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm"
                     placeholder="https://www.mercadolivre.com.br/p/MLB56513855" />
                   <button onClick={addCatalog} disabled={adding || !newUrl.trim()}
-                    className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500 disabled:opacity-50 whitespace-nowrap">
+                    className="px-3 py-2 rounded-lg bg-[var(--accent)] text-white text-sm hover:bg-[var(--accent-hover)] disabled:opacity-50 whitespace-nowrap">
                     {adding ? '...' : '+ Add'}
                   </button>
                 </div>
               </div>
             </>
           )}
-          {error && <p className="text-red-400 text-xs">{error}</p>}
+          {error && <p className="text-[var(--destructive)] text-xs">{error}</p>}
         </div>
 
-        <div className="flex gap-3 px-6 py-4 border-t border-gray-700">
-          <button onClick={onClose} className="flex-1 px-4 py-2 rounded-lg bg-gray-700 text-gray-300 text-sm hover:bg-gray-600">
+        <div className="flex gap-3 px-6 py-4 border-t border-[var(--border-default)]">
+          <button onClick={onClose} className="flex-1 px-4 py-2 rounded-lg bg-[var(--bg-muted)] text-[var(--text-secondary)] text-sm hover:bg-white/10">
             {tab === 'catalogs' ? 'Fechar e atualizar' : 'Cancelar'}
           </button>
           {tab === 'info' && (
             <button onClick={saveInfo} disabled={saving}
-              className="flex-1 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-500 disabled:opacity-50">
+              className="flex-1 px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-sm hover:bg-[var(--accent-hover)] disabled:opacity-50">
               {saving ? 'Salvando...' : 'Salvar'}
             </button>
           )}
           {tab === 'catalogs' && (
-            <button onClick={onSaved} className="flex-1 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500">
+            <button onClick={onSaved} className="flex-1 px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-sm hover:bg-[var(--accent-hover)]">
               Aplicar
             </button>
           )}
@@ -561,48 +561,48 @@ function NovoProdutoModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative z-10 bg-gray-900 border border-gray-700 rounded-xl w-[480px] max-h-[85vh] flex flex-col p-6 gap-4 overflow-y-auto">
-        <h2 className="text-white font-bold text-lg">+ Novo Produto</h2>
+      <div className="relative z-10 bg-[var(--bg-base)] border border-[var(--border-default)] rounded-xl w-[480px] max-h-[85vh] flex flex-col p-6 gap-4 overflow-y-auto">
+        <h2 className="text-[var(--text-primary)] font-bold text-lg">+ Novo Produto</h2>
 
         <div>
-          <label className="text-gray-400 text-xs mb-1 block">Título do produto</label>
+          <label className="text-[var(--text-secondary)] text-xs mb-1 block">Título do produto</label>
           <input value={titulo} onChange={e => setTitulo(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+            className="w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm"
             placeholder="Apple AirPods Pro 3rd Generation" />
-          {titulo && <p className="text-gray-600 text-[10px] mt-1 font-mono">fingerprint: {fingerprint}</p>}
+          {titulo && <p className="text-[var(--text-muted)] text-[10px] mt-1 font-mono">fingerprint: {fingerprint}</p>}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-gray-400 text-xs mb-1 block">Preço USD</label>
+            <label className="text-[var(--text-secondary)] text-xs mb-1 block">Preço USD</label>
             <input type="number" min={0} step={0.01} value={precoUsd} onChange={e => setPrecoUsd(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+              className="w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm"
               placeholder="150.00" />
           </div>
           <div>
-            <label className="text-gray-400 text-xs mb-1 block">Fornecedor</label>
+            <label className="text-[var(--text-secondary)] text-xs mb-1 block">Fornecedor</label>
             <input value={fornecedor} onChange={e => setFornecedor(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+              className="w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm"
               placeholder="Manual" />
           </div>
         </div>
 
         <div>
-          <label className="text-gray-400 text-xs mb-1 block">Categoria</label>
+          <label className="text-[var(--text-secondary)] text-xs mb-1 block">Categoria</label>
           <select value={categoria} onChange={e => setCategoria(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+            className="w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm">
             {CATEGORIAS.map(c => <option key={c} value={c}>{CATEGORIA_EMOJI[c]} {c}</option>)}
           </select>
         </div>
 
         <CatalogUrlList urls={catalogUrls} onChange={setCatalogUrls} />
 
-        {error && <p className="text-red-400 text-xs">{error}</p>}
+        {error && <p className="text-[var(--destructive)] text-xs">{error}</p>}
 
         <div className="flex gap-3 pt-2">
-          <button onClick={onClose} className="flex-1 px-4 py-2 rounded-lg bg-gray-700 text-gray-300 text-sm hover:bg-gray-600">Cancelar</button>
+          <button onClick={onClose} className="flex-1 px-4 py-2 rounded-lg bg-[var(--bg-muted)] text-[var(--text-secondary)] text-sm hover:bg-white/10">Cancelar</button>
           <button onClick={save} disabled={saving}
-            className="flex-1 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-500 disabled:opacity-50">
+            className="flex-1 px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-sm hover:bg-[var(--accent-hover)] disabled:opacity-50">
             {saving ? 'Salvando...' : 'Cadastrar'}
           </button>
         </div>
@@ -1002,33 +1002,33 @@ export default function ParaguaiPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">🇵🇾 Oportunidades Paraguai</h1>
-          <p className="text-gray-400 text-sm mt-0.5 flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">🇵🇾 Oportunidades Paraguai</h1>
+          <p className="text-[var(--text-secondary)] text-sm mt-0.5 flex items-center gap-3">
             <span>{loading ? 'Carregando...' : `${items.length} produto(s) encontrado(s)`}</span>
             <button
               onClick={() => fetchCambio(true)}
               disabled={cambioLoading}
               title="Atualizar cotação do dólar"
               className={cn("text-xs px-2 py-0.5 rounded-full border transition-opacity cursor-pointer hover:opacity-80 disabled:opacity-50",
-                cambioSource === 'live' ? 'text-emerald-400 border-emerald-800 bg-emerald-950/40' : 'text-yellow-500 border-yellow-800 bg-yellow-950/40')}>
+                cambioSource === 'live' ? 'text-[var(--success)] border-emerald-800 bg-[var(--success-muted)]' : 'text-[var(--warning)] border-yellow-800 bg-[var(--warning-muted)]')}>
               {cambioLoading ? '⏳' : '💱'} USD {cambioSource === 'live' ? '=' : '≈'} {formatBRL(cambio)}
             </button>
           </p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowNovoProduto(true)}
-            className="px-3 py-2 rounded-lg bg-emerald-700 text-white text-sm hover:bg-emerald-600 flex items-center gap-2">
+            className="px-3 py-2 rounded-lg bg-[var(--accent)] text-white text-sm hover:bg-[var(--accent-hover)] flex items-center gap-2">
             + Produto
           </button>
           <button onClick={() => setShowSettings(true)}
-            className="px-3 py-2 rounded-lg bg-gray-800 text-gray-300 text-sm hover:bg-gray-700 flex items-center gap-2">
+            className="px-3 py-2 rounded-lg bg-[var(--bg-surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--bg-muted)] flex items-center gap-2">
             ⚙️ Alertas
           </button>
           <button onClick={() => setShowCarrinho(true)}
-            className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500 flex items-center gap-2">
+            className="px-3 py-2 rounded-lg bg-[var(--accent)] text-white text-sm hover:bg-[var(--accent-hover)] flex items-center gap-2">
             🛒 Carrinho
             {pendentes.length > 0 && (
-              <span className="bg-white text-indigo-700 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              <span className="bg-white text-[var(--bg-base)] text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                 {pendentes.length}
               </span>
             )}
@@ -1037,30 +1037,30 @@ export default function ParaguaiPage() {
       </div>
 
       {/* Filters & View Toggle */}
-      <div className="flex flex-col gap-3 p-3 bg-gray-900 rounded-xl border border-gray-800">
+      <div className="flex flex-col gap-3 p-3 bg-[var(--bg-base)] rounded-xl border border-[var(--border-default)]">
         <div className="flex flex-wrap gap-2 items-center">
           <div className="relative flex-1 min-w-[200px] max-w-md">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">🔍</span>
-            <input 
-              type="text" 
-              placeholder="Pesquisar produto, marca ou categoria..." 
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">🔍</span>
+            <input
+              type="text"
+              placeholder="Pesquisar produto, marca ou categoria..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-9 pr-4 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 placeholder:text-gray-600"
+              className="w-full bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg pl-9 pr-4 py-1.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] placeholder:text-[var(--text-muted)]"
             />
           </div>
 
-          <div className="flex bg-gray-800 p-1 rounded-lg border border-gray-700 mx-2">
-            <button 
+          <div className="flex bg-[var(--bg-surface)] p-1 rounded-lg border border-[var(--border-default)] mx-2">
+            <button
               onClick={() => setViewMode('cards')}
-              className={cn("p-1.5 rounded-md transition-all", viewMode === 'cards' ? "bg-indigo-600 text-white shadow-lg" : "text-gray-500 hover:text-gray-300")}
+              className={cn("p-1.5 rounded-md transition-all", viewMode === 'cards' ? "bg-[var(--accent)] text-white shadow-lg" : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]")}
               title="Cards"
             >
               📑
             </button>
-            <button 
+            <button
               onClick={() => setViewMode('list')}
-              className={cn("p-1.5 rounded-md transition-all", viewMode === 'list' ? "bg-indigo-600 text-white shadow-lg" : "text-gray-500 hover:text-gray-300")}
+              className={cn("p-1.5 rounded-md transition-all", viewMode === 'list' ? "bg-[var(--accent)] text-white shadow-lg" : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]")}
               title="Lista"
             >
               ☰
@@ -1076,25 +1076,25 @@ export default function ParaguaiPage() {
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-semibold transition-all",
                   showFilters || activeCount > 0
-                    ? "bg-indigo-600/20 border-indigo-500 text-indigo-300"
-                    : "bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200"
+                    ? "bg-[var(--accent-muted)] border-[var(--accent)] text-[var(--accent)]"
+                    : "bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 )}
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M6 8h12M9 12h6M11 16h2" /></svg>
                 Filtros
-                {activeCount > 0 && <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-indigo-500 text-white text-[10px] font-bold">{activeCount}</span>}
+                {activeCount > 0 && <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[var(--accent)] text-white text-[10px] font-bold">{activeCount}</span>}
                 <span className="text-[10px] opacity-60">{showFilters ? '▲' : '▼'}</span>
               </button>
             );
           })()}
 
           {selectedForNormalize.size > 0 && (
-            <div className="flex items-center gap-2 pl-2 border-l border-gray-700">
-              <span className="text-gray-500 text-xs font-semibold">{selectedForNormalize.size} selecionado(s)</span>
+            <div className="flex items-center gap-2 pl-2 border-l border-[var(--border-default)]">
+              <span className="text-[var(--text-muted)] text-xs font-semibold">{selectedForNormalize.size} selecionado(s)</span>
               <button
                 onClick={batchNormalize}
                 disabled={batchNormalizing}
-                className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-500 shadow-md disabled:opacity-50 flex items-center gap-1"
+                className="px-3 py-1.5 rounded-lg bg-[var(--brand)] text-white text-xs font-semibold hover:bg-[var(--brand)]/80 shadow-md disabled:opacity-50 flex items-center gap-1"
                 title="Normalizar com IA"
               >
                 {batchNormalizing ? '⏳' : '🤖'} Normalizar
@@ -1102,7 +1102,7 @@ export default function ParaguaiPage() {
               <button
                 onClick={batchRefreshCatalogs}
                 disabled={batchRefreshing}
-                className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-500 shadow-md disabled:opacity-50 flex items-center gap-1"
+                className="px-3 py-1.5 rounded-lg bg-[var(--accent)] text-white text-xs font-semibold hover:bg-[var(--accent-hover)] shadow-md disabled:opacity-50 flex items-center gap-1"
                 title="Buscar catálogos ML"
               >
                 {batchRefreshing ? '⏳' : '⚡'} Catálogos
@@ -1110,14 +1110,14 @@ export default function ParaguaiPage() {
               <button
                 onClick={batchDelete}
                 disabled={batchDeleting}
-                className="px-3 py-1.5 rounded-lg bg-red-700 text-white text-xs font-semibold hover:bg-red-600 shadow-md disabled:opacity-50 flex items-center gap-1"
+                className="px-3 py-1.5 rounded-lg bg-[var(--destructive)] text-white text-xs font-semibold hover:bg-[var(--danger)] shadow-md disabled:opacity-50 flex items-center gap-1"
                 title="Deletar produtos selecionados"
               >
                 {batchDeleting ? '⏳' : '🗑'} Deletar
               </button>
               <button
                 onClick={() => setSelectedForNormalize(new Set())}
-                className="text-gray-500 hover:text-gray-300 text-xs px-1"
+                className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] text-xs px-1"
                 title="Limpar seleção"
               >
                 ✕
@@ -1125,46 +1125,46 @@ export default function ParaguaiPage() {
             </div>
           )}
           <button onClick={loadOportunidades}
-            className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 shadow-md ml-auto">
+            className="px-4 py-1.5 rounded-lg bg-[var(--accent)] text-white text-sm font-semibold hover:bg-[var(--accent-hover)] shadow-md ml-auto">
             Atualizar
           </button>
         </div>
 
         {/* Painel de filtros colapsável */}
         {showFilters && (
-          <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-gray-800/60 mt-2">
+          <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-[var(--border-default)]/60 mt-2">
             <select value={filterMarca} onChange={e => setFilterMarca(e.target.value)}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+              className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]">
               <option value="">Todas as marcas</option>
               {MARCAS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
             <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+              className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]">
               <option value="">Todas as categorias</option>
               {CATEGORIAS.map(c => <option key={c} value={c}>{CATEGORIA_EMOJI[c]} {c}</option>)}
             </select>
             <select value={filterFornecedor} onChange={e => setFilterFornecedor(e.target.value)}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+              className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]">
               <option value="">Todos os fornecedores</option>
               {fornecedores.map(f => <option key={f} value={f}>{f}</option>)}
             </select>
             <select value={filterCatalog} onChange={e => setFilterCatalog(e.target.value)}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+              className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]">
               <option value="">Catálogo e estimado</option>
               <option value="true">✅ Só catálogo ML</option>
               <option value="false">⚠️ Sem catálogo</option>
             </select>
             <div className="flex items-center gap-2">
-              <span className="text-gray-400 text-xs font-semibold">Margem mín.</span>
+              <span className="text-[var(--text-secondary)] text-xs font-semibold">Margem mín.</span>
               <input type="number" min={0} max={100} value={filterMinMargem}
                 onChange={e => setFilterMinMargem(parseInt(e.target.value) || 0)}
                 placeholder="0%"
-                className="w-16 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                className="w-16 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg px-2 py-1.5 text-sm text-[var(--text-primary)] text-center focus:outline-none focus:ring-1 focus:ring-[var(--accent)]" />
             </div>
             {(filterMarca || filterCat || filterFornecedor || filterCatalog || filterMinMargem > 0) && (
               <button
                 onClick={() => { setFilterMarca(''); setFilterCat(''); setFilterFornecedor(''); setFilterCatalog(''); setFilterMinMargem(0); }}
-                className="text-xs text-gray-500 hover:text-red-400 transition-colors px-2 py-1.5"
+                className="text-xs text-[var(--text-muted)] hover:text-[var(--destructive)] transition-colors px-2 py-1.5"
               >
                 ✕ Limpar filtros
               </button>
@@ -1177,14 +1177,14 @@ export default function ParaguaiPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-gray-900 rounded-xl p-4 h-48 animate-pulse border border-gray-800" />
+            <div key={i} className="bg-[var(--bg-base)] rounded-xl p-4 h-48 animate-pulse border border-[var(--border-default)]" />
           ))}
         </div>
       ) : items.length === 0 ? (
         <div className="text-center py-20">
           <p className="text-4xl mb-3">📦</p>
-          <p className="text-gray-400">Nenhuma oportunidade encontrada.</p>
-          <p className="text-gray-600 text-sm mt-1">Aguardando listas de fornecedores via WhatsApp.</p>
+          <p className="text-[var(--text-secondary)]">Nenhuma oportunidade encontrada.</p>
+          <p className="text-[var(--text-muted)] text-sm mt-1">Aguardando listas de fornecedores via WhatsApp.</p>
         </div>
       ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -1205,10 +1205,10 @@ export default function ParaguaiPage() {
           ))}
         </div>
       ) : (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-x-auto shadow-xl">
+        <div className="bg-[var(--bg-base)] border border-[var(--border-default)] rounded-xl overflow-x-auto shadow-xl">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
-              <tr className="bg-gray-800/50 text-gray-400 font-semibold border-b border-gray-700 uppercase text-[11px] tracking-wider">
+              <tr className="bg-[var(--bg-overlay)]/50 text-[var(--text-secondary)] font-semibold border-b border-[var(--border-default)] uppercase text-[11px] tracking-wider">
                 <th className="px-3 py-3 text-center w-8">
                   <input
                     type="checkbox"
@@ -1227,15 +1227,15 @@ export default function ParaguaiPage() {
                 <th className="px-4 py-3 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-[var(--border-default)]">
               {items.map(item => (
                 <Fragment key={item.fingerprint}>
                   <tr
                     className={cn(
                       "transition-all group cursor-pointer border-l-4",
                       expandedRow === item.fingerprint
-                        ? "bg-indigo-500/5 border-indigo-500 text-white"
-                        : "hover:bg-gray-800/30 border-transparent text-gray-400"
+                        ? "bg-[var(--accent)]/5 border-[var(--accent)] text-[var(--text-primary)]"
+                        : "hover:bg-white/5 border-transparent text-[var(--text-secondary)]"
                     )}
                     onClick={() => setExpandedRow(prev => prev === item.fingerprint ? null : item.fingerprint)}
                   >
@@ -1251,24 +1251,24 @@ export default function ParaguaiPage() {
                       <div className="flex items-center gap-3">
                         <span className="text-lg flex-shrink-0">{CATEGORIA_EMOJI[item.categoria] || '📦'}</span>
                         <div className="min-w-0">
-                          <p className="text-white font-medium hover:text-indigo-400 transition-colors line-clamp-1 text-left">
+                          <p className="text-[var(--text-primary)] font-medium hover:text-[var(--accent)] transition-colors line-clamp-1 text-left">
                             {item.titulo_amigavel}
                           </p>
-                          <p className="text-gray-500 text-[10px] uppercase">{item.marca} • {item.categoria}</p>
+                          <p className="text-[var(--text-muted)] text-[10px] uppercase">{item.marca} • {item.categoria}</p>
                         </div>
                       </div>
                     </td>
                      <td className="px-4 py-3 align-middle">
-                       <span className="text-gray-300 text-[13px]">{item.melhor_fornecedor}</span>
+                       <span className="text-[var(--text-secondary)] text-[13px]">{item.melhor_fornecedor}</span>
                        {item.num_suppliers > 1 && (
-                         <span className="ml-2 bg-blue-900/40 text-blue-400 text-[10px] px-1.5 py-0.5 rounded">+{item.num_suppliers-1}</span>
+                         <span className="ml-2 bg-[var(--info-muted)] text-[var(--info)] text-[10px] px-1.5 py-0.5 rounded">+{item.num_suppliers-1}</span>
                        )}
                      </td>
-                     <td className="px-4 py-3 text-right text-gray-300 text-[13px] align-middle whitespace-nowrap">
+                     <td className="px-4 py-3 text-right text-[var(--text-secondary)] text-[13px] align-middle whitespace-nowrap">
                        {formatUSD(item.melhor_preco_usd)}
                      </td>
                      <td className="px-4 py-3 text-right align-middle whitespace-nowrap">
-                       <span className="text-gray-300 text-[13px]">{formatBRL(item.melhor_preco_usd * cambio)}</span>
+                       <span className="text-[var(--text-secondary)] text-[13px]">{formatBRL(item.melhor_preco_usd * cambio)}</span>
                      </td>
                      <td className="px-4 py-3 text-right align-middle whitespace-nowrap">
                        {(() => {
@@ -1279,11 +1279,11 @@ export default function ParaguaiPage() {
                            <div className="flex flex-col leading-[1.5]">
                              <div className="flex items-center justify-end gap-1.5 py-1">
                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-600 text-white text-[9px] font-bold" title="Anúncio Premium do catálogo principal no Mercado Livre">P</span>
-                               <span className="text-gray-300 text-[13px]">{bestP && isFinite(bestP) ? formatBRL(bestP) : '—'}</span>
+                               <span className="text-[var(--text-secondary)] text-[13px]">{bestP && isFinite(bestP) ? formatBRL(bestP) : '—'}</span>
                              </div>
-                             <div className="border-t border-gray-700/20 flex items-center justify-end gap-1.5 py-1">
+                             <div className="border-t border-[var(--border-default)]/20 flex items-center justify-end gap-1.5 py-1">
                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-orange-600 text-white text-[9px] font-bold" title="Anúncio de Catálogo do catálogo principal no Mercado Livre">C</span>
-                               <span className="text-gray-400 text-[13px]">{bestC && isFinite(bestC) ? formatBRL(bestC) : '—'}</span>
+                               <span className="text-[var(--text-secondary)] text-[13px]">{bestC && isFinite(bestC) ? formatBRL(bestC) : '—'}</span>
                              </div>
                            </div>
                          );
@@ -1296,7 +1296,7 @@ export default function ParaguaiPage() {
                              {item.margem_premium != null ? `${item.margem_premium}%` : '—'}
                            </span>
                          </div>
-                         <div className="border-t border-gray-700/20 py-1">
+                         <div className="border-t border-[var(--border-default)]/20 py-1">
                            <span className={cn("text-[13px]", margemColor(item.margem_classico))}>
                              {item.margem_classico != null ? `${item.margem_classico}%` : '—'}
                            </span>
@@ -1306,12 +1306,12 @@ export default function ParaguaiPage() {
                      <td className="px-4 py-3 text-right align-middle">
                        <div className="flex flex-col leading-[1.5]">
                          <div className="py-1">
-                            <span className={cn("text-[13px]", (item.lucro_premium ?? 0) >= 0 ? "text-emerald-400" : "text-red-400")}>
+                            <span className={cn("text-[13px]", (item.lucro_premium ?? 0) >= 0 ? "text-[var(--success)]" : "text-[var(--destructive)]")}>
                               {item.lucro_premium != null ? formatBRL(item.lucro_premium) : '—'}
                             </span>
                          </div>
-                         <div className="border-t border-gray-700/20 py-1">
-                            <span className={cn("text-[13px]", (item.lucro_classico ?? 0) >= 0 ? "text-emerald-500" : "text-red-400")}>
+                         <div className="border-t border-[var(--border-default)]/20 py-1">
+                            <span className={cn("text-[13px]", (item.lucro_classico ?? 0) >= 0 ? "text-[var(--success)]" : "text-[var(--destructive)]")}>
                               {item.lucro_classico != null ? formatBRL(item.lucro_classico) : '—'}
                             </span>
                          </div>
@@ -1322,7 +1322,7 @@ export default function ParaguaiPage() {
                            <button
                              onClick={() => normalizeItem(item)}
                              disabled={normalizingId === item.fingerprint}
-                             className={cn("p-1.5 rounded transition-colors", normalizingId === item.fingerprint ? "text-amber-400 bg-amber-900/30 animate-pulse" : "text-gray-500 hover:text-white hover:bg-amber-700")}
+                             className={cn("p-1.5 rounded transition-colors", normalizingId === item.fingerprint ? "text-[var(--brand)] bg-[var(--brand-muted)] animate-pulse" : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--brand)]/20")}
                              title="Normalizar com IA"
                            >
                              🤖
@@ -1332,21 +1332,21 @@ export default function ParaguaiPage() {
                              const done100 = prog.pct >= 100;
                              return (
                                <div className="flex flex-col items-center gap-0.5 min-w-[72px]" title={prog.label}>
-                                 <span className={cn("text-[10px] leading-none truncate max-w-[70px]", done100 ? "text-emerald-400" : "text-indigo-300")}>{prog.label}</span>
-                                 <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                 <span className={cn("text-[10px] leading-none truncate max-w-[70px]", done100 ? "text-[var(--success)]" : "text-[var(--accent)]")}>{prog.label}</span>
+                                 <div className="w-full h-1.5 bg-[var(--bg-muted)] rounded-full overflow-hidden">
                                    <div
-                                     className={cn("h-full rounded-full transition-all duration-500", done100 ? "bg-emerald-500" : "bg-indigo-500")}
+                                     className={cn("h-full rounded-full transition-all duration-500", done100 ? "bg-[var(--success)]" : "bg-[var(--accent)]")}
                                      style={{ width: `${prog.pct}%` }}
                                    />
                                  </div>
-                                 <span className={cn("text-[10px] leading-none", done100 ? "text-emerald-400 font-bold" : "text-indigo-400")}>{prog.pct}%</span>
+                                 <span className={cn("text-[10px] leading-none", done100 ? "text-[var(--success)] font-bold" : "text-[var(--accent)]")}>{prog.pct}%</span>
                                </div>
                              );
                            })() : (
                              <button
                                onClick={() => refreshCatalog(item.fingerprint)}
                                disabled={refreshingId === item.fingerprint}
-                               className={cn("p-1.5 rounded transition-colors", refreshingId === item.fingerprint ? "text-indigo-400 animate-pulse" : "text-indigo-400 hover:text-white hover:bg-indigo-600")}
+                               className={cn("p-1.5 rounded transition-colors", refreshingId === item.fingerprint ? "text-[var(--accent)] animate-pulse" : "text-[var(--accent)] hover:text-white hover:bg-[var(--accent)]")}
                                title="Atualizar Catálogo (Real-Time)"
                              >
                                ⚡
@@ -1355,29 +1355,29 @@ export default function ParaguaiPage() {
                            <button
                              onClick={() => enrichCatalog(item.fingerprint)}
                              disabled={enrichingId === item.fingerprint || !item.ml_catalog_id}
-                             className="p-1.5 rounded text-purple-400 hover:text-white hover:bg-purple-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                             className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                              title="Enriquecer com Firecrawl (sold_quantity, rating, sellers)"
                            >
                              {enrichingId === item.fingerprint ? '⏳' : '✨'}
                            </button>
-                           <button onClick={() => toggleWatch(item)} className={cn("p-1.5 rounded transition-colors", item.monitorando ? "text-amber-400 bg-amber-900/30" : "text-gray-500 hover:text-white hover:bg-gray-700")} title="Monitorar">🔔</button>
+                           <button onClick={() => toggleWatch(item)} className={cn("p-1.5 rounded transition-colors", item.monitorando ? "text-[var(--brand)] bg-[var(--brand-muted)]" : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5")} title="Monitorar">🔔</button>
                            <button
                             onClick={() => addToCart(item)}
                             disabled={item.no_carrinho}
-                            className={cn("p-1.5 rounded transition-colors", item.no_carrinho ? "text-emerald-500 bg-emerald-900/30 cursor-not-allowed" : "text-gray-500 hover:text-white hover:bg-gray-700")}
+                            className={cn("p-1.5 rounded transition-colors", item.no_carrinho ? "text-[var(--success)] bg-[var(--success-muted)] cursor-not-allowed" : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5")}
                             title={item.no_carrinho ? "Já no carrinho" : "Adicionar ao Carrinho"}
                            >
                              🛒
                            </button>
                            <button
                              onClick={() => setEditCatalogsItem(item)}
-                             className="p-1.5 rounded text-gray-500 hover:text-white hover:bg-gray-700 transition-colors"
+                             className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
                              title="Gerenciar catálogos"
                            >
                              ✏️
                            </button>
                            <div className={cn("transition-transform duration-300 ml-2", expandedRow === item.fingerprint ? "rotate-180" : "rotate-0")}>
-                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 group-hover:text-indigo-400">
+                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--text-muted)] group-hover:text-[var(--accent)]">
                                <polyline points="6 9 12 15 18 9"></polyline>
                              </svg>
                            </div>
@@ -1385,8 +1385,8 @@ export default function ParaguaiPage() {
                       </td>
                   </tr>
                   {expandedRow === item.fingerprint && (
-                    <tr className="bg-indigo-500/5 border-l-4 border-indigo-500">
-                      <td colSpan={9} className="p-0 border-b border-gray-800">
+                    <tr className="bg-[var(--accent)]/5 border-l-4 border-[var(--accent)]">
+                      <td colSpan={9} className="p-0 border-b border-[var(--border-default)]">
                         <div className="py-2">
                           <ExpandedDetails item={item} variant="list" onPinCatalog={pinCatalog} pinningCatalog={pinningCatalog} cambio={cambio} />
                         </div>
@@ -1462,28 +1462,28 @@ function ProductCard({
   const bestCSafe = bestC != null && isFinite(bestC) ? bestC : null;
 
   return (
-    <div className={cn("bg-gray-900 border rounded-xl p-4 flex flex-col gap-3 transition-all group", expanded ? 'border-indigo-500 shadow-2xl' : 'border-gray-800')}>
+    <div className={cn("bg-[var(--bg-base)] border rounded-xl p-4 flex flex-col gap-3 transition-all group", expanded ? 'border-[var(--accent)] shadow-2xl' : 'border-[var(--border-default)]')}>
       {/* Title row */}
       <div className="flex items-start gap-2 cursor-pointer" onClick={onToggleExpand}>
         <span className="text-2xl mt-0.5">{emoji}</span>
         <div className="flex-1 min-w-0">
-          <p className="text-white font-bold text-sm leading-tight line-clamp-2 group-hover:text-indigo-400 transition-colors text-left">
+          <p className="text-[var(--text-primary)] font-bold text-sm leading-tight line-clamp-2 group-hover:text-[var(--accent)] transition-colors text-left">
             {item.titulo_amigavel}
           </p>
           <div className="flex flex-wrap gap-1 mt-1.5">
-            {item.has_catalog && <Badge label="CATÁLOGO" color="bg-emerald-900 text-emerald-300" />}
-            {!item.has_catalog && <Badge label="ESTIMADO" color="bg-yellow-900 text-yellow-400" />}
+            {item.has_catalog && <Badge label="CATÁLOGO" color="bg-[var(--success-muted)] text-[var(--success)]" />}
+            {!item.has_catalog && <Badge label="ESTIMADO" color="bg-[var(--warning-muted)] text-[var(--warning)]" />}
             {item.ml_catalogs_json && item.ml_catalogs_json.length > 1 && (
-              <Badge label={`${item.ml_catalogs_json.length} catálogos`} color="bg-indigo-900 text-indigo-300" />
+              <Badge label={`${item.ml_catalogs_json.length} catálogos`} color="bg-[var(--accent-muted)] text-[var(--accent)]" />
             )}
             {item.num_suppliers > 1 && (
-              <Badge label={`${item.num_suppliers} fornecedores`} color="bg-blue-900 text-blue-300" />
+              <Badge label={`${item.num_suppliers} fornecedores`} color="bg-[var(--info-muted)] text-[var(--info)]" />
             )}
-            <Badge label={item.categoria} color="bg-gray-800 text-gray-400" />
+            <Badge label={item.categoria} color="bg-[var(--bg-surface)] text-[var(--text-secondary)]" />
           </div>
         </div>
         <div className={cn("transition-transform duration-300", expanded ? "rotate-180" : "rotate-0")}>
-           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 group-hover:text-indigo-400">
+           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--text-muted)] group-hover:text-[var(--accent)]">
              <polyline points="6 9 12 15 18 9"></polyline>
            </svg>
         </div>
@@ -1491,26 +1491,26 @@ function ProductCard({
 
       {/* Prices */}
       <div className="grid grid-cols-2 gap-2 mt-1 cursor-pointer" onClick={onToggleExpand}>
-        <div className="bg-gray-800/50 rounded-lg p-2.5 border border-gray-800 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-8 h-8 bg-indigo-500/10 rounded-bl-full flex items-start justify-end p-1">
+        <div className="bg-[var(--bg-overlay)]/50 rounded-lg p-2.5 border border-[var(--border-default)] relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-8 h-8 bg-[var(--accent-muted)] rounded-bl-full flex items-start justify-end p-1">
              <span className="text-[8px]">🇵🇾</span>
           </div>
-          <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mb-0.5">Melhor preço USD</p>
-          <p className="text-white font-black text-lg leading-none">{formatUSD(item.melhor_preco_usd)}</p>
-          <p className="text-gray-400 text-[10px] mt-1 truncate italic">≈ {formatBRL(item.melhor_preco_usd * cambio)}</p>
+          <p className="text-[var(--text-muted)] text-[10px] uppercase font-bold tracking-wider mb-0.5">Melhor preço USD</p>
+          <p className="text-[var(--text-primary)] font-black text-lg leading-none">{formatUSD(item.melhor_preco_usd)}</p>
+          <p className="text-[var(--text-secondary)] text-[10px] mt-1 truncate italic">≈ {formatBRL(item.melhor_preco_usd * cambio)}</p>
         </div>
-        <div className="bg-gray-800/50 rounded-lg p-2.5 border border-gray-800 relative overflow-hidden">
-           <div className="absolute top-0 right-0 w-8 h-8 bg-emerald-500/10 rounded-bl-full flex items-start justify-end p-1">
+        <div className="bg-[var(--bg-overlay)]/50 rounded-lg p-2.5 border border-[var(--border-default)] relative overflow-hidden">
+           <div className="absolute top-0 right-0 w-8 h-8 bg-[var(--accent-muted)] rounded-bl-full flex items-start justify-end p-1">
              <span className="text-[8px]">🇧🇷</span>
           </div>
-          <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mb-1">Canais Mercado Livre</p>
+          <p className="text-[var(--text-muted)] text-[10px] uppercase font-bold tracking-wider mb-1">Canais Mercado Livre</p>
           {(item.ml_price_premium || item.ml_price_classic || item.preco_ml_real || item.ml_catalogs_json?.length) ? (
               <div className="flex flex-col leading-[1.5]">
                {/* Premium row */}
                <div className="flex items-center justify-between py-2">
                  <div className="flex flex-col text-left">
                    <div className="flex items-center gap-1.5">
-                     <span className="text-gray-300 text-[13px]">{formatBRL(bestPSafe ?? item.preco_ml_real ?? 0)}</span>
+                     <span className="text-[var(--text-secondary)] text-[13px]">{formatBRL(bestPSafe ?? item.preco_ml_real ?? 0)}</span>
                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-600 text-white text-[9px] font-bold" title="Anúncio Premium — Mercado Livre">P</span>
                    </div>
                  </div>
@@ -1518,17 +1518,17 @@ function ProductCard({
                    <span className={cn("text-[13px]", margemColor(item.margem_premium))}>
                      {item.margem_premium != null ? `${item.margem_premium}%` : '—'}
                    </span>
-                   <span className={cn("text-[11px] mt-0.5", (item.lucro_premium ?? 0) >= 0 ? "text-emerald-400" : "text-red-400")}>
+                   <span className={cn("text-[11px] mt-0.5", (item.lucro_premium ?? 0) >= 0 ? "text-[var(--success)]" : "text-[var(--destructive)]")}>
                      {item.lucro_premium != null ? formatBRL(item.lucro_premium) : '—'}
                    </span>
                  </div>
                </div>
 
                {/* Classic row */}
-               <div className="flex items-center justify-between py-2 border-t border-gray-700/20">
+               <div className="flex items-center justify-between py-2 border-t border-[var(--border-default)]/20">
                  <div className="flex flex-col text-left">
                    <div className="flex items-center gap-1.5">
-                     <span className="text-gray-300 text-[13px]">{formatBRL(bestCSafe ?? item.preco_ml_real ?? 0)}</span>
+                     <span className="text-[var(--text-secondary)] text-[13px]">{formatBRL(bestCSafe ?? item.preco_ml_real ?? 0)}</span>
                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-orange-600 text-white text-[9px] font-bold" title="Anúncio Catálogo — Mercado Livre">C</span>
                    </div>
                  </div>
@@ -1536,15 +1536,15 @@ function ProductCard({
                    <span className={cn("text-[13px]", margemColor(item.margem_classico))}>
                      {item.margem_classico != null ? `${item.margem_classico}%` : '—'}
                    </span>
-                   <span className={cn("text-[11px] mt-0.5", (item.lucro_classico ?? 0) >= 0 ? "text-emerald-500/80" : "text-red-400/80")}>
+                   <span className={cn("text-[11px] mt-0.5", (item.lucro_classico ?? 0) >= 0 ? "text-[var(--success)]/80" : "text-[var(--destructive)]/80")}>
                      {item.lucro_classico != null ? formatBRL(item.lucro_classico) : '—'}
                    </span>
                  </div>
                </div>
              </div>
           ) : (
-            <div className="bg-gray-900/30 rounded p-4 border border-dashed border-gray-800 text-center">
-              <p className="text-gray-600 text-xs italic">Nenhum dado do Mercado Livre disponível</p>
+            <div className="bg-[var(--bg-base)]/30 rounded p-4 border border-dashed border-[var(--border-default)] text-center">
+              <p className="text-[var(--text-muted)] text-xs italic">Nenhum dado do Mercado Livre disponível</p>
             </div>
           )}
         </div>
@@ -1552,7 +1552,7 @@ function ProductCard({
 
       {/* Expanded Content (Accordion) */}
       {expanded && (
-        <div className="mt-2 pt-4 border-t border-gray-800/50 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="mt-2 pt-4 border-t border-[var(--border-default)]/50 animate-in fade-in slide-in-from-top-2 duration-200">
            <ExpandedDetails item={item} variant="card" onPinCatalog={onPinCatalog} pinningCatalog={pinningCatalog} cambio={cambio} />
         </div>
       )}
@@ -1565,8 +1565,8 @@ function ProductCard({
           className={cn(
             "flex-1 py-2.5 rounded-xl text-sm font-bold shadow-lg transition-all",
             item.no_carrinho
-              ? "bg-gray-800 text-gray-600 cursor-default"
-              : "bg-indigo-600 text-white hover:bg-indigo-500 hover:-translate-y-0.5 active:translate-y-0"
+              ? "bg-[var(--bg-surface)] text-[var(--text-muted)] cursor-default"
+              : "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] hover:-translate-y-0.5 active:translate-y-0"
           )}>
           {item.no_carrinho ? '✓ NO CARRINHO' : '+ CARRINHO'}
         </button>
@@ -1575,7 +1575,7 @@ function ProductCard({
           disabled={normalizing}
           className={cn(
             "px-3.5 py-2.5 rounded-xl transition-all shadow-md",
-            normalizing ? "bg-amber-900 text-amber-300 animate-pulse" : "bg-gray-800 text-gray-400 hover:bg-amber-700 hover:text-white"
+            normalizing ? "bg-[var(--brand-muted)] text-[var(--brand)] animate-pulse" : "bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--brand)]/20 hover:text-[var(--brand)]"
           )}
           title="Normalizar com IA">
           🤖
@@ -1585,8 +1585,8 @@ function ProductCard({
           className={cn(
             "px-3.5 py-2.5 rounded-xl transition-all shadow-md",
             item.monitorando
-              ? "bg-amber-800 text-amber-200 hover:bg-amber-700"
-              : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white"
+              ? "bg-[var(--brand)]/20 text-[var(--brand)] hover:bg-[var(--brand)]/30"
+              : "bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-primary)]"
           )}>
           {item.monitorando ? '🔔' : '🔕'}
         </button>
@@ -1616,16 +1616,16 @@ function ExpandedDetails({ item, variant = 'list', onPinCatalog, pinningCatalog,
   };
 
   const formatRefDate = (dateString: string) => {
-    if (!dateString) return <span className="text-gray-600">—</span>;
+    if (!dateString) return <span className="text-[var(--text-muted)]">—</span>;
     const d = new Date(dateString);
     if (isToday(dateString)) {
       return (
-        <span className="text-emerald-400 font-bold">
+        <span className="text-[var(--success)] font-bold">
           Hoje às {d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
         </span>
       );
     }
-    return <span className="text-gray-400">{d.toLocaleString('pt-BR')}</span>;
+    return <span className="text-[var(--text-secondary)]">{d.toLocaleString('pt-BR')}</span>;
   };
 
   // Trend Sparkline — custo histórico + referências ML horizontais (só quando catálogo buscado)
@@ -1635,7 +1635,7 @@ function ExpandedDetails({ item, variant = 'list', onPinCatalog, pinningCatalog,
       item.ml_catalogs_json?.some(c => c.price_classic || c.price_premium));
 
     if (!hasHistory && !hasMlRef) {
-      return <div className="text-xs text-gray-600 italic h-[40px] flex items-center justify-center">Sem histórico 30d</div>;
+      return <div className="text-xs text-[var(--text-muted)] italic h-[40px] flex items-center justify-center">Sem histórico 30d</div>;
     }
 
     const isBRL = chartCurrency === 'BRL';
@@ -1672,11 +1672,11 @@ function ExpandedDetails({ item, variant = 'list', onPinCatalog, pinningCatalog,
     return (
       <div>
         <div className="flex justify-end mb-1">
-          <div className="flex bg-gray-800 rounded-md p-0.5 border border-gray-700">
+          <div className="flex bg-[var(--bg-surface)] rounded-md p-0.5 border border-[var(--border-default)]">
             {(['BRL', 'USD'] as const).map(cur => (
               <button key={cur} onClick={() => setChartCurrency(cur)}
                 className={cn("text-[9px] font-bold px-2 py-0.5 rounded transition-colors",
-                  chartCurrency === cur ? "bg-indigo-600 text-white" : "text-gray-500 hover:text-gray-300")}>
+                  chartCurrency === cur ? "bg-[var(--accent)] text-white" : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]")}>
                 {cur}
               </button>
             ))}
@@ -1718,27 +1718,27 @@ function ExpandedDetails({ item, variant = 'list', onPinCatalog, pinningCatalog,
 
           <div className="flex gap-3 mt-1 text-[8px] uppercase tracking-tighter">
             <div className="flex items-center gap-1">
-              <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
-              <span className="text-gray-400">Custo PY</span>
+              <div className="w-1.5 h-1.5 bg-[var(--accent)] rounded-full" />
+              <span className="text-[var(--text-secondary)]">Custo PY</span>
             </div>
             {classicRef != null && (
               <div className="flex items-center gap-1">
                 <div className="w-3 border-t border-dashed border-emerald-500" />
-                <span className="text-gray-400">ML Catálogo {fmt(classicRef)}</span>
+                <span className="text-[var(--text-secondary)]">ML Catálogo {fmt(classicRef)}</span>
               </div>
             )}
             {premiumRef != null && (
               <div className="flex items-center gap-1">
                 <div className="w-3 border-t border-dashed border-amber-500" />
-                <span className="text-gray-400">ML Premium {fmt(premiumRef)}</span>
+                <span className="text-[var(--text-secondary)]">ML Premium {fmt(premiumRef)}</span>
               </div>
             )}
           </div>
-          <div className="absolute -top-4 left-0 text-[8px] text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/80 rounded px-1">Máx: {fmt(maxP)}</div>
-          <div className="absolute -bottom-1 left-0 text-[8px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/80 rounded px-1">Mín: {fmt(minP)}</div>
+          <div className="absolute -top-4 left-0 text-[8px] text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--bg-base)]/80 rounded px-1">Máx: {fmt(maxP)}</div>
+          <div className="absolute -bottom-1 left-0 text-[8px] text-[var(--text-secondary)] opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--bg-base)]/80 rounded px-1">Mín: {fmt(minP)}</div>
         </div>
         {!hasCatalog && (
-          <p className="text-[9px] text-gray-600 italic text-center mt-1">Clique ⚡ para ver referências ML no gráfico</p>
+          <p className="text-[9px] text-[var(--text-muted)] italic text-center mt-1">Clique ⚡ para ver referências ML no gráfico</p>
         )}
       </div>
     );
@@ -1749,33 +1749,33 @@ function ExpandedDetails({ item, variant = 'list', onPinCatalog, pinningCatalog,
       {/* Informações Gerais */}
       <div className={cn("grid grid-cols-1 gap-12 px-8 py-4", variant === 'list' ? 'lg:grid-cols-2' : '')}>
         <div className="space-y-3 flex flex-col justify-start max-w-md">
-          <div className="flex items-center gap-6 border-b border-gray-800/40 pb-2.5">
-            <span className="text-gray-500 text-[10px] uppercase font-black w-24 shrink-0 tracking-widest">Marca</span>
-            <span className="text-white font-semibold text-xs">{item.marca}</span>
+          <div className="flex items-center gap-6 border-b border-[var(--border-default)]/40 pb-2.5">
+            <span className="text-[var(--text-muted)] text-[10px] uppercase font-black w-24 shrink-0 tracking-widest">Marca</span>
+            <span className="text-[var(--text-primary)] font-semibold text-xs">{item.marca}</span>
           </div>
-          <div className="flex items-center gap-6 border-b border-gray-800/40 pb-2.5">
-            <span className="text-gray-500 text-[10px] uppercase font-black w-24 shrink-0 tracking-widest">Modelo</span>
-            <span className="text-white font-medium text-xs truncate">{item.modelo || '—'}</span>
+          <div className="flex items-center gap-6 border-b border-[var(--border-default)]/40 pb-2.5">
+            <span className="text-[var(--text-muted)] text-[10px] uppercase font-black w-24 shrink-0 tracking-widest">Modelo</span>
+            <span className="text-[var(--text-primary)] font-medium text-xs truncate">{item.modelo || '—'}</span>
           </div>
-          <div className="flex items-center gap-6 border-b border-gray-800/40 pb-2.5">
-            <span className="text-gray-500 text-[10px] uppercase font-black w-24 shrink-0 tracking-widest">Origem</span>
-            <span className="text-indigo-400 font-bold text-xs uppercase">{item.origem || '—'}</span>
+          <div className="flex items-center gap-6 border-b border-[var(--border-default)]/40 pb-2.5">
+            <span className="text-[var(--text-muted)] text-[10px] uppercase font-black w-24 shrink-0 tracking-widest">Origem</span>
+            <span className="text-[var(--accent)] font-bold text-xs uppercase">{item.origem || '—'}</span>
           </div>
-          <div className="flex items-center gap-6 border-b border-gray-800/40 pb-2.5">
-            <span className="text-gray-500 text-[10px] uppercase font-black w-24 shrink-0 tracking-widest">Última Ref.</span>
+          <div className="flex items-center gap-6 border-b border-[var(--border-default)]/40 pb-2.5">
+            <span className="text-[var(--text-muted)] text-[10px] uppercase font-black w-24 shrink-0 tracking-widest">Última Ref.</span>
             <div className="text-xs">{formatRefDate(item.ultima_atualizacao)}</div>
           </div>
-          <div className="flex items-center gap-6 border-b border-gray-800/40 pb-2.5 pt-2">
-            <span className="text-gray-500 text-[10px] uppercase font-black w-24 shrink-0 tracking-widest">Fornecedor</span>
+          <div className="flex items-center gap-6 border-b border-[var(--border-default)]/40 pb-2.5 pt-2">
+            <span className="text-[var(--text-muted)] text-[10px] uppercase font-black w-24 shrink-0 tracking-widest">Fornecedor</span>
             <div className="flex items-center gap-2">
-              <span className="text-white font-bold text-xs">{item.melhor_fornecedor}</span>
-              <span className="bg-amber-500/20 text-amber-400 text-[9px] px-1.5 py-0.5 rounded font-black border border-amber-500/30">BEST PRICE</span>
+              <span className="text-[var(--text-primary)] font-bold text-xs">{item.melhor_fornecedor}</span>
+              <span className="bg-[var(--brand-muted)] text-[var(--brand)] text-[9px] px-1.5 py-0.5 rounded font-black border border-amber-500/30">BEST PRICE</span>
             </div>
           </div>
           {/* Descrição inline — ambas views */}
-          <div className="flex items-start gap-6 border-b border-gray-800/40 pb-2.5 pt-1">
-            <span className="text-gray-500 text-[10px] uppercase font-black w-24 shrink-0 tracking-widest pt-0.5">Descrição</span>
-            <p className="text-gray-400 font-mono text-[10px] leading-relaxed break-words line-clamp-3">
+          <div className="flex items-start gap-6 border-b border-[var(--border-default)]/40 pb-2.5 pt-1">
+            <span className="text-[var(--text-muted)] text-[10px] uppercase font-black w-24 shrink-0 tracking-widest pt-0.5">Descrição</span>
+            <p className="text-[var(--text-secondary)] font-mono text-[10px] leading-relaxed break-words line-clamp-3">
               {item.descricao_raw || 'Não capturada.'}
             </p>
           </div>
@@ -1783,8 +1783,8 @@ function ExpandedDetails({ item, variant = 'list', onPinCatalog, pinningCatalog,
 
         {/* Tendência bloco (list — lado direito) */}
         {variant === 'list' && (
-          <div className="bg-black/40 rounded-xl p-4 border border-gray-800/60 flex flex-col shadow-inner justify-between">
-            <span className="text-gray-500 text-[9px] uppercase font-black tracking-[0.2em] text-center mb-2">Tendência 30 Dias (USD)</span>
+          <div className="bg-[var(--bg-overlay)] rounded-xl p-4 border border-[var(--border-default)]/60 flex flex-col shadow-inner justify-between">
+            <span className="text-[var(--text-muted)] text-[9px] uppercase font-black tracking-[0.2em] text-center mb-2">Tendência 30 Dias (USD)</span>
             {renderTrend()}
           </div>
         )}
@@ -1793,14 +1793,14 @@ function ExpandedDetails({ item, variant = 'list', onPinCatalog, pinningCatalog,
       {/* Catalogs Table */}
       {item.ml_catalogs_json && item.ml_catalogs_json.length > 0 && (
         <div className="px-8 pb-6">
-          <div className="bg-black/20 rounded-xl border border-gray-800/60 overflow-x-auto">
-             <div className="bg-gray-800/40 px-4 py-2 border-b border-gray-800/60 flex justify-between items-center text-[10px] uppercase font-bold tracking-widest">
-                <span className="text-gray-400">📈 Comparação de Catálogos ML (Novos)</span>
-                <span className="text-emerald-500">{item.ml_catalogs_json.length} catálogos encontrados</span>
+          <div className="bg-[var(--bg-overlay)]/50 rounded-xl border border-[var(--border-default)]/60 overflow-x-auto">
+             <div className="bg-[var(--bg-surface)]/40 px-4 py-2 border-b border-[var(--border-default)]/60 flex justify-between items-center text-[10px] uppercase font-bold tracking-widest">
+                <span className="text-[var(--text-secondary)]">📈 Comparação de Catálogos ML (Novos)</span>
+                <span className="text-[var(--accent)]">{item.ml_catalogs_json.length} catálogos encontrados</span>
              </div>
              <table className="w-full text-xs text-left">
                 <thead>
-                  <tr className="text-gray-500 border-b border-gray-800/40 text-[10px]">
+                  <tr className="text-[var(--text-muted)] border-b border-[var(--border-default)]/40 text-[10px]">
                     <th className="px-4 py-2">Catálogo</th>
                     <th className="px-4 py-2 text-right">Premium</th>
                     <th className="px-4 py-2 text-right">Clássico</th>
@@ -1810,7 +1810,7 @@ function ExpandedDetails({ item, variant = 'list', onPinCatalog, pinningCatalog,
                     <th className="px-4 py-2 text-center">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800/40">
+                <tbody className="divide-y divide-[var(--border-default)]/40">
                   {item.ml_catalogs_json.map((c) => {
                     const isWinner = c.is_winner || c.catalog_id === item.ml_catalog_id;
                     const isFull = c.has_full ?? false;
@@ -1821,23 +1821,23 @@ function ExpandedDetails({ item, variant = 'list', onPinCatalog, pinningCatalog,
                     // Vendedores: prefer Firecrawl sobre ML API
                     const vendedores = e?.seller_count_fc ?? c.seller_count ?? null;
                     return (
-                      <tr key={c.catalog_id} className={cn("hover:bg-white/5", isWinner ? "bg-indigo-500/5" : "")}>
+                      <tr key={c.catalog_id} className={cn("hover:bg-white/5", isWinner ? "bg-[var(--accent-muted)]" : "")}>
                         {/* Catálogo */}
                         <td className="px-4 py-2 max-w-[200px]">
                           <div className="flex flex-col gap-0.5">
                             {/* Título: só exibe se for diferente do catalog_id (evita duplicata) */}
                             {c.title && c.title !== c.catalog_id && (
-                              <span className="text-white text-[11px] line-clamp-1">{c.title}</span>
+                              <span className="text-[var(--text-primary)] text-[11px] line-clamp-1">{c.title}</span>
                             )}
                             {/* ID + badges */}
                             <div className="flex items-center gap-1 flex-wrap">
-                              <span className="font-mono text-gray-500 text-[9px]">{c.catalog_id}</span>
-                              {isWinner && <span className="text-[8px] bg-indigo-600 text-white px-1 py-0.5 rounded font-bold">PRINCIPAL</span>}
-                              {c.is_manual && <span className="text-[8px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1 py-0.5 rounded font-bold" title="Adicionado manualmente">📌</span>}
+                              <span className="font-mono text-[var(--text-muted)] text-[9px]">{c.catalog_id}</span>
+                              {isWinner && <span className="text-[8px] bg-[var(--accent)] text-white px-1 py-0.5 rounded font-bold">PRINCIPAL</span>}
+                              {c.is_manual && <span className="text-[8px] bg-[var(--brand-muted)] text-[var(--brand)] border border-amber-500/30 px-1 py-0.5 rounded font-bold" title="Adicionado manualmente">📌</span>}
                             </div>
                             {/* Ranking — linha própria abaixo do ID */}
                             {isEnriched && e?.ranking_position != null && (
-                              <span className="text-[9px] text-amber-400">🏆 {e.ranking_position}º em {e.ranking_category}</span>
+                              <span className="text-[9px] text-[var(--brand)]">🏆 {e.ranking_position}º em {e.ranking_category}</span>
                             )}
                             {/* Sellers from Firecrawl */}
                             {isEnriched && (e?.sellers?.length ?? 0) > 0 && (
@@ -1851,10 +1851,10 @@ function ExpandedDetails({ item, variant = 'list', onPinCatalog, pinningCatalog,
                                   const badge = isWinnerSeller ? 'P' : isBestPrice ? 'C' : null;
                                   const badgeColor = isWinnerSeller ? 'bg-emerald-600' : 'bg-orange-600';
                                   const colorClass = isWinnerSeller
-                                    ? 'text-indigo-400'
+                                    ? 'text-[var(--accent)]'
                                     : isBestPrice
-                                    ? 'text-emerald-500'
-                                    : 'text-gray-500';
+                                    ? 'text-[var(--success)]'
+                                    : 'text-[var(--text-muted)]';
                                   const tooltip = isWinnerSeller
                                     ? 'Vencedor do catálogo (buybox) — Premium'
                                     : isBestPrice
@@ -1863,7 +1863,7 @@ function ExpandedDetails({ item, variant = 'list', onPinCatalog, pinningCatalog,
                                   return (
                                     <span key={name} className={`text-[9px] ${colorClass} truncate flex items-center gap-1`} title={tooltip}>
                                       {badge && <span className={`inline-flex items-center justify-center w-3.5 h-3.5 rounded-full ${badgeColor} text-white text-[8px] font-bold flex-shrink-0`}>{badge}</span>}
-                                      {!badge && <span className="text-gray-600">·</span>}
+                                      {!badge && <span className="text-[var(--text-muted)]">·</span>}
                                       {name}{price != null ? ` · ${formatBRL(price)}` : ''}
                                     </span>
                                   );
@@ -1875,20 +1875,20 @@ function ExpandedDetails({ item, variant = 'list', onPinCatalog, pinningCatalog,
                         {/* Premium */}
                         <td className="px-4 py-2 text-right">
                           <div className="flex flex-col items-end">
-                            <span className="font-bold text-white">{c.price_premium ? formatBRL(c.price_premium) : '—'}</span>
+                            <span className="font-bold text-[var(--text-primary)]">{c.price_premium ? formatBRL(c.price_premium) : '—'}</span>
                             {c.price_premium && (() => {
                               const lucro = (c.price_premium * 0.82) - (item.melhor_preco_usd * cambio);
-                              return <span className={cn("text-[9px]", lucro >= 0 ? "text-emerald-400" : "text-red-400")}>Lucro {formatBRL(lucro)}</span>;
+                              return <span className={cn("text-[9px]", lucro >= 0 ? "text-[var(--success)]" : "text-[var(--destructive)]")}>Lucro {formatBRL(lucro)}</span>;
                             })()}
                           </div>
                         </td>
                         {/* Clássico */}
                         <td className="px-4 py-2 text-right">
                           <div className="flex flex-col items-end">
-                            <span className="text-gray-300">{c.price_classic ? formatBRL(c.price_classic) : '—'}</span>
+                            <span className="text-[var(--text-secondary)]">{c.price_classic ? formatBRL(c.price_classic) : '—'}</span>
                             {c.price_classic && (() => {
                               const lucro = (c.price_classic * 0.84) - (item.melhor_preco_usd * cambio);
-                              return <span className={cn("text-[9px]", lucro >= 0 ? "text-emerald-500" : "text-red-500")}>Lucro {formatBRL(lucro)}</span>;
+                              return <span className={cn("text-[9px]", lucro >= 0 ? "text-[var(--success)]" : "text-[var(--destructive)]")}>Lucro {formatBRL(lucro)}</span>;
                             })()}
                           </div>
                         </td>
@@ -1896,21 +1896,21 @@ function ExpandedDetails({ item, variant = 'list', onPinCatalog, pinningCatalog,
                         <td className="px-4 py-2 text-center">
                           {e?.rating
                             ? <div className="flex flex-col items-center gap-0.5">
-                                <span className="text-amber-400 font-bold">{e.rating} ★</span>
-                                {e.review_count != null && <span className="text-gray-600 text-[9px]">{e.review_count.toLocaleString('pt-BR')} op.</span>}
+                                <span className="text-[var(--brand)] font-bold">{e.rating} ★</span>
+                                {e.review_count != null && <span className="text-[var(--text-muted)] text-[9px]">{e.review_count.toLocaleString('pt-BR')} op.</span>}
                               </div>
-                            : <span className="text-gray-700">—</span>}
+                            : <span className="text-[var(--text-muted)]">—</span>}
                         </td>
                         {/* Vendidos */}
-                        <td className="px-4 py-2 text-right text-gray-400">
+                        <td className="px-4 py-2 text-right text-[var(--text-secondary)]">
                           {vendidos != null
-                            ? <span className={isEnriched && e?.sold_quantity != null ? 'text-white' : ''}>{vendidos.toLocaleString('pt-BR')}</span>
+                            ? <span className={isEnriched && e?.sold_quantity != null ? 'text-[var(--text-primary)]' : ''}>{vendidos.toLocaleString('pt-BR')}</span>
                             : '—'}
                         </td>
                         {/* Vendedores */}
-                        <td className="px-4 py-2 text-right text-gray-400">
+                        <td className="px-4 py-2 text-right text-[var(--text-secondary)]">
                           {vendedores != null
-                            ? <span className={isEnriched && e?.seller_count_fc != null ? 'text-white' : ''}>{vendedores}</span>
+                            ? <span className={isEnriched && e?.seller_count_fc != null ? 'text-[var(--text-primary)]' : ''}>{vendedores}</span>
                             : '—'}
                         </td>
                         {/* Ações */}
@@ -1923,12 +1923,12 @@ function ExpandedDetails({ item, variant = 'list', onPinCatalog, pinningCatalog,
                                 onClick={() => onPinCatalog(item.fingerprint, c.catalog_id)}
                                 disabled={pinningCatalog === `${item.fingerprint}:${c.catalog_id}`}
                                 title="Definir como catálogo principal"
-                                className="text-gray-500 hover:text-yellow-400 transition-colors disabled:opacity-40 text-sm"
+                                className="text-[var(--text-muted)] hover:text-[var(--brand)] transition-colors disabled:opacity-40 text-sm"
                               >
                                 {pinningCatalog === `${item.fingerprint}:${c.catalog_id}` ? '⏳' : '☆'}
                               </button>
                             ) : null}
-                            <a href={c.url} target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300">🔗</a>
+                            <a href={c.url} target="_blank" rel="noreferrer" className="text-[var(--accent)] hover:text-[var(--accent-hover)]">🔗</a>
                           </div>
                         </td>
                       </tr>
@@ -1944,8 +1944,8 @@ function ExpandedDetails({ item, variant = 'list', onPinCatalog, pinningCatalog,
       {/* Tendência — full width (card only) */}
       {variant === 'card' && (
         <div className="px-8 pb-6">
-          <div className="bg-black/40 rounded-xl p-4 border border-gray-800/60 flex flex-col shadow-inner">
-            <span className="text-gray-500 text-[9px] uppercase font-black tracking-[0.2em] text-center mb-2">Tendência 30 Dias (USD)</span>
+          <div className="bg-[var(--bg-overlay)] rounded-xl p-4 border border-[var(--border-default)]/60 flex flex-col shadow-inner">
+            <span className="text-[var(--text-muted)] text-[9px] uppercase font-black tracking-[0.2em] text-center mb-2">Tendência 30 Dias (USD)</span>
             {renderTrend()}
           </div>
         </div>

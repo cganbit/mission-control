@@ -77,8 +77,8 @@ export default function InfograficosPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-white">Infográficos</h1>
-        <p className="text-sm text-slate-400 mt-0.5">Documentação visual do projeto — acesso restrito a administradores</p>
+        <h1 className="text-xl font-semibold text-[var(--text-primary)]">Infográficos</h1>
+        <p className="text-sm text-[var(--text-secondary)] mt-0.5">Documentação visual do projeto — acesso restrito a administradores</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -88,21 +88,21 @@ export default function InfograficosPage() {
             href={`/api/docs/${doc.slug}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="group block bg-slate-900 border border-slate-800 hover:border-indigo-500 rounded-xl p-5 transition-all hover:bg-slate-800/60"
+            className="group block bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-xl p-5 transition-all hover:bg-[var(--bg-muted)]/60"
           >
             <div className="flex items-start justify-between mb-3">
               <span className="text-3xl">{doc.icon}</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 group-hover:border-indigo-700 group-hover:text-indigo-300 transition-colors">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--bg-muted)] text-[var(--text-secondary)] border border-[var(--border)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)] transition-colors">
                 {doc.sprint}
               </span>
             </div>
-            <div className="font-semibold text-white text-sm mb-1 group-hover:text-indigo-300 transition-colors">
+            <div className="font-semibold text-[var(--text-primary)] text-sm mb-1 group-hover:text-[var(--accent)] transition-colors">
               {doc.title}
             </div>
-            <div className="text-xs text-slate-500 leading-relaxed">
+            <div className="text-xs text-[var(--text-muted)] leading-relaxed">
               {doc.description}
             </div>
-            <div className="mt-4 text-xs text-slate-600 group-hover:text-indigo-400 transition-colors flex items-center gap-1">
+            <div className="mt-4 text-xs text-[var(--text-muted)] group-hover:text-[var(--accent)] transition-colors flex items-center gap-1">
               Abrir infográfico →
             </div>
           </a>

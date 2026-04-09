@@ -41,20 +41,20 @@ export default function AgentPerformanceTable({ data }: { data: AgentRow[] }) {
     { key: 'total_cost', label: 'Custo Total', format: v => `$${v?.toFixed(2)}` },
   ];
 
-  if (!data.length) return <p className="text-slate-500 text-sm text-center py-8">Sem dados de agentes</p>;
+  if (!data.length) return <p className="text-[var(--text-muted)] text-sm text-center py-8">Sem dados de agentes</p>;
 
   return (
-    <div className="bg-[#111827] rounded-xl border border-[#1e2430] p-5">
-      <h3 className="text-sm font-semibold text-slate-200 mb-4">Performance por Agente</h3>
+    <div className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border)] p-5">
+      <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Performance por Agente</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#1e2430]">
+            <tr className="border-b border-[var(--border)]">
               {columns.map(col => (
                 <th
                   key={col.key}
                   onClick={() => toggleSort(col.key)}
-                  className="text-left text-slate-500 font-medium py-2 px-3 cursor-pointer hover:text-slate-300 transition-colors select-none"
+                  className="text-left text-[var(--text-muted)] font-medium py-2 px-3 cursor-pointer hover:text-[var(--text-primary)] transition-colors select-none"
                 >
                   <span className="inline-flex items-center gap-1">
                     {col.label}
@@ -66,16 +66,16 @@ export default function AgentPerformanceTable({ data }: { data: AgentRow[] }) {
           </thead>
           <tbody>
             {sorted.map((row, i) => (
-              <tr key={i} className="border-b border-[#1e2430]/50 hover:bg-white/[0.02] transition-colors">
+              <tr key={i} className="border-b border-[var(--border)]/50 hover:bg-white/[0.02] transition-colors">
                 {columns.map(col => {
                   const val = row[col.key];
                   const display = col.format && typeof val === 'number' ? col.format(val) : String(val ?? '—');
                   return (
-                    <td key={col.key} className="py-2.5 px-3 text-slate-300">
+                    <td key={col.key} className="py-2.5 px-3 text-[var(--text-secondary)]">
                       {col.key === 'agent_name' ? (
-                        <span className="font-medium text-slate-100">{display}</span>
+                        <span className="font-medium text-[var(--text-primary)]">{display}</span>
                       ) : col.key === 'model' ? (
-                        <span className="px-2 py-0.5 rounded bg-indigo-950/50 text-indigo-300 text-xs">{display}</span>
+                        <span className="px-2 py-0.5 rounded bg-[var(--bg-muted)] text-[var(--text-secondary)] text-xs">{display}</span>
                       ) : display}
                     </td>
                   );

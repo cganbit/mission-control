@@ -60,8 +60,8 @@ export default async function DashboardPage() {
     <div className="p-8 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-50">Dashboard</h1>
-        <p className="text-slate-500 text-sm mt-1">Visão geral de todos os squads e agentes</p>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Dashboard</h1>
+        <p className="text-[var(--text-muted)] text-sm mt-1">Visão geral de todos os squads e agentes</p>
       </div>
 
       {/* Stat cards */}
@@ -72,13 +72,13 @@ export default async function DashboardPage() {
           return (
             <div
               key={stat.label}
-              className={`rounded-xl p-5 border border-[#1e2430] border-t-2 ${cfg.borderColor} ${cfg.bgColor} bg-[#111827]`}
+              className={`rounded-xl p-5 border border-[var(--border)] border-t-2 ${cfg.borderColor} ${cfg.bgColor} bg-[var(--bg-surface)]`}
             >
               <div className="flex items-center justify-between mb-3">
                 <Icon className={`h-5 w-5 ${cfg.iconColor}`} />
               </div>
-              <div className="text-3xl font-bold text-slate-50">{stat.value}</div>
-              <div className="text-xs text-slate-500 mt-1 font-medium">{stat.label}</div>
+              <div className="text-3xl font-bold text-[var(--text-primary)]">{stat.value}</div>
+              <div className="text-xs text-[var(--text-muted)] mt-1 font-medium">{stat.label}</div>
             </div>
           );
         })}
@@ -86,48 +86,48 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-2 gap-6">
         {/* Squads */}
-        <div className="bg-[#111827] rounded-xl border border-[#1e2430] p-5">
+        <div className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border)] p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-slate-100 text-sm">Squads</h2>
-            <Link href="/squads" className="text-xs text-amber-400 hover:text-amber-300 transition-colors">Ver todos →</Link>
+            <h2 className="font-semibold text-[var(--text-primary)] text-sm">Squads</h2>
+            <Link href="/squads" className="text-xs text-[var(--brand)] hover:text-[var(--brand)] transition-colors">Ver todos →</Link>
           </div>
           <div className="space-y-2">
             {squads.length === 0 ? (
-              <p className="text-slate-600 text-sm text-center py-4">
+              <p className="text-[var(--text-muted)] text-sm text-center py-4">
                 Nenhum squad criado.{' '}
-                <Link href="/squads" className="text-amber-400 hover:text-amber-300">Criar agora →</Link>
+                <Link href="/squads" className="text-[var(--brand)] hover:text-[var(--brand)]">Criar agora →</Link>
               </p>
             ) : squads.map((s: Record<string, unknown>) => (
-              <div key={s.id as string} className="flex items-center gap-3 p-3 bg-slate-800/30 hover:bg-slate-800/60 rounded-lg transition-colors">
+              <div key={s.id as string} className="flex items-center gap-3 p-3 bg-[var(--bg-muted)]/30 hover:bg-[var(--bg-muted)]/60 rounded-lg transition-colors">
                 <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color as string }} />
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-slate-200 text-sm truncate">{s.name as string}</div>
-                  <div className="text-xs text-slate-600 mt-0.5">{s.agent_count as number} agentes · {s.open_tasks as number} tarefas abertas</div>
+                  <div className="font-medium text-[var(--text-primary)] text-sm truncate">{s.name as string}</div>
+                  <div className="text-xs text-[var(--text-muted)] mt-0.5">{s.agent_count as number} agentes · {s.open_tasks as number} tarefas abertas</div>
                 </div>
-                <Link href={`/squads/${s.id}`} className="text-slate-600 hover:text-amber-400 text-xs transition-colors">→</Link>
+                <Link href={`/squads/${s.id}`} className="text-[var(--text-muted)] hover:text-[var(--brand)] text-xs transition-colors">→</Link>
               </div>
             ))}
           </div>
         </div>
 
         {/* Activity Feed */}
-        <div className="bg-[#111827] rounded-xl border border-[#1e2430] p-5">
+        <div className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border)] p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-slate-100 text-sm">Atividade Recente</h2>
-            <Link href="/activity" className="text-xs text-amber-400 hover:text-amber-300 transition-colors">Ver tudo →</Link>
+            <h2 className="font-semibold text-[var(--text-primary)] text-sm">Atividade Recente</h2>
+            <Link href="/activity" className="text-xs text-[var(--brand)] hover:text-[var(--brand)] transition-colors">Ver tudo →</Link>
           </div>
           <div className="space-y-1">
             {recentActivity.length === 0 ? (
-              <p className="text-slate-600 text-sm text-center py-4">Nenhuma atividade ainda</p>
+              <p className="text-[var(--text-muted)] text-sm text-center py-4">Nenhuma atividade ainda</p>
             ) : recentActivity.map((a: Record<string, unknown>) => (
-              <div key={a.id as string} className="flex gap-3 py-2 border-b border-[#1e2430] last:border-0">
+              <div key={a.id as string} className="flex gap-3 py-2 border-b border-[var(--border)] last:border-0">
                 <div
                   className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
                   style={{ backgroundColor: (a.squad_color as string) ?? '#f59e0b' }}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-slate-300 truncate">{a.detail as string}</div>
-                  <div className="text-xs text-slate-600 mt-0.5">
+                  <div className="text-sm text-[var(--text-primary)] truncate">{a.detail as string}</div>
+                  <div className="text-xs text-[var(--text-muted)] mt-0.5">
                     {a.agent_name ? `${a.agent_name} · ` : ''}{formatDate(a.timestamp as string)}
                   </div>
                 </div>
@@ -139,8 +139,8 @@ export default async function DashboardPage() {
 
       {/* Task progress */}
       {totalTasks > 0 && (
-        <div className="bg-[#111827] rounded-xl border border-[#1e2430] p-5">
-          <h2 className="font-semibold text-slate-100 text-sm mb-4">Progresso de Tarefas</h2>
+        <div className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border)] p-5">
+          <h2 className="font-semibold text-[var(--text-primary)] text-sm mb-4">Progresso de Tarefas</h2>
           <div className="flex gap-0.5 h-3 rounded-full overflow-hidden">
             {TASK_STATUSES.map(({ status, color }) => {
               const count = taskMap[status] ?? 0;
@@ -152,7 +152,7 @@ export default async function DashboardPage() {
           </div>
           <div className="flex gap-4 mt-3 flex-wrap">
             {TASK_STATUSES.map(({ status, label, dot }) => (
-              <div key={status} className="flex items-center gap-1.5 text-xs text-slate-500">
+              <div key={status} className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: dot }} />
                 {label} ({taskMap[status] ?? 0})
               </div>

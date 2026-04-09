@@ -113,7 +113,7 @@ function StatusBadge({ status }: { status: string }) {
     payment_required: 'Aguardando',
     cancelled: 'Cancelado',
   };
-  const cls = map[status] ?? 'bg-slate-800 text-slate-400 border-slate-700/50';
+  const cls = map[status] ?? 'bg-[var(--bg-muted)] text-[var(--text-secondary)] border-[var(--border)]/50';
   return (
     <span className={cn('inline-flex items-center px-2 py-0.5 rounded text-xs border', cls)}>
       {label[status] ?? status}
@@ -127,18 +127,18 @@ function MaskedField({ label, raw, maskFn }: { label: string; raw: string | null
   const [revealed, setRevealed] = useState(false);
   if (!raw) return (
     <div>
-      <span className="text-[10px] text-slate-600 uppercase tracking-widest font-bold">{label}</span>
-      <p className="text-sm text-slate-500 mt-0.5">—</p>
+      <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold">{label}</span>
+      <p className="text-sm text-[var(--text-muted)] mt-0.5">—</p>
     </div>
   );
   return (
     <div>
-      <span className="text-[10px] text-slate-600 uppercase tracking-widest font-bold">{label}</span>
+      <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold">{label}</span>
       <div className="flex items-center gap-2 mt-0.5">
-        <p className="text-sm text-slate-200 font-mono">{revealed ? raw : maskFn(raw)}</p>
+        <p className="text-sm text-[var(--text-primary)] font-mono">{revealed ? raw : maskFn(raw)}</p>
         <button
           onClick={() => setRevealed(r => !r)}
-          className="text-slate-500 hover:text-slate-300 transition-colors"
+          className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
           title={revealed ? 'Ocultar' : 'Revelar'}
         >
           {revealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
@@ -184,12 +184,12 @@ function PerfilView({ buyerId, onBack }: { buyerId: string; onBack: () => void }
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
-      <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+      <Loader2 className="h-6 w-6 animate-spin text-[var(--text-muted)]" />
     </div>
   );
 
   if (!perfil) return (
-    <div className="text-center py-20 text-slate-500">Cliente não encontrado.</div>
+    <div className="text-center py-20 text-[var(--text-muted)]">Cliente não encontrado.</div>
   );
 
   return (
@@ -197,17 +197,17 @@ function PerfilView({ buyerId, onBack }: { buyerId: string; onBack: () => void }
       {/* Back */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+        className="flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
         Voltar para lista
       </button>
 
       {/* Card dados pessoais */}
-      <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-6 space-y-5">
+      <div className="bg-[var(--bg-surface)]/50 border border-[var(--border)]/50 rounded-xl p-6 space-y-5">
         <div>
-          <h2 className="text-xl font-bold text-slate-100">{perfil.name}</h2>
-          <p className="text-xs text-slate-500 mt-0.5 font-mono">ML #{perfil.ml_buyer_id}</p>
+          <h2 className="text-xl font-bold text-[var(--text-primary)]">{perfil.name}</h2>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5 font-mono">ML #{perfil.ml_buyer_id}</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -217,22 +217,22 @@ function PerfilView({ buyerId, onBack }: { buyerId: string; onBack: () => void }
         </div>
 
         <div>
-          <label className="text-[10px] text-slate-600 uppercase tracking-widest font-bold block mb-1.5">
+          <label className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold block mb-1.5">
             Notas
           </label>
           <textarea
-            className="w-full bg-slate-800/60 border border-slate-700/50 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 resize-none focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-colors"
+            className="w-full bg-[var(--bg-muted)]/60 border border-[var(--border)]/50 rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] resize-none focus:outline-none focus:border-[var(--accent)]/50 focus:ring-1 focus:ring-[var(--accent)]/20 transition-colors"
             rows={3}
             value={notes}
             onChange={e => setNotes(e.target.value)}
             placeholder="Adicionar notas sobre este cliente..."
           />
           <div className="flex items-center justify-end mt-2 gap-2">
-            {saved && <span className="text-xs text-emerald-400">Salvo!</span>}
+            {saved && <span className="text-xs text-[var(--accent)]">Salvo!</span>}
             <button
               onClick={handleSaveNotes}
               disabled={saving}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600/20 text-indigo-300 border border-indigo-600/30 hover:bg-indigo-600/30 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--accent-muted)] text-[var(--accent)] border border-[var(--accent)]/30 hover:bg-[var(--accent)]/20 transition-colors disabled:opacity-50"
             >
               {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
               Salvar
@@ -242,35 +242,35 @@ function PerfilView({ buyerId, onBack }: { buyerId: string; onBack: () => void }
       </div>
 
       {/* Card comprou em */}
-      <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-6">
-        <h3 className="text-xs text-slate-500 uppercase tracking-widest font-bold mb-3">Comprou em</h3>
+      <div className="bg-[var(--bg-surface)]/50 border border-[var(--border)]/50 rounded-xl p-6">
+        <h3 className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold mb-3">Comprou em</h3>
         <div className="flex flex-wrap gap-2">
           {perfil.lojas.map(loja => (
             <span
               key={loja.nickname}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700/50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--bg-muted)] text-[var(--text-primary)] border border-[var(--border)]/50"
             >
-              <span className="font-bold text-slate-100">{loja.nickname}</span>
-              <span className="text-slate-500">—</span>
+              <span className="font-bold text-[var(--text-primary)]">{loja.nickname}</span>
+              <span className="text-[var(--text-muted)]">—</span>
               <span>{loja.total_pedidos} pedido{loja.total_pedidos !== 1 ? 's' : ''}</span>
-              <span className="text-slate-500">·</span>
-              <span className="text-emerald-400">{fmtBRL(loja.total_gasto)}</span>
+              <span className="text-[var(--text-muted)]">·</span>
+              <span className="text-[var(--accent)]">{fmtBRL(loja.total_gasto)}</span>
             </span>
           ))}
         </div>
       </div>
 
       {/* Tabela de pedidos */}
-      <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-700/50">
-          <h3 className="text-xs text-slate-500 uppercase tracking-widest font-bold">Pedidos ({perfil.pedidos.length})</h3>
+      <div className="bg-[var(--bg-surface)]/50 border border-[var(--border)]/50 rounded-xl overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-[var(--border)]/50">
+          <h3 className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">Pedidos ({perfil.pedidos.length})</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800">
+              <tr className="border-b border-[var(--border)]">
                 {['Data', 'Conta', 'Item + Qtd', 'Valor', 'Envio', 'Status', 'Etiqueta'].map(col => (
-                  <th key={col} className="text-left text-[10px] text-slate-600 uppercase tracking-widest font-bold px-4 py-3 whitespace-nowrap">
+                  <th key={col} className="text-left text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold px-4 py-3 whitespace-nowrap">
                     {col}
                   </th>
                 ))}
@@ -279,23 +279,23 @@ function PerfilView({ buyerId, onBack }: { buyerId: string; onBack: () => void }
             <tbody>
               {perfil.pedidos.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center text-slate-600 py-8 text-sm">Nenhum pedido encontrado.</td>
+                  <td colSpan={7} className="text-center text-[var(--text-muted)] py-8 text-sm">Nenhum pedido encontrado.</td>
                 </tr>
               ) : perfil.pedidos.map(p => (
-                <tr key={p.ml_order_id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
-                  <td className="px-4 py-3 text-slate-400 whitespace-nowrap text-xs">{relativeDate(p.created_at)}</td>
+                <tr key={p.ml_order_id} className="border-b border-[var(--border)]/50 hover:bg-[var(--bg-muted)]/30 transition-colors">
+                  <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap text-xs">{relativeDate(p.created_at)}</td>
                   <td className="px-4 py-3">
-                    <span className="text-xs font-medium text-slate-300 bg-slate-800 px-1.5 py-0.5 rounded">
+                    <span className="text-xs font-medium text-[var(--text-primary)] bg-[var(--bg-muted)] px-1.5 py-0.5 rounded">
                       {p.seller_nickname ?? '—'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-300 max-w-[200px] truncate text-xs" title={p.items_summary ?? ''}>
+                  <td className="px-4 py-3 text-[var(--text-primary)] max-w-[200px] truncate text-xs" title={p.items_summary ?? ''}>
                     {p.items_summary ?? '—'}
                     {p.quantity != null && p.quantity > 1 && (
-                      <span className="ml-1.5 text-slate-500">×{p.quantity}</span>
+                      <span className="ml-1.5 text-[var(--text-muted)]">×{p.quantity}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-200 whitespace-nowrap text-xs font-medium">
+                  <td className="px-4 py-3 text-[var(--text-primary)] whitespace-nowrap text-xs font-medium">
                     {fmtBRL(p.valor)}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
@@ -310,13 +310,13 @@ function PerfilView({ buyerId, onBack }: { buyerId: string; onBack: () => void }
                         href={p.label_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-slate-800 text-slate-300 border border-slate-700/50 hover:border-slate-500 transition-colors"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-[var(--bg-muted)] text-[var(--text-primary)] border border-[var(--border)]/50 hover:border-[var(--border-strong)] transition-colors"
                       >
                         <FileText className="h-3 w-3" />
                         PDF
                       </a>
                     ) : (
-                      <span className="text-slate-600">—</span>
+                      <span className="text-[var(--text-muted)]">—</span>
                     )}
                   </td>
                 </tr>
@@ -362,29 +362,29 @@ function ListaView({ onSelectBuyer }: { onSelectBuyer: (id: number) => void }) {
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-bold text-slate-100">Clientes ML</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Histórico de compradores por conta</p>
+          <h1 className="text-xl font-bold text-[var(--text-primary)]">Clientes ML</h1>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">Histórico de compradores por conta</p>
         </div>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-muted)] pointer-events-none" />
           <input
             type="text"
             value={search}
             onChange={e => handleSearch(e.target.value)}
             placeholder="Buscar por nome ou ID..."
-            className="bg-slate-800/60 border border-slate-700/50 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-colors w-64"
+            className="bg-[var(--bg-muted)]/60 border border-[var(--border)]/50 rounded-lg pl-9 pr-4 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]/50 focus:ring-1 focus:ring-[var(--accent)]/20 transition-colors w-64"
           />
         </div>
       </div>
 
       {/* Tabela */}
-      <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl overflow-hidden">
+      <div className="bg-[var(--bg-surface)]/50 border border-[var(--border)]/50 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800">
+              <tr className="border-b border-[var(--border)]">
                 {['Cliente', 'Lojas', 'Pedidos', 'Total Gasto', 'Última Compra', 'Ações'].map(col => (
-                  <th key={col} className="text-left text-[10px] text-slate-600 uppercase tracking-widest font-bold px-4 py-3 whitespace-nowrap">
+                  <th key={col} className="text-left text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold px-4 py-3 whitespace-nowrap">
                     {col}
                   </th>
                 ))}
@@ -394,40 +394,40 @@ function ListaView({ onSelectBuyer }: { onSelectBuyer: (id: number) => void }) {
               {loading ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12">
-                    <Loader2 className="h-5 w-5 animate-spin text-slate-500 mx-auto" />
+                    <Loader2 className="h-5 w-5 animate-spin text-[var(--text-muted)] mx-auto" />
                   </td>
                 </tr>
               ) : clientes.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center text-slate-600 py-12 text-sm">
+                  <td colSpan={6} className="text-center text-[var(--text-muted)] py-12 text-sm">
                     {search ? 'Nenhum cliente encontrado para esta busca.' : 'Nenhum cliente cadastrado ainda.'}
                   </td>
                 </tr>
               ) : clientes.map(c => (
-                <tr key={c.ml_buyer_id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
+                <tr key={c.ml_buyer_id} className="border-b border-[var(--border)]/50 hover:bg-[var(--bg-muted)]/30 transition-colors">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-slate-200">{c.name}</div>
-                    <div className="text-xs text-slate-500 font-mono">#{c.ml_buyer_id}</div>
+                    <div className="font-medium text-[var(--text-primary)]">{c.name}</div>
+                    <div className="text-xs text-[var(--text-muted)] font-mono">#{c.ml_buyer_id}</div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
                       {c.lojas.map(loja => (
                         <span
                           key={loja}
-                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-900/40 text-indigo-300 border border-indigo-700/40 uppercase tracking-wide"
+                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--accent-muted)] text-[var(--accent)] border border-[var(--accent)]/30 uppercase tracking-wide"
                         >
                           {loja}
                         </span>
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-slate-300 font-medium">{c.total_pedidos}</td>
-                  <td className="px-4 py-3 text-emerald-400 font-medium whitespace-nowrap">{fmtBRL(c.total_gasto)}</td>
-                  <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">{relativeDate(c.ultima_compra)}</td>
+                  <td className="px-4 py-3 text-[var(--text-primary)] font-medium">{c.total_pedidos}</td>
+                  <td className="px-4 py-3 text-[var(--accent)] font-medium whitespace-nowrap">{fmtBRL(c.total_gasto)}</td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)] text-xs whitespace-nowrap">{relativeDate(c.ultima_compra)}</td>
                   <td className="px-4 py-3">
                     <button
                       onClick={() => onSelectBuyer(c.ml_buyer_id)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700/50 hover:border-indigo-500/50 hover:text-indigo-300 hover:bg-indigo-900/20 transition-colors whitespace-nowrap"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--bg-muted)] text-[var(--text-primary)] border border-[var(--border)]/50 hover:border-[var(--accent)]/50 hover:text-[var(--accent)] hover:bg-[var(--accent-muted)] transition-colors whitespace-nowrap"
                     >
                       Ver perfil
                     </button>
@@ -458,7 +458,7 @@ export default function ClientesMLPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0e1a] p-6">
+    <div className="min-h-screen bg-[var(--bg-base)] p-6">
       <div className="max-w-7xl mx-auto">
         {buyerId ? (
           <PerfilView buyerId={buyerId} onBack={handleBack} />

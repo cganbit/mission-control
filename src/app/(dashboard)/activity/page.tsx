@@ -103,9 +103,9 @@ export default function ActivityPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Activity Feed</h1>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Activity Feed</h1>
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-gray-400 text-sm">Atividade dos agentes</p>
+            <p className="text-[var(--text-secondary)] text-sm">Atividade dos agentes</p>
             <div className="flex items-center gap-1.5">
               <div style={{ position: 'relative', width: '8px', height: '8px' }}>
                 {connected && (
@@ -120,37 +120,37 @@ export default function ActivityPage() {
                   backgroundColor: connected ? '#4ade80' : '#facc15'
                 }} />
               </div>
-              <span className="text-xs text-gray-500">{connected ? 'Ao vivo' : 'Reconectando...'}</span>
+              <span className="text-xs text-[var(--text-muted)]">{connected ? 'Ao vivo' : 'Reconectando...'}</span>
             </div>
           </div>
         </div>
         <select
           value={filterSquad}
           onChange={e => setFilterSquad(e.target.value)}
-          className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 focus:outline-none"
+          className="px-3 py-2 bg-[var(--bg-muted)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none"
         >
           <option value="">Todos os squads</option>
           {squads.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
       </div>
 
-      <div className="bg-gray-900 rounded-xl border border-gray-800 divide-y divide-gray-800">
+      <div className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border)] divide-y divide-[var(--border)]">
         {loading ? (
-          <div className="text-center text-gray-500 py-12">Carregando...</div>
+          <div className="text-center text-[var(--text-muted)] py-12">Carregando...</div>
         ) : activities.length === 0 ? (
-          <div className="text-center py-16 text-gray-500">
+          <div className="text-center py-16 text-[var(--text-muted)]">
             <div className="text-4xl mb-3">⚡</div>
             <p>Nenhuma atividade registrada ainda</p>
           </div>
         ) : activities.map(a => (
-          <div key={a.id} className="flex items-start gap-4 px-5 py-4 hover:bg-gray-800/30 transition-colors">
+          <div key={a.id} className="flex items-start gap-4 px-5 py-4 hover:bg-[var(--bg-muted)]/30 transition-colors">
             <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: a.squad_color ?? '#6366f1' }} />
               <span className="text-base">{ACTION_ICONS[a.action] ?? '📝'}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm text-gray-200">{a.detail}</div>
-              <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+              <div className="text-sm text-[var(--text-primary)]">{a.detail}</div>
+              <div className="flex items-center gap-2 mt-1 text-xs text-[var(--text-muted)]">
                 {a.squad_name && <span>{a.squad_name}</span>}
                 {a.agent_name && <><span>·</span><span>🤖 {a.agent_name}</span></>}
                 <span>·</span>

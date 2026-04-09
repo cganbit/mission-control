@@ -13,10 +13,10 @@ class DrawerErrorBoundary extends Component<{ children: ReactNode; onClose: () =
     if (this.state.error) {
       return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-          <div className="bg-slate-900 p-6 rounded-xl max-w-md space-y-3">
-            <p className="text-red-400 font-bold text-sm">Erro no Drawer</p>
-            <pre className="text-xs text-slate-300 whitespace-pre-wrap">{this.state.error}</pre>
-            <button onClick={this.props.onClose} className="px-4 py-2 bg-slate-700 text-white rounded text-sm">Fechar</button>
+          <div className="bg-[var(--bg-surface)] p-6 rounded-xl max-w-md space-y-3">
+            <p className="text-[var(--destructive)] font-bold text-sm">Erro no Drawer</p>
+            <pre className="text-xs text-[var(--text-primary)] whitespace-pre-wrap">{this.state.error}</pre>
+            <button onClick={this.props.onClose} className="px-4 py-2 bg-[var(--bg-muted)] text-[var(--text-primary)] rounded text-sm">Fechar</button>
           </div>
         </div>,
         document.body
@@ -155,10 +155,10 @@ function FreightModal({ orderId, onClose }: { orderId: string; onClose: () => vo
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-slate-900 border border-slate-700/50 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-strong)]/50 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="text-center space-y-1 mb-4">
-          <h2 className="text-base font-bold text-slate-100">Simular Frete</h2>
-          <p className="text-xs text-slate-500 font-mono">Pedido #{orderId}</p>
+          <h2 className="text-base font-bold text-[var(--text-primary)]">Simular Frete</h2>
+          <p className="text-xs text-[var(--text-muted)] font-mono">Pedido #{orderId}</p>
         </div>
 
         <div className="flex gap-2 mb-4">
@@ -166,7 +166,7 @@ function FreightModal({ orderId, onClose }: { orderId: string; onClose: () => vo
             type="text"
             placeholder="CEP destino (ex: 01001000)"
             maxLength={9}
-            className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+            className="flex-1 bg-[var(--bg-muted)] border border-[var(--border-strong)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
             value={toZip}
             onChange={e => setToZip(e.target.value.replace(/\D/g, ''))}
             onKeyDown={e => { if (e.key === 'Enter' && toZip.length >= 8) simulate(toZip); }}
@@ -174,7 +174,7 @@ function FreightModal({ orderId, onClose }: { orderId: string; onClose: () => vo
           <button
             onClick={() => simulate(toZip || undefined)}
             disabled={loading}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors"
+            className="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:bg-[var(--bg-muted)] text-[var(--text-primary)] text-sm font-medium rounded-lg transition-colors"
           >
             {loading ? '...' : 'Cotar'}
           </button>
@@ -203,12 +203,12 @@ function FreightModal({ orderId, onClose }: { orderId: string; onClose: () => vo
         )}
 
         {searched && services.length === 0 && !error && (
-          <p className="text-xs text-slate-500 text-center">Nenhum servico disponivel para este CEP.</p>
+          <p className="text-xs text-[var(--text-muted)] text-center">Nenhum servico disponivel para este CEP.</p>
         )}
 
         <button
           onClick={onClose}
-          className="w-full mt-4 px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-800 text-slate-300 border border-slate-700/50 hover:border-slate-500 hover:text-slate-100 transition-colors"
+          className="w-full mt-4 px-4 py-2.5 rounded-xl text-sm font-medium bg-[var(--bg-muted)] text-[var(--text-primary)] border border-[var(--border)]/50 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] transition-colors"
         >
           Fechar
         </button>
@@ -411,44 +411,44 @@ function MeDrawer({
   return createPortal(
     <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-full max-w-md bg-slate-900 border-l border-slate-700/50 h-full overflow-y-auto p-6 space-y-5"
+        className="w-full max-w-md bg-[var(--bg-surface)] border-l border-[var(--border)]/50 h-full overflow-y-auto p-6 space-y-5"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-base font-bold text-white">Envio Próprio</h2>
-            <p className="text-xs text-slate-500 font-mono">#{order.ml_order_id}</p>
+            <h2 className="text-base font-bold text-[var(--text-primary)]">Envio Próprio</h2>
+            <p className="text-xs text-[var(--text-muted)] font-mono">#{order.ml_order_id}</p>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white text-lg">&times;</button>
+          <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-lg">&times;</button>
         </div>
 
         {/* Timeline */}
         <div className="space-y-1">
-          <h3 className="text-xs text-slate-400 uppercase tracking-wide font-medium">Timeline</h3>
+          <h3 className="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium">Timeline</h3>
           <div className="flex items-center gap-1">
             {ME_TIMELINE_STEPS.map((step, i) => (
               <div key={step} className="flex items-center">
                 <div
                   className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold
                     ${i <= currentStep
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-slate-700 text-slate-500'
+                      ? 'bg-[var(--accent)] text-white'
+                      : 'bg-[var(--bg-muted)] text-[var(--text-muted)]'
                     }
-                    ${i === currentStep ? 'ring-2 ring-emerald-400' : ''}
+                    ${i === currentStep ? 'ring-2 ring-[var(--accent)]' : ''}
                   `}
                   title={ME_STATUS_LABEL[step] ?? step}
                 >
                   {i + 1}
                 </div>
                 {i < ME_TIMELINE_STEPS.length - 1 && (
-                  <div className={`w-4 h-0.5 ${i < currentStep ? 'bg-emerald-600' : 'bg-slate-700'}`} />
+                  <div className={`w-4 h-0.5 ${i < currentStep ? 'bg-[var(--accent)]' : 'bg-[var(--bg-muted)]'}`} />
                 )}
               </div>
             ))}
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Status: <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${ME_STATUS_COLOR[order.me_status ?? ''] ?? 'bg-slate-700 text-slate-300'}`}>
+          <p className="text-xs text-[var(--text-secondary)] mt-1">
+            Status: <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${ME_STATUS_COLOR[order.me_status ?? ''] ?? 'bg-[var(--bg-muted)] text-[var(--text-primary)]'}`}>
               {ME_STATUS_LABEL[order.me_status ?? ''] ?? order.me_status ?? '—'}
             </span>
           </p>
@@ -457,11 +457,11 @@ function MeDrawer({
         {/* Delivery Address */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs text-slate-400 uppercase tracking-wide font-medium">Endereço de Entrega</h3>
+            <h3 className="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium">Endereço de Entrega</h3>
             {!editingAddr && (
               <button
                 onClick={() => { setEditingAddr(true); loadAddress(); }}
-                className="text-xs text-indigo-400 hover:text-indigo-300"
+                className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)]"
               >
                 {addr ? 'Editar' : 'Preencher'}
               </button>
@@ -469,44 +469,44 @@ function MeDrawer({
           </div>
 
           {editingAddr ? (
-            <div className="bg-slate-800 rounded-lg p-3 space-y-2">
+            <div className="bg-[var(--bg-muted)] rounded-lg p-3 space-y-2">
               {addrLoading ? (
-                <p className="text-xs text-slate-500">Buscando endereço...</p>
+                <p className="text-xs text-[var(--text-muted)]">Buscando endereço...</p>
               ) : (
                 <>
                   <div className="grid grid-cols-2 gap-2">
-                    <input placeholder="CEP *" maxLength={9} className="col-span-1 bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    <input placeholder="CEP *" maxLength={9} className="col-span-1 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
                       value={addrForm.cep} onChange={e => setAddrForm(f => ({ ...f, cep: e.target.value.replace(/\D/g, '') }))} />
-                    <input placeholder="Estado (UF) *" maxLength={2} className="col-span-1 bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 uppercase"
+                    <input placeholder="Estado (UF) *" maxLength={2} className="col-span-1 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)] uppercase"
                       value={addrForm.estado} onChange={e => setAddrForm(f => ({ ...f, estado: e.target.value.toUpperCase() }))} />
                   </div>
-                  <input placeholder="Rua / Logradouro *" className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  <input placeholder="Rua / Logradouro *" className="w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
                     value={addrForm.rua} onChange={e => setAddrForm(f => ({ ...f, rua: e.target.value }))} />
                   <div className="grid grid-cols-3 gap-2">
-                    <input placeholder="Número" className="bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    <input placeholder="Número" className="bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
                       value={addrForm.numero} onChange={e => setAddrForm(f => ({ ...f, numero: e.target.value }))} />
-                    <input placeholder="Complemento" className="col-span-2 bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    <input placeholder="Complemento" className="col-span-2 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
                       value={addrForm.complemento} onChange={e => setAddrForm(f => ({ ...f, complemento: e.target.value }))} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <input placeholder="Bairro" className="bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    <input placeholder="Bairro" className="bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
                       value={addrForm.bairro} onChange={e => setAddrForm(f => ({ ...f, bairro: e.target.value }))} />
-                    <input placeholder="Cidade *" className="bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    <input placeholder="Cidade *" className="bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
                       value={addrForm.cidade} onChange={e => setAddrForm(f => ({ ...f, cidade: e.target.value }))} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <input placeholder="Nome destinatário" className="bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    <input placeholder="Nome destinatário" className="bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
                       value={addrForm.nome} onChange={e => setAddrForm(f => ({ ...f, nome: e.target.value }))} />
-                    <input placeholder="Telefone" className="bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    <input placeholder="Telefone" className="bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
                       value={addrForm.telefone} onChange={e => setAddrForm(f => ({ ...f, telefone: e.target.value }))} />
                   </div>
                   <div className="flex gap-2 pt-1">
                     <button onClick={saveAddress} disabled={actionLoading === 'save-addr'}
-                      className="flex-1 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-700 text-white text-xs font-medium rounded transition-colors">
+                      className="flex-1 px-3 py-1.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:bg-[var(--bg-muted)] text-white text-xs font-medium rounded transition-colors">
                       {actionLoading === 'save-addr' ? 'Salvando...' : 'Confirmar Endereço'}
                     </button>
                     <button onClick={() => setEditingAddr(false)}
-                      className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs rounded transition-colors">
+                      className="px-3 py-1.5 bg-[var(--bg-muted)] hover:bg-[var(--border)] text-[var(--text-primary)] text-xs rounded transition-colors">
                       Cancelar
                     </button>
                   </div>
@@ -514,14 +514,14 @@ function MeDrawer({
               )}
             </div>
           ) : addr ? (
-            <div className="bg-slate-800 rounded-lg p-3 text-xs text-slate-300 space-y-0.5">
-              {addr.nome && <p className="text-white font-medium">{addr.nome}</p>}
+            <div className="bg-[var(--bg-muted)] rounded-lg p-3 text-xs text-[var(--text-primary)] space-y-0.5">
+              {addr.nome && <p className="text-[var(--text-primary)] font-medium">{addr.nome}</p>}
               <p>{addr.rua || (addr as any).logradouro}, {addr.numero}{addr.complemento ? ` - ${addr.complemento}` : ''}</p>
               <p>{addr.bairro} — {addr.cidade}/{addr.estado}</p>
               <p className="font-mono">{addr.cep}</p>
             </div>
           ) : (
-            <p className="text-xs text-slate-500">Endereço não confirmado — clique em &quot;Preencher&quot;</p>
+            <p className="text-xs text-[var(--text-muted)]">Endereço não confirmado — clique em &quot;Preencher&quot;</p>
           )}
         </div>
 
@@ -529,19 +529,19 @@ function MeDrawer({
         {!order.me_order_id && addr?.cep && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs text-slate-400 uppercase tracking-wide font-medium">Simulação de Frete</h3>
+              <h3 className="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium">Simulação de Frete</h3>
               <button
                 onClick={() => simulateFreight(addr.cep)}
                 disabled={simLoading}
-                className="text-xs text-indigo-400 hover:text-indigo-300 disabled:text-slate-600"
+                className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] disabled:text-[var(--text-muted)]"
               >
                 {simLoading ? 'Cotando...' : '↻ Recotar'}
               </button>
             </div>
 
             {simLoading && (
-              <div className="bg-slate-800 rounded-lg p-4 text-center">
-                <p className="text-xs text-slate-400 animate-pulse">Consultando Melhor Envio...</p>
+              <div className="bg-[var(--bg-muted)] rounded-lg p-4 text-center">
+                <p className="text-xs text-[var(--text-secondary)] animate-pulse">Consultando Melhor Envio...</p>
               </div>
             )}
 
@@ -574,7 +574,7 @@ function MeDrawer({
             )}
 
             {!simLoading && simServices.length === 0 && !simError && (
-              <p className="text-xs text-slate-500">Nenhum serviço disponível.</p>
+              <p className="text-xs text-[var(--text-muted)]">Nenhum serviço disponível.</p>
             )}
           </div>
         )}
@@ -583,11 +583,11 @@ function MeDrawer({
         {order.me_order_id && (
           <div className="space-y-1">
             <h3 className="text-xs text-slate-400 uppercase tracking-wide font-medium">Etiqueta</h3>
-            <div className="bg-slate-800 rounded-lg p-3 text-xs text-slate-300 space-y-1">
-              <p>Transportadora: <span className="text-white font-medium">{order.me_carrier?.toUpperCase() ?? '—'}</span></p>
-              <p>Custo: <span className="text-white font-medium">R$ {order.me_cost?.toFixed(2) ?? '—'}</span></p>
+            <div className="bg-[var(--bg-muted)] rounded-lg p-3 text-xs text-[var(--text-primary)] space-y-1">
+              <p>Transportadora: <span className="text-[var(--text-primary)] font-medium">{order.me_carrier?.toUpperCase() ?? '—'}</span></p>
+              <p>Custo: <span className="text-[var(--text-primary)] font-medium">R$ {order.me_cost?.toFixed(2) ?? '—'}</span></p>
               {order.me_tracking_code && (
-                <p>Rastreio: <span className="text-white font-mono font-medium">{order.me_tracking_code}</span></p>
+                <p>Rastreio: <span className="text-[var(--text-primary)] font-mono font-medium">{order.me_tracking_code}</span></p>
               )}
             </div>
           </div>
@@ -595,7 +595,7 @@ function MeDrawer({
 
         {/* Action Buttons */}
         <div className="space-y-2">
-          <h3 className="text-xs text-slate-400 uppercase tracking-wide font-medium">Ações</h3>
+          <h3 className="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium">Ações</h3>
 
           {/* Gerar Etiqueta — only when address confirmed in DB */}
           {(!order.me_order_id || order.me_status === 'error') && order.me_delivery_address?.cep && (
@@ -622,7 +622,7 @@ function MeDrawer({
             <button
               disabled={!!actionLoading}
               onClick={() => doAction('send-tracking', `/api/melhor-envio/send-tracking/${order.ml_order_id}`, 'POST')}
-              className="w-full px-3 py-2 bg-indigo-700 hover:bg-indigo-600 disabled:bg-slate-700 text-white text-xs font-medium rounded-lg transition-colors"
+              className="w-full px-3 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:bg-[var(--bg-muted)] text-white text-xs font-medium rounded-lg transition-colors"
             >
               {actionLoading === 'send-tracking' ? 'Enviando...' : '📨 Enviar Rastreio ao Comprador'}
             </button>
@@ -633,7 +633,7 @@ function MeDrawer({
             <button
               disabled={!!actionLoading}
               onClick={() => doAction('track', `/api/melhor-envio/track/${order.ml_order_id}`, 'GET')}
-              className="w-full px-3 py-2 bg-cyan-700 hover:bg-cyan-600 disabled:bg-slate-700 text-white text-xs font-medium rounded-lg transition-colors"
+              className="w-full px-3 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:bg-[var(--bg-muted)] text-white text-xs font-medium rounded-lg transition-colors"
             >
               {actionLoading === 'track' ? 'Consultando...' : '🔍 Atualizar Rastreio'}
             </button>
@@ -656,7 +656,7 @@ function MeDrawer({
               href={order.me_label_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full text-center px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium rounded-lg border border-slate-600 transition-colors"
+              className="block w-full text-center px-3 py-2 bg-[var(--bg-muted)] hover:bg-[var(--border)] text-[var(--text-primary)] text-xs font-medium rounded-lg border border-[var(--border-strong)] transition-colors"
             >
               🖨️ Abrir Etiqueta PDF
             </a>
@@ -680,7 +680,7 @@ function MeDrawer({
 
         <button
           onClick={onClose}
-          className="w-full px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-800 text-slate-300 border border-slate-700/50 hover:border-slate-500 hover:text-slate-100 transition-colors"
+          className="w-full px-4 py-2.5 rounded-xl text-sm font-medium bg-[var(--bg-muted)] text-[var(--text-primary)] border border-[var(--border)]/50 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] transition-colors"
         >
           Fechar
         </button>
@@ -809,12 +809,12 @@ export default function PedidosMLPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">Pedidos Mercado Livre</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Todos os pedidos por conta, status e período</p>
+          <h1 className="text-xl font-semibold text-[var(--text-primary)]">Pedidos Mercado Livre</h1>
+          <p className="text-sm text-[var(--text-secondary)] mt-0.5">Todos os pedidos por conta, status e período</p>
         </div>
         <button
           onClick={load}
-          className="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-sm rounded-lg transition-colors"
+          className="px-3 py-2 bg-[var(--bg-muted)] hover:bg-[var(--border)] border border-[var(--border)] text-[var(--text-primary)] text-sm rounded-lg transition-colors"
         >
           Atualizar
         </button>
@@ -823,25 +823,25 @@ export default function PedidosMLPage() {
       {/* Counters */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: 'Pagos', value: counts.paid, color: 'text-emerald-300' },
-          { label: 'Aguardando pgto', value: counts.pending, color: 'text-amber-300' },
-          { label: 'Entregues', value: counts.delivered, color: 'text-blue-300' },
-          { label: 'Envio próprio', value: counts.envioProprio, color: 'text-amber-400' },
+          { label: 'Pagos', value: counts.paid, color: 'text-[var(--accent)]' },
+          { label: 'Aguardando pgto', value: counts.pending, color: 'text-[var(--warning)]' },
+          { label: 'Entregues', value: counts.delivered, color: 'text-[var(--accent)]' },
+          { label: 'Envio próprio', value: counts.envioProprio, color: 'text-[var(--brand)]' },
         ].map(c => (
-          <div key={c.label} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div key={c.label} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-4">
             <div className={`text-2xl font-bold ${c.color}`}>{c.value}</div>
-            <div className="text-xs text-slate-500 mt-0.5">{c.label}</div>
+            <div className="text-xs text-[var(--text-muted)] mt-0.5">{c.label}</div>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-4">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="space-y-1">
-            <label className="text-xs text-slate-400 uppercase tracking-wide">Conta</label>
+            <label className="text-xs text-[var(--text-secondary)] uppercase tracking-wide">Conta</label>
             <select
-              className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+              className="bg-[var(--bg-muted)] border border-[var(--border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
               value={filterAccount}
               onChange={e => setFilterAccount(e.target.value)}
             >
@@ -850,9 +850,9 @@ export default function PedidosMLPage() {
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-xs text-slate-400 uppercase tracking-wide">Status</label>
+            <label className="text-xs text-[var(--text-secondary)] uppercase tracking-wide">Status</label>
             <select
-              className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+              className="bg-[var(--bg-muted)] border border-[var(--border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
             >
@@ -862,26 +862,26 @@ export default function PedidosMLPage() {
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-xs text-slate-400 uppercase tracking-wide">De</label>
+            <label className="text-xs text-[var(--text-secondary)] uppercase tracking-wide">De</label>
             <input
               type="date"
-              className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+              className="bg-[var(--bg-muted)] border border-[var(--border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
               value={filterFrom}
               onChange={e => setFilterFrom(e.target.value)}
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs text-slate-400 uppercase tracking-wide">Até</label>
+            <label className="text-xs text-[var(--text-secondary)] uppercase tracking-wide">Até</label>
             <input
               type="date"
-              className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+              className="bg-[var(--bg-muted)] border border-[var(--border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
               value={filterTo}
               onChange={e => setFilterTo(e.target.value)}
             />
           </div>
           <button
             onClick={load}
-            className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+            className="px-4 py-1.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] text-sm font-medium rounded-lg transition-colors"
           >
             Filtrar
           </button>
@@ -889,16 +889,16 @@ export default function PedidosMLPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-slate-500 text-sm">Carregando...</div>
+          <div className="p-8 text-center text-[var(--text-muted)] text-sm">Carregando...</div>
         ) : orders.length === 0 ? (
-          <div className="p-8 text-center text-slate-500 text-sm">Nenhum pedido encontrado no período.</div>
+          <div className="p-8 text-center text-[var(--text-muted)] text-sm">Nenhum pedido encontrado no período.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wide">
+                <tr className="border-b border-[var(--border)] text-[var(--text-secondary)] text-xs uppercase tracking-wide">
                   <th className="text-left px-4 py-3 font-medium">Pedido</th>
                   <th className="text-left px-4 py-3 font-medium">Conta</th>
                   <th className="text-left px-4 py-3 font-medium">Comprador</th>
@@ -914,22 +914,22 @@ export default function PedidosMLPage() {
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-[var(--border)]">
                 {orders.map(order => {
                   const logistic = translateLogistic(order.logistic_type);
                   const listing = translateListingType(order.listing_type);
                   const shipping = translateShippingStatus(order.shipping_status);
                   return (
-                    <tr key={order.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs text-slate-300">
+                    <tr key={order.id} className="hover:bg-[var(--bg-muted)]/40 transition-colors">
+                      <td className="px-4 py-3 font-mono text-xs text-[var(--text-primary)]">
                         #{order.ml_order_id}
                       </td>
-                      <td className="px-4 py-3 text-white text-xs">{order.seller_nickname ?? '—'}</td>
-                      <td className="px-4 py-3 text-slate-400 text-xs">{order.buyer_name ?? '—'}</td>
-                      <td className="px-4 py-3 text-slate-400 text-xs max-w-[220px] truncate" title={formatItems(order.items_json)}>
+                      <td className="px-4 py-3 text-[var(--text-primary)] text-xs">{order.seller_nickname ?? '—'}</td>
+                      <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">{order.buyer_name ?? '—'}</td>
+                      <td className="px-4 py-3 text-[var(--text-secondary)] text-xs max-w-[220px] truncate" title={formatItems(order.items_json)}>
                         {formatItems(order.items_json)}
                       </td>
-                      <td className="px-4 py-3 text-right text-xs font-medium text-white whitespace-nowrap">
+                      <td className="px-4 py-3 text-right text-xs font-medium text-[var(--text-primary)] whitespace-nowrap">
                         {order.total != null ? `R$ ${Number(order.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}
                       </td>
                       <td className="px-4 py-3 text-xs">
@@ -958,7 +958,7 @@ export default function PedidosMLPage() {
                       </td>
                       <td className="px-4 py-3 text-center text-xs">
                         {order.print_status ? (
-                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${PRINT_STATUS_COLOR[order.print_status] ?? 'bg-slate-700 text-slate-300'} ${(order.print_status === 'pending' || order.print_status === 'printing') ? 'animate-pulse' : ''}`}>
+                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${PRINT_STATUS_COLOR[order.print_status] ?? 'bg-[var(--bg-muted)] text-[var(--text-primary)]'} ${(order.print_status === 'pending' || order.print_status === 'printing') ? 'animate-pulse' : ''}`}>
                             {(order.print_status === 'pending' || order.print_status === 'printing') && (
                               <span className="w-1.5 h-1.5 rounded-full bg-current animate-ping" />
                             )}
@@ -980,12 +980,12 @@ export default function PedidosMLPage() {
                             {ME_STATUS_LABEL[order.me_status] ?? order.me_status}
                           </span>
                         ) : isEnvioProprio(order.logistic_type) ? (
-                          <span className="text-slate-600 text-xs">pendente</span>
+                          <span className="text-[var(--text-muted)] text-xs">pendente</span>
                         ) : (
-                          <span className="text-slate-600">—</span>
+                          <span className="text-[var(--text-muted)]">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
+                      <td className="px-4 py-3 text-[var(--text-secondary)] text-xs whitespace-nowrap">
                         {new Date(order.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                       </td>
                       <td className="px-4 py-3 text-right">

@@ -35,10 +35,10 @@ interface AgentRow {
 }
 
 const STAT_CARDS = [
-  { key: 'total_sessions', label: 'Sprints', icon: BarChart2, color: 'text-indigo-400', bg: 'bg-indigo-500/10', format: (v: number) => String(v ?? 0) },
-  { key: 'total_cost', label: 'Custo Total', icon: DollarSign, color: 'text-amber-400', bg: 'bg-amber-500/10', format: (v: number) => `$${(v ?? 0).toFixed(2)}` },
-  { key: 'avg_cache_hit', label: 'Avg Cache Hit', icon: Zap, color: 'text-green-400', bg: 'bg-green-500/10', format: (v: number) => `${(v ?? 0).toFixed(1)}%` },
-  { key: 'total_tokens', label: 'Total Tokens', icon: Database, color: 'text-violet-400', bg: 'bg-violet-500/10', format: (v: number) => {
+  { key: 'total_sessions', label: 'Sprints', icon: BarChart2, color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-muted)]', format: (v: number) => String(v ?? 0) },
+  { key: 'total_cost', label: 'Custo Total', icon: DollarSign, color: 'text-[var(--brand)]', bg: 'bg-[var(--brand)]/10', format: (v: number) => `$${(v ?? 0).toFixed(2)}` },
+  { key: 'avg_cache_hit', label: 'Avg Cache Hit', icon: Zap, color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-muted)]', format: (v: number) => `${(v ?? 0).toFixed(1)}%` },
+  { key: 'total_tokens', label: 'Total Tokens', icon: Database, color: 'text-[var(--text-secondary)]', bg: 'bg-[var(--bg-muted)]', format: (v: number) => {
     if (!v) return '0';
     if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
     if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
@@ -91,8 +91,8 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-100">Sprint Analytics</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Performance, custo e eficiência por sprint</p>
+          <h1 className="text-xl font-bold text-[var(--text-primary)]">Sprint Analytics</h1>
+          <p className="text-sm text-[var(--text-muted)] mt-0.5">Performance, custo e eficiência por sprint</p>
         </div>
         <SprintSelector project={project} projects={allProjects} onProjectChange={setProject} />
       </div>
@@ -100,7 +100,7 @@ export default function AnalyticsPage() {
       {/* Loading state */}
       {loading && !dashboard && (
         <div className="flex items-center justify-center py-20">
-          <div className="w-6 h-6 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-[var(--brand)]/30 border-t-[var(--brand)] rounded-full animate-spin" />
         </div>
       )}
 
@@ -112,13 +112,13 @@ export default function AnalyticsPage() {
               const val = dashboard.summary?.[card.key as keyof Summary] ?? 0;
               const Icon = card.icon;
               return (
-                <div key={card.key} className="bg-[#111827] rounded-xl border border-[#1e2430] p-4">
+                <div key={card.key} className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border)] p-4">
                   <div className="flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-lg ${card.bg} flex items-center justify-center`}>
                       <Icon className={`h-4.5 w-4.5 ${card.color}`} />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500">{card.label}</p>
+                      <p className="text-xs text-[var(--text-muted)]">{card.label}</p>
                       <p className={`text-lg font-bold ${card.color}`}>{card.format(val as number)}</p>
                     </div>
                   </div>

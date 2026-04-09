@@ -80,9 +80,9 @@ const APPS: NavItem[] = [
 const ROLE_LEVEL: Record<string, number> = { admin: 3, member: 2, viewer: 1 };
 const ROLE_LABEL: Record<string, string>  = { admin: 'Admin', member: 'Membro', viewer: 'Viewer' };
 const ROLE_COLOR: Record<string, string>  = {
-  admin:  'bg-amber-950 text-amber-400 border border-amber-800/50',
-  member: 'bg-blue-950 text-blue-400 border border-blue-800/50',
-  viewer: 'bg-slate-800 text-slate-400 border border-slate-700',
+  admin:  'bg-[var(--brand-muted)] text-[var(--brand)] border border-[var(--brand)]/30',
+  member: 'bg-[var(--info-muted)] text-[var(--info)] border border-[var(--info)]/30',
+  viewer: 'bg-[var(--bg-muted)] text-[var(--text-secondary)] border border-[var(--border-default)]',
 };
 
 interface Me { name: string; username: string; role: string }
@@ -104,8 +104,8 @@ function NavLink({ item, active, collapsed }: { item: NavItem; active: boolean; 
         'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative',
         collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2',
         active
-          ? 'bg-amber-500/10 text-amber-400 border-l-2 border-amber-500 pl-[calc(0.75rem-2px)]'
-          : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 border-l-2 border-transparent'
+          ? 'bg-[var(--brand-muted)] text-[var(--brand)] border-l-2 border-[var(--brand)] pl-[calc(0.75rem-2px)]'
+          : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 border-l-2 border-transparent'
       )}
     >
       <Icon className={cn('flex-shrink-0', collapsed ? 'h-5 w-5' : 'h-4 w-4')} />
@@ -150,35 +150,35 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   return (
     <aside className={cn(
-      'fixed left-0 top-0 h-screen flex flex-col border-r border-[#1e2430] bg-[#0d1117] transition-[width] duration-200 z-40',
+      'fixed left-0 top-0 h-screen flex flex-col border-r border-[var(--border-default)] bg-[var(--bg-surface)] transition-[width] duration-200 z-40',
       collapsed ? 'w-16' : 'w-60'
     )}>
 
       {/* Logo */}
       <div className={cn(
-        'flex items-center border-b border-[#1e2430] flex-shrink-0',
+        'flex items-center border-b border-[var(--border-default)] flex-shrink-0',
         collapsed ? 'justify-center py-5 px-2' : 'justify-between px-4 py-5'
       )}>
         {!collapsed && (
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-amber-400 font-black text-sm font-mono">MC</span>
+            <div className="w-8 h-8 rounded-lg bg-[var(--brand-muted)] border flex items-center justify-center flex-shrink-0" style={{ borderColor: 'rgba(245, 158, 11, 0.2)' }}>
+              <span className="font-black text-sm font-mono text-[var(--brand)]">MC</span>
             </div>
             <div className="min-w-0">
-              <div className="font-bold text-slate-100 text-sm leading-tight truncate">Mission Control</div>
-              <div className="text-[10px] text-slate-600">OpenClaw</div>
+              <div className="font-bold text-[var(--text-primary)] text-sm leading-tight truncate">Mission Control</div>
+              <div className="text-[10px] text-[var(--text-muted)]">OpenClaw</div>
             </div>
           </div>
         )}
         {collapsed && (
-          <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-            <span className="text-amber-400 font-black text-sm font-mono">MC</span>
+          <div className="w-8 h-8 rounded-lg bg-[var(--brand-muted)] border flex items-center justify-center" style={{ borderColor: 'rgba(245, 158, 11, 0.2)' }}>
+            <span className="font-black text-sm font-mono text-[var(--brand)]">MC</span>
           </div>
         )}
         {!collapsed && (
           <button
             onClick={onToggle}
-            className="text-slate-600 hover:text-slate-300 transition-colors p-1 rounded flex-shrink-0"
+            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1 rounded flex-shrink-0"
             title="Recolher sidebar"
           >
             <PanelLeftClose className="h-4 w-4" />
@@ -192,7 +192,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {visibleGroups.map(group => (
           <div key={group.label}>
             {!collapsed && (
-              <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold px-3 mb-1.5">
+              <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold px-3 mb-1.5">
                 {group.label}
               </p>
             )}
@@ -213,7 +213,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {visibleApps.length > 0 && (
           <div>
             {!collapsed && (
-              <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold px-3 mb-1.5">
+              <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold px-3 mb-1.5">
                 Apps
               </p>
             )}
@@ -224,18 +224,18 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   className={cn(
                     'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors border-l-2',
                     isAppActive
-                      ? 'text-amber-400 border-amber-500 bg-amber-500/5'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 border-transparent'
+                      ? 'text-[var(--brand)] border-[var(--brand)] bg-[var(--brand-muted)]'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 border-transparent'
                   )}
                 >
                   <AppWindow className="h-4 w-4 flex-shrink-0" />
                   <span className="flex-1 text-left">Explorar</span>
                   {appsOpen
-                    ? <ChevronUp className="h-3 w-3 text-slate-600" />
-                    : <ChevronDown className="h-3 w-3 text-slate-600" />}
+                    ? <ChevronUp className="h-3 w-3 text-[var(--text-muted)]" />
+                    : <ChevronDown className="h-3 w-3 text-[var(--text-muted)]" />}
                 </button>
                 {appsOpen && (
-                  <div className="ml-3 pl-3 border-l border-[#1e2430] space-y-0.5 mt-0.5">
+                  <div className="ml-3 pl-3 border-l border-[var(--border-default)] space-y-0.5 mt-0.5">
                     {visibleApps.map(app => (
                       <NavLink
                         key={app.href}
@@ -268,7 +268,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <div className="px-2 pb-2">
           <button
             onClick={onToggle}
-            className="w-full flex items-center justify-center py-2 text-slate-600 hover:text-slate-300 hover:bg-white/5 rounded-lg transition-colors"
+            className="w-full flex items-center justify-center py-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 rounded-lg transition-colors"
             title="Expandir sidebar"
           >
             <PanelLeftOpen className="h-4 w-4" />
@@ -278,24 +278,23 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* User card */}
       {me && (
-        <div className={cn('border-t border-[#1e2430] flex-shrink-0', collapsed ? 'px-2 py-3' : 'px-3 py-3')}>
+        <div className={cn('border-t border-[var(--border-default)] flex-shrink-0', collapsed ? 'px-2 py-3' : 'px-3 py-3')}>
           {collapsed ? (
             <div
-              className="w-8 h-8 mx-auto rounded-full bg-amber-600/20 border border-amber-600/30 flex items-center justify-center cursor-default"
+              className="w-8 h-8 mx-auto rounded-full border bg-[var(--brand-muted)] flex items-center justify-center cursor-default text-xs font-bold text-[var(--brand)]"
+              style={{ borderColor: 'rgba(217, 119, 6, 0.3)' }}
               title={`${me.name} (${ROLE_LABEL[me.role] ?? me.role})`}
             >
-              <span className="text-amber-400 text-xs font-bold">
-                {(me.name || me.username || '?').charAt(0).toUpperCase()}
-              </span>
+              {(me.name || me.username || '?').charAt(0).toUpperCase()}
             </div>
           ) : (
             <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/5 transition-colors">
-              <div className="w-7 h-7 rounded-full bg-amber-600/20 border border-amber-600/30 flex items-center justify-center text-xs font-bold text-amber-400 flex-shrink-0">
+              <div className="w-7 h-7 rounded-full border bg-[var(--brand-muted)] flex items-center justify-center text-xs font-bold flex-shrink-0 text-[var(--brand)]" style={{ borderColor: 'rgba(245, 158, 11, 0.3)' }}>
                 {(me.name || me.username || '?').charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium text-slate-200 truncate">{me.name}</div>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${ROLE_COLOR[me.role] ?? 'bg-slate-800 text-slate-400'}`}>
+                <div className="text-xs font-medium text-[var(--text-primary)] truncate">{me.name}</div>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${ROLE_COLOR[me.role] ?? 'bg-[var(--bg-muted)] text-[var(--text-secondary)]'}`}>
                   {ROLE_LABEL[me.role] ?? me.role}
                 </span>
               </div>
@@ -310,7 +309,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           onClick={handleLogout}
           title="Sair"
           className={cn(
-            'flex items-center gap-3 rounded-lg text-sm text-slate-500 hover:text-red-400 hover:bg-red-950/20 transition-colors',
+            'flex items-center gap-3 rounded-lg text-sm text-[var(--text-muted)] hover:text-[var(--destructive)] hover:bg-[var(--destructive-muted)] transition-colors',
             collapsed ? 'w-full justify-center py-2.5' : 'w-full px-3 py-2'
           )}
         >

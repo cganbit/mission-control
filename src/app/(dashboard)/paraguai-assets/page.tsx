@@ -49,11 +49,11 @@ const STATUS_LABEL: Record<AssetStatus, string> = {
 };
 
 const STATUS_COLOR: Record<AssetStatus, string> = {
-  comprado:    'bg-blue-900/40 text-blue-300 border-blue-800',
-  em_transito: 'bg-amber-900/40 text-amber-300 border-amber-800',
-  em_estoque:  'bg-indigo-900/40 text-indigo-300 border-indigo-800',
-  vendido:     'bg-emerald-900/40 text-emerald-300 border-emerald-800',
-  cancelado:   'bg-gray-800 text-gray-500 border-gray-700',
+  comprado:    'bg-[var(--info-muted)] text-[var(--info)] border-[var(--info)]/30',
+  em_transito: 'bg-[var(--warning)]/15 text-[var(--warning)] border-[var(--warning)]/30',
+  em_estoque:  'bg-[var(--accent)]/15 text-[var(--accent)] border-[var(--accent)]/30',
+  vendido:     'bg-[var(--success-muted)] text-[var(--success)] border-[var(--success)]/30',
+  cancelado:   'bg-[var(--bg-muted)] text-[var(--text-muted)] border-[var(--border)]',
 };
 
 const ALL_STATUS: AssetStatus[] = ['comprado', 'em_transito', 'em_estoque', 'vendido', 'cancelado'];
@@ -102,15 +102,15 @@ function AssetModal({ asset, onClose, onSaved }: {
     setSaving(false);
   }
 
-  const inputCls = 'w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500';
-  const labelCls = 'text-xs text-gray-400 mb-1';
+  const inputCls = 'w-full bg-[var(--bg-muted)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]';
+  const labelCls = 'text-xs text-[var(--text-secondary)] mb-1';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-      <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-white font-bold text-lg">{isEdit ? '✏️ Editar Asset' : '➕ Registrar Compra'}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">✕</button>
+          <h2 className="text-[var(--text-primary)] font-bold text-lg">{isEdit ? '✏️ Editar Asset' : '➕ Registrar Compra'}</h2>
+          <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl">✕</button>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -129,7 +129,7 @@ function AssetModal({ asset, onClose, onSaved }: {
           {isEdit && (
             <div className="col-span-2">
               <p className={labelCls}>Produto</p>
-              <p className="text-white text-sm font-medium">{asset!.titulo_amigavel}</p>
+              <p className="text-[var(--text-primary)] text-sm font-medium">{asset!.titulo_amigavel}</p>
             </div>
           )}
 
@@ -180,11 +180,11 @@ function AssetModal({ asset, onClose, onSaved }: {
           </div>
         </div>
 
-        {error && <p className="text-red-400 text-xs mt-3">{error}</p>}
+        {error && <p className="text-[var(--destructive)] text-xs mt-3">{error}</p>}
 
         <div className="flex justify-end gap-2 mt-5">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 text-sm hover:bg-gray-700">Cancelar</button>
-          <button onClick={save} disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500 disabled:opacity-50">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-[var(--bg-muted)] text-[var(--text-secondary)] text-sm hover:bg-[var(--bg-muted)]">Cancelar</button>
+          <button onClick={save} disabled={saving} className="px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--text-primary)] text-sm hover:bg-[var(--accent-hover)] disabled:opacity-50">
             {saving ? 'Salvando...' : isEdit ? 'Salvar' : 'Registrar'}
           </button>
         </div>
@@ -240,11 +240,11 @@ export default function AssetsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">📦 Controle de Assets</h1>
-          <p className="text-gray-400 text-sm mt-0.5">{assets.length} registro(s) — inventário de compras</p>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">📦 Controle de Assets</h1>
+          <p className="text-[var(--text-secondary)] text-sm mt-0.5">{assets.length} registro(s) — inventário de compras</p>
         </div>
         <button onClick={() => { setEditAsset(undefined); setShowModal(true); }}
-          className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500 flex items-center gap-2">
+          className="px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--text-primary)] text-sm hover:bg-[var(--accent-hover)] flex items-center gap-2">
           ➕ Registrar Compra
         </button>
       </div>
@@ -252,15 +252,15 @@ export default function AssetsPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Assets ativos', value: ativos.length, sub: 'comprados / em trânsito / estoque', color: 'text-indigo-400' },
-          { label: 'Custo total (USD)', value: fUSD(totalCustoUSD), sub: 'investimento em aberto', color: 'text-amber-400' },
-          { label: 'Vendidos', value: vendidos.length, sub: 'unidades realizadas', color: 'text-emerald-400' },
-          { label: 'Lucro realizado', value: fBRL(totalLucro), sub: 'receita − custo convertido', color: totalLucro >= 0 ? 'text-emerald-400' : 'text-red-400' },
+          { label: 'Assets ativos', value: ativos.length, sub: 'comprados / em trânsito / estoque', color: 'text-[var(--accent)]' },
+          { label: 'Custo total (USD)', value: fUSD(totalCustoUSD), sub: 'investimento em aberto', color: 'text-[var(--brand)]' },
+          { label: 'Vendidos', value: vendidos.length, sub: 'unidades realizadas', color: 'text-[var(--accent)]' },
+          { label: 'Lucro realizado', value: fBRL(totalLucro), sub: 'receita − custo convertido', color: totalLucro >= 0 ? 'text-[var(--accent)]' : 'text-[var(--destructive)]' },
         ].map(s => (
-          <div key={s.label} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <p className="text-gray-400 text-xs uppercase tracking-wider">{s.label}</p>
+          <div key={s.label} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-4">
+            <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider">{s.label}</p>
             <p className={cn('text-xl font-bold mt-1', s.color)}>{s.value}</p>
-            <p className="text-gray-600 text-xs mt-0.5">{s.sub}</p>
+            <p className="text-[var(--text-muted)] text-xs mt-0.5">{s.sub}</p>
           </div>
         ))}
       </div>
@@ -268,20 +268,20 @@ export default function AssetsPage() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar produto..."
-          className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500 w-64" />
+          className="bg-[var(--bg-muted)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)] w-64" />
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500">
+          className="bg-[var(--bg-muted)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent)]">
           <option value="">Todos os status</option>
           {ALL_STATUS.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
         </select>
       </div>
 
       {/* Table */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl overflow-hidden">
         {loading ? (
-          <div className="text-center py-16 text-gray-500">Carregando...</div>
+          <div className="text-center py-16 text-[var(--text-muted)]">Carregando...</div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-gray-500">
+          <div className="text-center py-16 text-[var(--text-muted)]">
             <p className="text-4xl mb-3">📦</p>
             <p>Nenhum asset registrado ainda.</p>
             <p className="text-xs mt-1">Clique em "Registrar Compra" para começar.</p>
@@ -289,7 +289,7 @@ export default function AssetsPage() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-800 text-gray-400 text-xs uppercase tracking-wider">
+              <tr className="border-b border-[var(--border)] text-[var(--text-muted)] text-xs uppercase tracking-wider">
                 <th className="px-4 py-3 text-left">Produto</th>
                 <th className="px-4 py-3 text-center">Status</th>
                 <th className="px-4 py-3 text-right">Qtd</th>
@@ -302,38 +302,38 @@ export default function AssetsPage() {
                 <th className="px-4 py-3 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-[var(--border)]">
               {filtered.map(a => (
-                <tr key={a.id} className="hover:bg-gray-800/40 transition-colors">
+                <tr key={a.id} className="hover:bg-[var(--bg-muted)]/40 transition-colors">
                   <td className="px-4 py-3">
-                    <p className="text-white font-medium truncate max-w-[200px]">{a.titulo_amigavel}</p>
-                    <p className="text-gray-500 text-[10px]">{a.fingerprint}</p>
-                    {a.observacoes && <p className="text-gray-500 text-[10px] italic truncate max-w-[200px]">📝 {a.observacoes}</p>}
+                    <p className="text-[var(--text-primary)] font-medium truncate max-w-[200px]">{a.titulo_amigavel}</p>
+                    <p className="text-[var(--text-muted)] text-[10px]">{a.fingerprint}</p>
+                    {a.observacoes && <p className="text-[var(--text-muted)] text-[10px] italic truncate max-w-[200px]">📝 {a.observacoes}</p>}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className={cn('text-[11px] px-2 py-0.5 rounded-full border', STATUS_COLOR[a.status])}>
                       {STATUS_LABEL[a.status]}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-300">{a.qty}</td>
-                  <td className="px-4 py-3 text-right text-gray-300">{fUSD(a.preco_usd)}</td>
-                  <td className="px-4 py-3 text-right text-amber-400 font-medium">{fUSD(a.custo_total_usd)}</td>
-                  <td className="px-4 py-3 text-right text-gray-300">{a.preco_venda_brl ? fBRL(a.preco_venda_brl) : '—'}</td>
+                  <td className="px-4 py-3 text-right text-[var(--text-primary)]">{a.qty}</td>
+                  <td className="px-4 py-3 text-right text-[var(--text-primary)]">{fUSD(a.preco_usd)}</td>
+                  <td className="px-4 py-3 text-right text-[var(--brand)] font-medium">{fUSD(a.custo_total_usd)}</td>
+                  <td className="px-4 py-3 text-right text-[var(--text-primary)]">{a.preco_venda_brl ? fBRL(a.preco_venda_brl) : '—'}</td>
                   <td className="px-4 py-3 text-right">
                     {a.lucro_estimado_brl != null ? (
-                      <span className={a.lucro_estimado_brl >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                      <span className={a.lucro_estimado_brl >= 0 ? 'text-[var(--accent)]' : 'text-[var(--destructive)]'}>
                         {fBRL(a.lucro_estimado_brl)}
                       </span>
                     ) : '—'}
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{a.fornecedor ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{fDate(a.data_compra)}</td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">{a.fornecedor ?? '—'}</td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">{fDate(a.data_compra)}</td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <button onClick={() => { setEditAsset(a); setShowModal(true); }}
-                        className="text-gray-400 hover:text-indigo-400 text-xs" title="Editar">✏️</button>
+                        className="text-[var(--text-secondary)] hover:text-[var(--accent)] text-xs" title="Editar">✏️</button>
                       <button onClick={() => deleteAsset(a.id)} disabled={deletingId === a.id}
-                        className="text-gray-400 hover:text-red-400 text-xs disabled:opacity-40" title="Remover">🗑️</button>
+                        className="text-[var(--text-secondary)] hover:text-[var(--destructive)] text-xs disabled:opacity-40" title="Remover">🗑️</button>
                     </div>
                   </td>
                 </tr>

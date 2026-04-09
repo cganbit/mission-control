@@ -1,8 +1,45 @@
 @import "tailwindcss";
 
 :root {
-  --background: #030712;
-  --foreground: #f9fafb;
+  /* Backgrounds */
+  --bg-base: #171717;
+  --bg-surface: #1c1c1c;
+  --bg-muted: #242424;
+  --bg-overlay: #232323;
+
+  /* Borders */
+  --border: #2e2e2e;
+  --border-default: #2e2e2e;
+  --border-strong: #3e3e3e;
+
+  /* Text */
+  --text-primary: #ededed;
+  --text-secondary: #a3a3a3;
+  --text-muted: #6b6b6b;
+
+  /* Accent (Supabase green) */
+  --accent: #3ecf8e;
+  --accent-hover: #2bb37a;
+  --accent-muted: #3ecf8e20;
+
+  /* Brand (amber — Mission Control identity) */
+  --brand: #f59e0b;
+
+  /* Semantic */
+  --destructive: #f87171;
+  --danger: #ef4444;
+  --warning: #fbbf24;
+  --success: #22c55e;
+  --info: #3b82f6;
+
+  /* Semantic muted (badge backgrounds) */
+  --brand-muted: #f59e0b20;
+  --info-muted: #3b82f620;
+  --destructive-muted: #ef444420;
+  --success-muted: #22c55e20;
+  --warning-muted: #fbbf2420;
+
+  /* Charts */
   --chart-1: #6366f1;
   --chart-2: #22c55e;
   --chart-3: #f59e0b;
@@ -11,13 +48,13 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg-base);
+  color: var(--text-primary);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #374151 transparent;
+  scrollbar-color: var(--border-default) transparent;
 }
 
 @keyframes slideIn {

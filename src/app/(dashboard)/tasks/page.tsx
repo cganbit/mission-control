@@ -41,10 +41,10 @@ function relativeTime(dateStr: string): string {
 function relativeDue(dateStr: string): { label: string; color: string } {
   const diff = new Date(dateStr).getTime() - Date.now();
   const days = Math.floor(diff / 86400000);
-  if (days < 0)  return { label: `venceu ${Math.abs(days)}d atrás`, color: 'text-red-400' };
-  if (days === 0) return { label: 'vence hoje', color: 'text-amber-400' };
-  if (days === 1) return { label: 'amanhã', color: 'text-amber-300' };
-  return { label: `em ${days}d`, color: 'text-slate-500' };
+  if (days < 0)  return { label: `venceu ${Math.abs(days)}d atrás`, color: 'text-[var(--destructive)]' };
+  if (days === 0) return { label: 'vence hoje', color: 'text-[var(--brand)]' };
+  if (days === 1) return { label: 'amanhã', color: 'text-[var(--brand)]' };
+  return { label: `em ${days}d`, color: 'text-[var(--text-muted)]' };
 }
 
 function agentInitials(name: string): string {
@@ -190,20 +190,20 @@ export default function TasksPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Task Board</h1>
-          <p className="text-gray-400 text-sm mt-1">Kanban de tarefas por squad</p>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Task Board</h1>
+          <p className="text-[var(--text-secondary)] text-sm mt-1">Kanban de tarefas por squad</p>
         </div>
         <div className="flex gap-3 items-center">
           {tasks.some(t => t.status === 'in_progress') && (
-            <span className="text-[10px] text-amber-400 animate-pulse flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+            <span className="text-[10px] text-[var(--brand)] animate-pulse flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] inline-block" />
               atualizando...
             </span>
           )}
           <select
             value={filterSquad}
             onChange={e => setFilterSquad(e.target.value)}
-            className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 focus:outline-none"
+            className="px-3 py-2 bg-[var(--bg-muted)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none"
           >
             <option value="">Todos os squads</option>
             {squads.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -211,7 +211,7 @@ export default function TasksPage() {
           <select
             value={filterAgent}
             onChange={e => setFilterAgent(e.target.value)}
-            className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 focus:outline-none"
+            className="px-3 py-2 bg-[var(--bg-muted)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none"
           >
             <option value="">Todos os agentes</option>
             {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -224,7 +224,7 @@ export default function TasksPage() {
           </button>
           <button
             onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+            className="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-sm font-medium rounded-lg transition-colors"
           >
             + Nova Tarefa
           </button>
@@ -239,19 +239,19 @@ export default function TasksPage() {
               value={jarvisTask}
               onChange={e => setJarvisTask(e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 bg-gray-900 border border-violet-700/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
+              className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-violet-700/50 rounded-lg text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
               placeholder="Descreva a task para o Jarvis executar..."
               required
             />
             {/* Squad obrigatório quando não veio de um card */}
             {!jarvisTaskId && (
               <div>
-                <label className="block text-xs text-violet-400 mb-1">Squad <span className="text-red-400">*</span></label>
+                <label className="block text-xs text-violet-400 mb-1">Squad <span className="text-[var(--destructive)]">*</span></label>
                 <select
                   value={jarvisSquadId}
                   onChange={e => setJarvisSquadId(e.target.value)}
                   required
-                  className="w-full px-3 py-2 bg-gray-900 border border-violet-700/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full px-3 py-2 bg-[var(--bg-surface)] border border-violet-700/50 rounded-lg text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                 >
                   <option value="">Selecione o squad...</option>
                   {squads.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -260,29 +260,29 @@ export default function TasksPage() {
             )}
             {jarvisTaskId && <p className="text-xs text-violet-400">Vinculado à task: {jarvisTaskId}</p>}
             <div className="flex items-center gap-3">
-              <button type="submit" disabled={jarvisLoading} className="px-4 py-2 bg-violet-700 hover:bg-violet-600 disabled:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors">
+              <button type="submit" disabled={jarvisLoading} className="px-4 py-2 bg-violet-700 hover:bg-violet-600 disabled:bg-[var(--bg-muted)] text-white text-sm font-medium rounded-lg transition-colors">
                 {jarvisLoading ? 'Enviando...' : 'Executar'}
               </button>
-              <button type="button" onClick={() => setShowJarvis(false)} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-lg transition-colors">
+              <button type="button" onClick={() => setShowJarvis(false)} className="px-4 py-2 bg-[var(--bg-muted)] hover:bg-[var(--bg-muted)] text-[var(--text-primary)] text-sm rounded-lg transition-colors">
                 Fechar
               </button>
-              {jarvisResult && <span className="text-sm text-gray-300">{jarvisResult}</span>}
+              {jarvisResult && <span className="text-sm text-[var(--text-primary)]">{jarvisResult}</span>}
             </div>
           </form>
         </div>
       )}
 
       {showForm && (
-        <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
-          <h2 className="font-semibold text-white mb-4">Criar Tarefa</h2>
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-6">
+          <h2 className="font-semibold text-[var(--text-primary)] mb-4">Criar Tarefa</h2>
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Squad *</label>
+                <label className="block text-sm text-[var(--text-secondary)] mb-1">Squad *</label>
                 <select
                   value={form.squad_id}
                   onChange={e => setForm(f => ({ ...f, squad_id: e.target.value, agent_id: '' }))}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
+                  className="w-full px-3 py-2 bg-[var(--bg-muted)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] text-sm focus:outline-none"
                   required
                 >
                   <option value="">Selecione...</option>
@@ -290,23 +290,23 @@ export default function TasksPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Agente</label>
+                <label className="block text-sm text-[var(--text-secondary)] mb-1">Agente</label>
                 <select
                   value={form.agent_id}
                   onChange={e => setForm(f => ({ ...f, agent_id: e.target.value }))}
                   disabled={!form.squad_id}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none disabled:opacity-50"
+                  className="w-full px-3 py-2 bg-[var(--bg-muted)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] text-sm focus:outline-none disabled:opacity-50"
                 >
                   <option value="">Sem agente</option>
                   {squadAgents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Prioridade</label>
+                <label className="block text-sm text-[var(--text-secondary)] mb-1">Prioridade</label>
                 <select
                   value={form.priority}
                   onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
+                  className="w-full px-3 py-2 bg-[var(--bg-muted)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] text-sm focus:outline-none"
                 >
                   <option value="low">Baixa</option>
                   <option value="medium">Média</option>
@@ -316,30 +316,30 @@ export default function TasksPage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Título *</label>
+              <label className="block text-sm text-[var(--text-secondary)] mb-1">Título *</label>
               <input
                 value={form.title}
                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-[var(--bg-muted)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 placeholder="O que precisa ser feito?"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Descrição</label>
+              <label className="block text-sm text-[var(--text-secondary)] mb-1">Descrição</label>
               <textarea
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                 rows={2}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                className="w-full px-3 py-2 bg-[var(--bg-muted)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] resize-none"
                 placeholder="Detalhes opcionais..."
               />
             </div>
             <div className="flex gap-3">
-              <button type="submit" disabled={saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors">
+              <button type="submit" disabled={saving} className="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:bg-[var(--bg-muted)] text-white text-sm font-medium rounded-lg transition-colors">
                 {saving ? 'Criando...' : 'Criar Tarefa'}
               </button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-lg transition-colors">
+              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-[var(--bg-muted)] hover:bg-[var(--bg-muted)] text-[var(--text-secondary)] text-sm rounded-lg transition-colors">
                 Cancelar
               </button>
             </div>
@@ -350,7 +350,7 @@ export default function TasksPage() {
       {/* Sprint Epics */}
       {tasks.filter(t => t.type === 'sprint').length > 0 && (
         <div>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Sprints</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">Sprints</h2>
           <div className="grid grid-cols-3 gap-3">
             {tasks.filter(t => t.type === 'sprint').map(sprint => {
               const children = tasks.filter(t => t.parent_id === sprint.id);
@@ -358,19 +358,19 @@ export default function TasksPage() {
               const total = children.length;
               const pct = total > 0 ? Math.round(done / total * 100) : sprint.status === 'done' ? 100 : 0;
               return (
-                <div key={sprint.id} className="bg-gray-900 border border-gray-800 rounded-lg p-3">
+                <div key={sprint.id} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-3">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-white font-medium truncate flex-1 mr-2">{sprint.title}</span>
-                    <span className={`text-xs font-bold flex-shrink-0 ${pct === 100 ? 'text-emerald-400' : 'text-indigo-400'}`}>{pct}%</span>
+                    <span className="text-sm text-[var(--text-primary)] font-medium truncate flex-1 mr-2">{sprint.title}</span>
+                    <span className={`text-xs font-bold flex-shrink-0 ${pct === 100 ? 'text-[var(--accent)]' : 'text-indigo-400'}`}>{pct}%</span>
                   </div>
-                  <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden mb-1">
+                  <div className="h-1.5 bg-[var(--bg-muted)] rounded-full overflow-hidden mb-1">
                     <div
-                      className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                      className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-[var(--accent)]' : 'bg-indigo-500'}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
                   <div className="flex items-center justify-between mt-1">
-                    <p className="text-[10px] text-gray-600">
+                    <p className="text-[10px] text-[var(--text-muted)]">
                       {total > 0 ? `${done}/${total} tasks · ` : ''}{sprint.status === 'done' ? '✅ concluído' : `criado ${relativeTime(sprint.created_at)}`}
                     </p>
                     <div className="flex items-center gap-2 flex-shrink-0 ml-2">
@@ -401,8 +401,8 @@ export default function TasksPage() {
                     </div>
                   </div>
                   {sprint.progress_note && expandedSprints.has(sprint.id) && (
-                    <div className="mt-2 pt-2 border-t border-gray-700">
-                      <p className="text-[10px] text-gray-400 whitespace-pre-wrap leading-relaxed">{sprint.progress_note}</p>
+                    <div className="mt-2 pt-2 border-t border-[var(--border)]">
+                      <p className="text-[10px] text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed">{sprint.progress_note}</p>
                     </div>
                   )}
                 </div>
@@ -419,16 +419,16 @@ export default function TasksPage() {
           onClick={() => setViewTask(null)}
         >
           <div
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto"
+            className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-start justify-between gap-3 mb-4">
               <div className="flex-1">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">{viewTask.type} · {viewTask.squad_name}</p>
-                <h2 className="font-semibold text-white text-base leading-snug">{viewTask.title}</h2>
+                <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] mb-1">{viewTask.type} · {viewTask.squad_name}</p>
+                <h2 className="font-semibold text-[var(--text-primary)] text-base leading-snug">{viewTask.title}</h2>
               </div>
-              <button onClick={() => setViewTask(null)} className="text-gray-500 hover:text-white flex-shrink-0 text-lg leading-none">✕</button>
+              <button onClick={() => setViewTask(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] flex-shrink-0 text-lg leading-none">✕</button>
             </div>
 
             {/* Badges */}
@@ -436,7 +436,7 @@ export default function TasksPage() {
               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${PRIORITY_BADGE[viewTask.priority] ?? PRIORITY_BADGE.medium}`}>
                 {PRIORITY_ICON[viewTask.priority]} {viewTask.priority}
               </span>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-gray-800 border border-gray-700 text-gray-400">
+              <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--bg-muted)] border border-[var(--border)] text-[var(--text-secondary)]">
                 {STATUS_LABELS[viewTask.status] ?? viewTask.status}
               </span>
               {viewTask.agent_name && (
@@ -449,24 +449,24 @@ export default function TasksPage() {
             {/* Description */}
             {viewTask.description && (
               <div className="mb-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Descrição</p>
-                <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{viewTask.description}</p>
+                <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">Descrição</p>
+                <p className="text-sm text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed">{viewTask.description}</p>
               </div>
             )}
 
             {/* Progress note */}
             {viewTask.progress_note && (
               <div className="mb-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Progresso</p>
-                <p className="text-sm text-gray-400 whitespace-pre-wrap leading-relaxed">{viewTask.progress_note}</p>
+                <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">Progresso</p>
+                <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed">{viewTask.progress_note}</p>
               </div>
             )}
 
             {/* Dates */}
-            <div className="grid grid-cols-2 gap-3 mb-4 text-[11px] text-gray-500">
-              <div>📅 Criado: <span className="text-gray-400">{formatDate(viewTask.created_at)}</span></div>
-              {viewTask.started_at && <div>⚡ Iniciado: <span className="text-gray-400">{formatDate(viewTask.started_at)}</span></div>}
-              {viewTask.completed_at && <div>✅ Concluído: <span className="text-gray-400">{formatDate(viewTask.completed_at)}</span></div>}
+            <div className="grid grid-cols-2 gap-3 mb-4 text-[11px] text-[var(--text-muted)]">
+              <div>📅 Criado: <span className="text-[var(--text-secondary)]">{formatDate(viewTask.created_at)}</span></div>
+              {viewTask.started_at && <div>⚡ Iniciado: <span className="text-[var(--text-secondary)]">{formatDate(viewTask.started_at)}</span></div>}
+              {viewTask.completed_at && <div>✅ Concluído: <span className="text-[var(--text-secondary)]">{formatDate(viewTask.completed_at)}</span></div>}
               {viewTask.due_date && <div>⏰ Prazo: <span className={relativeDue(viewTask.due_date).color}>{relativeDue(viewTask.due_date).label}</span></div>}
             </div>
 
@@ -476,17 +476,17 @@ export default function TasksPage() {
               if (children.length === 0) return null;
               return (
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Tasks ({children.length})</p>
+                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-2">Tasks ({children.length})</p>
                   <div className="space-y-1.5">
                     {children.map(child => (
                       <div
                         key={child.id}
-                        className="flex items-center gap-2 px-3 py-2 bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-750"
+                        className="flex items-center gap-2 px-3 py-2 bg-[var(--bg-muted)] rounded-lg cursor-pointer hover:bg-[var(--bg-muted)]"
                         onClick={() => setViewTask(child)}
                       >
-                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${child.status === 'done' ? 'bg-emerald-400' : child.status === 'in_progress' ? 'bg-amber-400' : 'bg-gray-600'}`} />
-                        <span className="text-sm text-gray-300 flex-1 truncate">{child.title}</span>
-                        <span className="text-[10px] text-gray-600">{STATUS_LABELS[child.status] ?? child.status}</span>
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${child.status === 'done' ? 'bg-emerald-400' : child.status === 'in_progress' ? 'bg-amber-400' : 'bg-[var(--text-muted)]'}`} />
+                        <span className="text-sm text-[var(--text-primary)] flex-1 truncate">{child.title}</span>
+                        <span className="text-[10px] text-[var(--text-muted)]">{STATUS_LABELS[child.status] ?? child.status}</span>
                       </div>
                     ))}
                   </div>
@@ -495,7 +495,7 @@ export default function TasksPage() {
             })()}
 
             {/* ID */}
-            <p className="mt-4 text-[10px] text-gray-700 font-mono">{viewTask.id}</p>
+            <p className="mt-4 text-[10px] text-[var(--text-muted)] font-mono">{viewTask.id}</p>
           </div>
         </div>
       )}
@@ -531,7 +531,7 @@ export default function TasksPage() {
           return (
             <div
               key={status}
-              className={`bg-gray-900/60 rounded-xl border-t-2 ${COL_ACCENT[status]} min-h-[120px]`}
+              className={`bg-[var(--bg-surface)]/60 rounded-xl border-t-2 ${COL_ACCENT[status]} min-h-[120px]`}
               onDragOver={e => e.preventDefault()}
               onDrop={() => { if (dragging) moveTask(dragging, status); setDragging(null); }}
             >
@@ -542,7 +542,7 @@ export default function TasksPage() {
                 </span>
                 <div className="flex items-center gap-1.5">
                   {hasUrgent && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />}
-                  <span className="text-xs font-semibold text-gray-500 bg-gray-800 rounded-full w-5 h-5 flex items-center justify-center">
+                  <span className="text-xs font-semibold text-[var(--text-muted)] bg-[var(--bg-muted)] rounded-full w-5 h-5 flex items-center justify-center">
                     {col.length}
                   </span>
                 </div>
@@ -561,12 +561,12 @@ export default function TasksPage() {
                       onDragStart={() => setDragging(task.id)}
                       onDragEnd={() => setDragging(null)}
                       className={`rounded-lg p-3 cursor-grab active:cursor-grabbing border transition-all group
-                        ${isDone ? 'border-emerald-500 bg-emerald-500/10' : isSRE ? 'bg-gray-800 border-l-2 border-l-red-500 border-gray-700 hover:border-gray-600' : 'bg-gray-800 border-gray-700 hover:border-gray-600'}
+                        ${isDone ? 'border-emerald-500 bg-emerald-500/10' : isSRE ? 'bg-[var(--bg-muted)] border-l-2 border-l-red-500 border-[var(--border)] hover:border-[var(--border-strong)]' : 'bg-[var(--bg-muted)] border-[var(--border)] hover:border-[var(--border-strong)]'}
                       `}
                     >
                       {/* Title row */}
                       <div className="flex items-start justify-between gap-1 mb-2.5">
-                        <p className="text-sm text-gray-200 leading-snug flex-1">
+                        <p className="text-sm text-[var(--text-primary)] leading-snug flex-1">
                           {isSRE && <span className="mr-1">⚡</span>}
                           {task.title}
                         </p>
@@ -583,7 +583,7 @@ export default function TasksPage() {
                           >✨</button>
                           <button
                             onClick={() => deleteTask(task.id)}
-                            className="text-gray-600 hover:text-red-400 text-xs"
+                            className="text-[var(--text-muted)] hover:text-[var(--destructive)] text-xs"
                           >✕</button>
                         </div>
                       </div>
@@ -620,14 +620,14 @@ export default function TasksPage() {
 
                       {/* Started at */}
                       {task.started_at && (
-                        <p className="text-[10px] mt-0.5 text-blue-400">
+                        <p className="text-[10px] mt-0.5 text-[var(--info)]">
                           ⚡ atribuído {relativeTime(task.started_at)}
                         </p>
                       )}
 
                       {/* Progress note */}
                       {task.progress_note && (
-                        <p className="text-[10px] mt-1 text-gray-500 truncate" title={task.progress_note}>
+                        <p className="text-[10px] mt-1 text-[var(--text-muted)] truncate" title={task.progress_note}>
                           💬 {task.progress_note}
                         </p>
                       )}
@@ -643,7 +643,7 @@ export default function TasksPage() {
                 })}
 
                 {col.length === 0 && (
-                  <div className="text-center py-6 text-xs text-gray-700 select-none">
+                  <div className="text-center py-6 text-xs text-[var(--text-muted)] select-none">
                     Arraste aqui
                   </div>
                 )}

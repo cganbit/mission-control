@@ -223,12 +223,12 @@ function ConnectorCard({
   }
 
   const statusDot = def.alwaysConnected
-    ? 'bg-green-400'
+    ? 'bg-[var(--accent)]'
     : isConfigured
-    ? testStatus === 'ok'    ? 'bg-green-400'
-    : testStatus === 'error' ? 'bg-red-400'
-    : 'bg-yellow-400'
-    : 'bg-gray-600';
+    ? testStatus === 'ok'    ? 'bg-[var(--accent)]'
+    : testStatus === 'error' ? 'bg-[var(--destructive)]'
+    : 'bg-[var(--warning)]'
+    : 'bg-[var(--text-muted)]';
 
   const statusLabel = def.alwaysConnected
     ? 'Disponível'
@@ -240,7 +240,7 @@ function ConnectorCard({
     : 'Não configurado';
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+    <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl overflow-hidden">
       {/* Top accent */}
       <div className="h-0.5" style={{ backgroundColor: def.color }} />
 
@@ -253,22 +253,22 @@ function ConnectorCard({
               {def.icon}
             </div>
             <div>
-              <div className="font-semibold text-white text-sm">{def.name}</div>
+              <div className="font-semibold text-[var(--text-primary)] text-sm">{def.name}</div>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <div className={`w-1.5 h-1.5 rounded-full ${statusDot}`} />
-                <span className="text-xs text-gray-500">{statusLabel}</span>
+                <span className="text-xs text-[var(--text-muted)]">{statusLabel}</span>
               </div>
             </div>
           </div>
           {!def.alwaysConnected && (
             <button onClick={startEdit}
-              className="text-xs text-gray-500 hover:text-white px-2 py-1 rounded hover:bg-gray-800 transition-colors">
+              className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-2 py-1 rounded hover:bg-[var(--bg-muted)] transition-colors">
               {isConfigured ? '✏️ Editar' : '+ Configurar'}
             </button>
           )}
         </div>
 
-        <p className="text-xs text-gray-500 leading-relaxed mb-4">{def.description}</p>
+        <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-4">{def.description}</p>
 
         {/* Saved field previews (non-editing) */}
         {!editing && def.fields.length > 0 && (
@@ -277,13 +277,13 @@ function ConnectorCard({
               const val = config[f.key];
               return (
                 <div key={f.key} className="flex items-center justify-between">
-                  <span className="text-xs text-gray-600">{f.label}</span>
-                  <span className="text-xs font-mono text-gray-400">
+                  <span className="text-xs text-[var(--text-muted)]">{f.label}</span>
+                  <span className="text-xs font-mono text-[var(--text-secondary)]">
                     {val
                       ? f.secret
                         ? `${'•'.repeat(8)}${val.slice(-4)}`
                         : val
-                      : <span className="text-gray-700 italic">não definido</span>
+                      : <span className="text-[var(--text-muted)] italic">não definido</span>
                     }
                   </span>
                 </div>
@@ -294,21 +294,21 @@ function ConnectorCard({
 
         {/* Edit form */}
         {editing && (
-          <div className="space-y-3 mb-4 pt-2 border-t border-gray-800">
+          <div className="space-y-3 mb-4 pt-2 border-t border-[var(--border)]">
             {def.fields.map(f => (
               <div key={f.key}>
-                <label className="block text-xs text-gray-500 mb-1">{f.label}</label>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">{f.label}</label>
                 <div className="flex gap-2">
                   <input
                     type={f.secret && !show[f.key] ? 'password' : 'text'}
                     value={form[f.key] ?? ''}
                     onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))}
                     placeholder={f.placeholder}
-                    className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white font-mono placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="flex-1 px-3 py-2 bg-[var(--bg-muted)] border border-[var(--border)] rounded-lg text-xs text-[var(--text-primary)] font-mono placeholder-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
                   />
                   {f.secret && (
                     <button onClick={() => setShow(s => ({ ...s, [f.key]: !s[f.key] }))}
-                      className="px-2 py-1 text-gray-500 hover:text-white text-xs bg-gray-800 border border-gray-700 rounded-lg transition-colors">
+                      className="px-2 py-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs bg-[var(--bg-muted)] border border-[var(--border)] rounded-lg transition-colors">
                       {show[f.key] ? '🙈' : '👁️'}
                     </button>
                   )}
@@ -321,7 +321,7 @@ function ConnectorCard({
         {/* Test result */}
         {testMsg && (
           <div className={`text-xs px-3 py-2 rounded-lg mb-3 ${
-            testStatus === 'ok' ? 'bg-green-900/40 text-green-300' : 'bg-red-900/40 text-red-300'
+            testStatus === 'ok' ? 'bg-[var(--accent)]/10 text-[var(--accent)]' : 'bg-[var(--destructive)]/10 text-[var(--destructive)]'
           }`}>
             {testStatus === 'ok' ? '✓ ' : '✗ '}{testMsg}
           </div>
@@ -332,24 +332,24 @@ function ConnectorCard({
           {editing ? (
             <>
               <button onClick={handleSave} disabled={saving}
-                className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 text-white text-xs font-medium rounded-lg transition-colors">
+                className="flex-1 py-1.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:bg-[var(--bg-muted)] text-[var(--text-primary)] text-xs font-medium rounded-lg transition-colors">
                 {saving ? 'Salvando...' : 'Salvar'}
               </button>
               <button onClick={handleTest} disabled={testStatus === 'testing'}
-                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded-lg transition-colors">
+                className="px-3 py-1.5 bg-[var(--bg-muted)] hover:bg-[var(--bg-muted)] text-[var(--text-primary)] text-xs rounded-lg transition-colors">
                 {testStatus === 'testing' ? '...' : 'Testar'}
               </button>
               <button onClick={() => setEditing(false)}
-                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 text-xs rounded-lg transition-colors">
+                className="px-3 py-1.5 bg-[var(--bg-muted)] hover:bg-[var(--bg-muted)] text-[var(--text-secondary)] text-xs rounded-lg transition-colors">
                 ✕
               </button>
             </>
           ) : (
             <button onClick={handleTest} disabled={testStatus === 'testing'}
               className={`w-full py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                testStatus === 'ok'    ? 'bg-green-900/40 text-green-300 hover:bg-green-900/60' :
-                testStatus === 'error' ? 'bg-red-900/40 text-red-300 hover:bg-red-900/60' :
-                'bg-gray-800 hover:bg-gray-700 text-gray-400'
+                testStatus === 'ok'    ? 'bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20' :
+                testStatus === 'error' ? 'bg-[var(--destructive)]/10 text-[var(--destructive)] hover:bg-[var(--destructive)]/20' :
+                'bg-[var(--bg-muted)] hover:bg-[var(--bg-muted)] text-[var(--text-secondary)]'
               }`}>
               {testStatus === 'testing' ? 'Testando...' : testStatus === 'ok' ? '✓ Conectado' : testStatus === 'error' ? '✗ Testar novamente' : '↗ Testar conexão'}
             </button>
@@ -397,12 +397,12 @@ export default function ConnectorsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Conectores</h1>
-          <p className="text-gray-400 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Conectores</h1>
+          <p className="text-[var(--text-secondary)] text-sm mt-1">
             {configuredCount}/{CONNECTORS.length} conectores configurados
           </p>
         </div>
-        <button onClick={load} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded-lg transition-colors">
+        <button onClick={load} className="px-3 py-1.5 bg-[var(--bg-muted)] hover:bg-[var(--bg-muted)] text-[var(--text-primary)] text-xs rounded-lg transition-colors">
           ↻ Atualizar
         </button>
       </div>
@@ -417,12 +417,12 @@ export default function ConnectorsPage() {
           };
           return (
             <button key={cat} onClick={() => setCategory(activeCategory === cat ? 'all' : cat)}
-              className={`bg-gray-900 rounded-xl border p-4 text-left transition-colors ${
-                activeCategory === cat ? 'border-indigo-500' : 'border-gray-800 hover:border-gray-700'
+              className={`bg-[var(--bg-surface)] rounded-xl border p-4 text-left transition-colors ${
+                activeCategory === cat ? 'border-[var(--accent)]' : 'border-[var(--border)] hover:border-[var(--border-strong)]'
               }`}>
               <div className="text-xl mb-2">{icons[cat]}</div>
-              <div className="text-lg font-bold text-white">{configured}/{catConnectors.length}</div>
-              <div className="text-xs text-gray-500">{cat}</div>
+              <div className="text-lg font-bold text-[var(--text-primary)]">{configured}/{catConnectors.length}</div>
+              <div className="text-xs text-[var(--text-muted)]">{cat}</div>
             </button>
           );
         })}
@@ -432,14 +432,14 @@ export default function ConnectorsPage() {
       <div className="flex gap-2">
         <button onClick={() => setCategory('all')}
           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-            activeCategory === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+            activeCategory === 'all' ? 'bg-[var(--accent)] text-[var(--text-primary)]' : 'bg-[var(--bg-muted)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}>
           Todos
         </button>
         {CATEGORIES.map(cat => (
           <button key={cat} onClick={() => setCategory(activeCategory === cat ? 'all' : cat)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              activeCategory === cat ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+              activeCategory === cat ? 'bg-[var(--accent)] text-[var(--text-primary)]' : 'bg-[var(--bg-muted)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}>
             {cat}
           </button>
@@ -448,7 +448,7 @@ export default function ConnectorsPage() {
 
       {/* Cards grid */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Carregando...</div>
+        <div className="text-center py-12 text-[var(--text-muted)]">Carregando...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(def => (

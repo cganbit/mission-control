@@ -115,29 +115,29 @@ export default function ContasMLPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">Contas Mercado Livre</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Gerencie grupos de notificação e fila de impressão por conta</p>
+          <h1 className="text-xl font-semibold text-[var(--text-primary)]">Contas Mercado Livre</h1>
+          <p className="text-sm text-[var(--text-secondary)] mt-0.5">Gerencie grupos de notificação e fila de impressão por conta</p>
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+          className="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] text-sm font-medium rounded-lg transition-colors"
         >
           + Adicionar Conta
         </button>
       </div>
 
       {/* Tabela */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-slate-500 text-sm">Carregando...</div>
+          <div className="p-8 text-center text-[var(--text-muted)] text-sm">Carregando...</div>
         ) : accounts.length === 0 ? (
-          <div className="p-8 text-center text-slate-500 text-sm">
+          <div className="p-8 text-center text-[var(--text-muted)] text-sm">
             Nenhuma conta configurada. Clique em "Adicionar Conta" para começar.
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wide">
+              <tr className="border-b border-[var(--border)] text-[var(--text-secondary)] text-xs uppercase tracking-wide">
                 <th className="text-left px-4 py-3 font-medium">Conta</th>
                 <th className="text-left px-4 py-3 font-medium">Seller ID</th>
                 <th className="text-left px-4 py-3 font-medium">Grupo de Notificação</th>
@@ -147,28 +147,28 @@ export default function ContasMLPage() {
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
+            <tbody className="divide-y divide-[var(--border)]">
               {accounts.map(acc => (
-                <tr key={acc.id} className="hover:bg-slate-800/40 transition-colors">
-                  <td className="px-4 py-3 font-medium text-white">{acc.nickname}</td>
-                  <td className="px-4 py-3 text-slate-400 font-mono text-xs">{acc.seller_id}</td>
+                <tr key={acc.id} className="hover:bg-[var(--bg-muted)]/40 transition-colors">
+                  <td className="px-4 py-3 font-medium text-[var(--text-primary)]">{acc.nickname}</td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)] font-mono text-xs">{acc.seller_id}</td>
                   <td className="px-4 py-3">
                     {editingGroup?.id === acc.id ? (
                       <div className="flex gap-2">
                         <input
-                          className="flex-1 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
+                          className="flex-1 bg-[var(--bg-muted)] border border-[var(--border-strong)] rounded px-2 py-1 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                           value={editingGroup.value}
                           onChange={e => setEditingGroup({ id: acc.id, value: e.target.value })}
                           onKeyDown={e => { if (e.key === 'Enter') saveGroup(acc.id, editingGroup.value); if (e.key === 'Escape') setEditingGroup(null); }}
                           autoFocus
                         />
-                        <button onClick={() => saveGroup(acc.id, editingGroup.value)} className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded">✓</button>
-                        <button onClick={() => setEditingGroup(null)} className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded">✕</button>
+                        <button onClick={() => saveGroup(acc.id, editingGroup.value)} className="px-2 py-1 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] text-xs rounded">✓</button>
+                        <button onClick={() => setEditingGroup(null)} className="px-2 py-1 bg-[var(--bg-muted)] hover:bg-[var(--border)] text-[var(--text-primary)] text-xs rounded">✕</button>
                       </div>
                     ) : (
                       <button
                         onClick={() => setEditingGroup({ id: acc.id, value: acc.notification_group })}
-                        className="text-slate-300 hover:text-white font-mono text-xs truncate max-w-[200px] block text-left hover:underline"
+                        className="text-[var(--text-primary)] hover:text-[var(--text-primary)] font-mono text-xs truncate max-w-[200px] block text-left hover:underline"
                         title={acc.notification_group}
                       >
                         {acc.notification_group}
@@ -178,7 +178,7 @@ export default function ContasMLPage() {
                   <td className="px-4 py-3 text-center">
                     <button
                       onClick={() => togglePrint(acc.id, acc.print_queue_enabled)}
-                      className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${acc.print_queue_enabled ? 'bg-indigo-600' : 'bg-slate-600'}`}
+                      className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${acc.print_queue_enabled ? 'bg-[var(--accent)]' : 'bg-[var(--bg-muted)]'}`}
                       title={acc.print_queue_enabled ? 'Impressão ativa — clique para desativar' : 'Impressão desativada — clique para ativar'}
                     >
                       <span className={`inline-block h-4 w-4 mt-0.5 rounded-full bg-white shadow transition-transform ${acc.print_queue_enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
@@ -187,21 +187,21 @@ export default function ContasMLPage() {
                   <td className="px-4 py-3 text-center">
                     <button
                       onClick={() => toggleTestMode(acc.id, acc.test_mode)}
-                      className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${acc.test_mode ? 'bg-amber-500' : 'bg-slate-600'}`}
+                      className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${acc.test_mode ? 'bg-[var(--brand)]' : 'bg-[var(--bg-muted)]'}`}
                       title={acc.test_mode ? 'Modo Teste — etiqueta mock. Clique para Produção' : 'Modo Produção. Clique para Teste'}
                     >
                       <span className={`inline-block h-4 w-4 mt-0.5 rounded-full bg-white shadow transition-transform ${acc.test_mode ? 'translate-x-4' : 'translate-x-0.5'}`} />
                     </button>
-                    <div className={`text-xs mt-0.5 ${acc.test_mode ? 'text-amber-400' : 'text-slate-600'}`}>
+                    <div className={`text-xs mt-0.5 ${acc.test_mode ? 'text-[var(--brand)]' : 'text-[var(--text-muted)]'}`}>
                       {acc.test_mode ? 'Teste' : 'Prod'}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-slate-400 text-xs">{acc.owner_username ?? '—'}</td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">{acc.owner_username ?? '—'}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-3">
                       <button
                         onClick={() => resend(acc.id, acc.nickname)}
-                        className="text-emerald-400 hover:text-emerald-300 transition-colors text-xs font-medium"
+                        className="text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors text-xs font-medium"
                         title="Reenviar notificação do último pedido no WhatsApp"
                       >
                         Reenviar
@@ -212,13 +212,13 @@ export default function ContasMLPage() {
                             window.open('/api/mercado-livre/oauth/authorize', '_blank');
                           }
                         }}
-                        className="text-amber-400 hover:text-amber-300 transition-colors text-xs font-medium"
+                        className="text-[var(--brand)] hover:text-[var(--brand)] transition-colors text-xs font-medium"
                       >
                         Reconectar
                       </button>
                       <button
                         onClick={() => handleDelete(acc.id, acc.nickname)}
-                        className="text-slate-500 hover:text-red-400 transition-colors text-xs"
+                        className="text-[var(--text-muted)] hover:text-[var(--destructive)] transition-colors text-xs"
                       >
                         Remover
                       </button>
@@ -234,13 +234,13 @@ export default function ContasMLPage() {
       {/* Modal Adicionar */}
       {showAdd && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowAdd(false)}>
-          <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
-            <h2 className="text-white font-semibold">Adicionar Conta ML</h2>
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-xl p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
+            <h2 className="text-[var(--text-primary)] font-semibold">Adicionar Conta ML</h2>
 
             <div className="space-y-1">
-              <label className="text-xs text-slate-400 uppercase tracking-wide">Conta</label>
+              <label className="text-xs text-[var(--text-secondary)] uppercase tracking-wide">Conta</label>
               <select
-                className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-[var(--bg-muted)] border border-[var(--border-strong)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                 value={form.seller_id}
                 onChange={e => {
                   const token = availableTokens.find(t => String(t.seller_id) === e.target.value);
@@ -253,44 +253,44 @@ export default function ContasMLPage() {
                 ))}
               </select>
               {availableTokens.length === 0 && (
-                <p className="text-xs text-slate-500">Todas as contas do ml_tokens_json já estão configuradas.</p>
+                <p className="text-xs text-[var(--text-muted)]">Todas as contas do ml_tokens_json já estão configuradas.</p>
               )}
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs text-slate-400 uppercase tracking-wide">Grupo de Notificação</label>
+              <label className="text-xs text-[var(--text-secondary)] uppercase tracking-wide">Grupo de Notificação</label>
               <input
-                className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-[var(--bg-muted)] border border-[var(--border-strong)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                 placeholder="5511999999999@s.whatsapp.net ou grupo@g.us"
                 value={form.notification_group}
                 onChange={e => setForm(f => ({ ...f, notification_group: e.target.value }))}
               />
-              <p className="text-xs text-slate-500">remoteJid do contato ou grupo WhatsApp</p>
+              <p className="text-xs text-[var(--text-muted)]">remoteJid do contato ou grupo WhatsApp</p>
             </div>
 
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setForm(f => ({ ...f, print_queue_enabled: !f.print_queue_enabled }))}
-                className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${form.print_queue_enabled ? 'bg-indigo-600' : 'bg-slate-600'}`}
+                className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${form.print_queue_enabled ? 'bg-[var(--accent)]' : 'bg-[var(--bg-muted)]'}`}
               >
                 <span className={`inline-block h-4 w-4 mt-0.5 rounded-full bg-white shadow transition-transform ${form.print_queue_enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
               </button>
-              <span className="text-sm text-slate-300">Fila de impressão ativa</span>
+              <span className="text-sm text-[var(--text-primary)]">Fila de impressão ativa</span>
             </div>
 
-            {error && <p className="text-xs text-red-400">{error}</p>}
+            {error && <p className="text-xs text-[var(--destructive)]">{error}</p>}
 
             <div className="flex gap-3 pt-2">
               <button
                 onClick={handleAdd}
                 disabled={saving}
-                className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+                className="flex-1 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-[var(--text-primary)] text-sm font-medium rounded-lg transition-colors"
               >
                 {saving ? 'Salvando...' : 'Adicionar'}
               </button>
               <button
                 onClick={() => { setShowAdd(false); setError(null); }}
-                className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg transition-colors"
+                className="flex-1 py-2 bg-[var(--bg-muted)] hover:bg-[var(--border)] text-[var(--text-primary)] text-sm font-medium rounded-lg transition-colors"
               >
                 Cancelar
               </button>

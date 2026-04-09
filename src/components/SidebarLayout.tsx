@@ -19,7 +19,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   };
 
   return (
-    <div className="flex h-screen bg-[#07090f]">
+    <div className="flex h-screen bg-[var(--bg-base)]">
       <Sidebar collapsed={collapsed} onToggle={toggle} />
       <main
         className="flex-1 overflow-auto transition-[margin-left] duration-200"
