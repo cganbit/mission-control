@@ -199,22 +199,43 @@ export async function POST(req: NextRequest) {
 }
 
 // ─── GET — status dos tokens (sem refresh) ───────────────────────────────────
+// Auth: JWT session (dashboard) OR x-worker-key (state_gate / monitoring)
 
 export async function GET(req: NextRequest) {
-  const session = await getSessionFromRequest(req);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const workerKey = req.headers.get('x-worker-key');
+  const isWorker = workerKey === WORKER_KEY;
+
+  if (!isWorker) {
+    const session = await getSessionFromRequest(req);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
+    const db = getPool();
     const accounts = await getAllAccounts();
     const now = Date.now();
-    return NextResponse.json(accounts.map(a => ({
-      seller_id: a.seller_id,
-      nickname: a.nickname,
-      expires_at: new Date(a.expires_at).toISOString(),
-      expires_in_min: Math.round((a.expires_at - now) / 60000),
-      valid: a.expires_at > now,
-      expires_soon: a.expires_at < now + 60 * 60 * 1000, // < 1h
-    })));
+
+    // last_refresh = updated_at do ml_tokens_json (quando o cron salvou pela última vez)
+    const configRow = await db.query(
+      `SELECT updated_at FROM connector_configs WHERE key = 'ml_tokens_json' LIMIT 1`
+    );
+    const lastRefresh = configRow.rows[0]?.updated_at ?? null;
+    const lastRefreshMin = lastRefresh
+      ? Math.round((now - new Date(lastRefresh).getTime()) / 60000)
+      : null;
+
+    return NextResponse.json({
+      last_refresh: lastRefresh,
+      last_refresh_min: lastRefreshMin,
+      accounts: accounts.map(a => ({
+        seller_id: a.seller_id,
+        nickname: a.nickname,
+        expires_at: new Date(a.expires_at).toISOString(),
+        expires_in_min: Math.round((a.expires_at - now) / 60000),
+        valid: a.expires_at > now,
+        expires_soon: a.expires_at < now + 60 * 60 * 1000, // < 1h
+      })),
+    });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

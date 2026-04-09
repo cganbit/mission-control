@@ -25,6 +25,8 @@ export async function proxy(req: NextRequest) {
     pathname === '/fila' || // Dashboard público da fila de impressão — autenticado por QUEUE_KEY
     pathname.startsWith('/api/sre/run-checks') || // SRE cron — autenticado por x-worker-key
     pathname.startsWith('/api/sre/escalate') || // SRE escalation cron — autenticado por x-worker-key
+    pathname.startsWith('/api/sre/health') || // state_gate + monitoring — autenticado por x-worker-key
+    pathname.startsWith('/api/sre/cron-heartbeat') || // cron monitor — autenticado por x-worker-key
     pathname === '/api/tasks/batch' || // Jarvis — cria tasks em batch via x-worker-key
     pathname.endsWith('/heartbeat') || // Jarvis — heartbeat de tasks via x-worker-key
     pathname === '/api/jarvis/task' || // Jarvis — PATCH de conclusão via x-worker-key (POST requer sessão)
