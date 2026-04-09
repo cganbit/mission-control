@@ -25,22 +25,39 @@ jobs:
 
       - name: Validate required secrets
         run: |
-          MISSING=""
-          [ -z "${{ secrets.VPS_SSH_KEY }}" ] && MISSING="$MISSING VPS_SSH_KEY"
-          [ -z "${{ secrets.VPS_HOST }}" ] && MISSING="$MISSING VPS_HOST"
-          [ -z "${{ secrets.DATABASE_URL }}" ] && MISSING="$MISSING DATABASE_URL"
-          [ -z "${{ secrets.EVOLUTION_URL }}" ] && MISSING="$MISSING EVOLUTION_URL"
-          [ -z "${{ secrets.EVOLUTION_INSTANCE }}" ] && MISSING="$MISSING EVOLUTION_INSTANCE"
-          [ -z "${{ secrets.EVOLUTION_API_KEY }}" ] && MISSING="$MISSING EVOLUTION_API_KEY"
-          [ -z "${{ secrets.SRE_WHATSAPP_GROUP }}" ] && MISSING="$MISSING SRE_WHATSAPP_GROUP"
-          if [ -n "$MISSING" ]; then
-            echo "::warning::Secrets ausentes:$MISSING — SRE WhatsApp alert NÃO funcionará sem eles."
+          ERRORS=""
+          WARNINGS=""
+
+          # ── Bloqueantes: app não sobe sem estes ──────────────────────────────
+          [ -z "${{ secrets.VPS_SSH_KEY }}" ]      && ERRORS="$ERRORS VPS_SSH_KEY"
+          [ -z "${{ secrets.VPS_HOST }}" ]          && ERRORS="$ERRORS VPS_HOST"
+          [ -z "${{ secrets.DATABASE_URL }}" ]      && ERRORS="$ERRORS DATABASE_URL"
+          [ -z "${{ secrets.JWT_SECRET }}" ]        && ERRORS="$ERRORS JWT_SECRET"
+          [ -z "${{ secrets.ADMIN_PASSWORD }}" ]    && ERRORS="$ERRORS ADMIN_PASSWORD"
+          [ -z "${{ secrets.WORKER_KEY }}" ]        && ERRORS="$ERRORS WORKER_KEY"
+          [ -z "${{ secrets.DB_ENCRYPTION_KEY }}" ] && ERRORS="$ERRORS DB_ENCRYPTION_KEY"
+          [ -z "${{ secrets.QUEUE_KEY }}" ]         && ERRORS="$ERRORS QUEUE_KEY"
+
+          # ── Warnings: features degradam mas app funciona ─────────────────────
+          [ -z "${{ secrets.EVOLUTION_URL }}" ]          && WARNINGS="$WARNINGS EVOLUTION_URL"
+          [ -z "${{ secrets.EVOLUTION_INSTANCE }}" ]     && WARNINGS="$WARNINGS EVOLUTION_INSTANCE"
+          [ -z "${{ secrets.EVOLUTION_API_KEY }}" ]      && WARNINGS="$WARNINGS EVOLUTION_API_KEY"
+          [ -z "${{ secrets.SRE_WHATSAPP_GROUP }}" ]     && WARNINGS="$WARNINGS SRE_WHATSAPP_GROUP"
+          [ -z "${{ secrets.N8N_API_KEY }}" ]            && WARNINGS="$WARNINGS N8N_API_KEY"
+          [ -z "${{ secrets.ME_SENDER_DOCUMENT }}" ]     && WARNINGS="$WARNINGS ME_SENDER_DOCUMENT"
+          [ -z "${{ secrets.FIRECRAWL_API_KEY }}" ]      && WARNINGS="$WARNINGS FIRECRAWL_API_KEY"
+          [ -z "${{ secrets.PRINT_AGENT_KEY }}" ]        && WARNINGS="$WARNINGS PRINT_AGENT_KEY"
+          [ -z "${{ secrets.ME_PROD_TOKEN }}" ]          && WARNINGS="$WARNINGS ME_PROD_TOKEN"
+          [ -z "${{ secrets.ME_PROD_CLIENT_SECRET }}" ]  && WARNINGS="$WARNINGS ME_PROD_CLIENT_SECRET"
+
+          if [ -n "$WARNINGS" ]; then
+            echo "::warning::Secrets ausentes (features degradadas):$WARNINGS"
           fi
-          # Bloqueante apenas para secrets críticos de deploy
-          [ -z "${{ secrets.VPS_SSH_KEY }}" ] && echo "::error::VPS_SSH_KEY é obrigatório" && exit 1
-          [ -z "${{ secrets.VPS_HOST }}" ] && echo "::error::VPS_HOST é obrigatório" && exit 1
-          [ -z "${{ secrets.DATABASE_URL }}" ] && echo "::error::DATABASE_URL é obrigatório" && exit 1
-          echo "✅ Secrets validados"
+          if [ -n "$ERRORS" ]; then
+            echo "::error::Secrets CRÍTICOS ausentes — deploy bloqueado:$ERRORS"
+            exit 1
+          fi
+          echo "✅ Todos os secrets críticos validados"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
