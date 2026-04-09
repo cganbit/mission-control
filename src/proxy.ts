@@ -18,6 +18,7 @@ export async function proxy(req: NextRequest) {
     pathname === '/api/auth/login' ||
     pathname.startsWith('/api/paraguai/catalogo/vps-test') ||
     pathname.startsWith('/api/paraguai/ml-token-refresh') || // worker cron — auth via x-worker-key
+    pathname === '/api/health' || // Health check — público (usado pelo CI smoke test e monitoring)
     pathname === '/api/mercado-livre/webhook' || // ML webhook — autenticado por topic/user_id, não por sessão
     pathname === '/api/print-queue/trigger' || // Link de impressão — autenticado por token único no query param
     pathname.startsWith('/api/print-queue/manage') || // Fila pública — autenticada por QUEUE_KEY no query param
