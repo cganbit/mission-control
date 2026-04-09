@@ -15,6 +15,19 @@ interface SreCheck {
   last_error: string | null;
 }
 
+interface CronHeartbeat {
+  cron_id: string;
+  label: string;
+  schedule_human: string | null;
+  last_ping_at: string | null;
+  last_status: 'ok' | 'error' | null;
+  last_duration_ms: number | null;
+  age_min: number | null;
+  warn_after_min: number;
+  error_after_min: number;
+  status_color: 'green' | 'yellow' | 'red';
+}
+
 const SERVICE_ICON: Record<string, string> = {
   evolution:   '📱',
   ml_tokens:   '🔑',
@@ -161,6 +174,57 @@ function EventTypeBadge({ type }: { type: string }) {
   );
 }
 
+// ─── Cron Card ────────────────────────────────────────────────────────────────
+
+function CronCard({ cron }: { cron: CronHeartbeat }) {
+  const isGreen  = cron.status_color === 'green';
+  const isYellow = cron.status_color === 'yellow';
+  const isRed    = cron.status_color === 'red';
+
+  const border = isRed    ? 'border-[var(--destructive)]/40 bg-[var(--destructive)]/5'
+               : isYellow ? 'border-[var(--warning)]/40 bg-[var(--warning)]/5'
+               :             'border-[var(--success)]/30 bg-[var(--success)]/5';
+
+  const dot = isRed    ? 'bg-[var(--destructive)] animate-pulse'
+            : isYellow ? 'bg-[var(--warning)] animate-pulse'
+            :             'bg-[var(--success)]';
+
+  const statusLabel = isRed ? 'PARADO' : isYellow ? 'ATENÇÃO' : 'OK';
+  const statusColor = isRed ? 'text-[var(--destructive)]' : isYellow ? 'text-[var(--warning)]' : 'text-[var(--accent)]';
+
+  const ago = cron.last_ping_at
+    ? (() => {
+        const mins = cron.age_min ?? 0;
+        if (mins < 1) return 'agora';
+        if (mins < 60) return `${mins}min atrás`;
+        const h = Math.floor(mins / 60);
+        return `${h}h${mins % 60 > 0 ? ` ${mins % 60}min` : ''} atrás`;
+      })()
+    : 'nunca';
+
+  return (
+    <div className={`rounded-xl border p-4 flex flex-col gap-2 min-w-[180px] ${border}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-xl">⏱️</span>
+        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dot}`} />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-[var(--text-primary)]">{cron.label}</p>
+        <p className={`text-xs font-bold mt-0.5 ${statusColor}`}>{statusLabel}</p>
+      </div>
+      {cron.schedule_human && (
+        <p className="text-[10px] text-[var(--text-muted)]">{cron.schedule_human}</p>
+      )}
+      <div className="mt-auto">
+        <p className="text-[10px] text-[var(--text-muted)]">Último ping: {ago}</p>
+        {cron.last_duration_ms != null && (
+          <p className="text-[10px] text-[var(--text-muted)] font-mono">{cron.last_duration_ms}ms</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const PER_PAGE = 50;
@@ -170,6 +234,7 @@ export default function SREPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [checks, setChecks] = useState<SreCheck[]>([]);
+  const [crons, setCrons] = useState<CronHeartbeat[]>([]);
 
   const [filterType, setFilterType] = useState<EventType>('');
   const [filterStatus, setFilterStatus] = useState<Status>('');
@@ -177,6 +242,22 @@ export default function SREPage() {
   const [filterAccount, setFilterAccount] = useState('');
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const loadCrons = useCallback(async () => {
+    try {
+      const res = await fetch('/api/sre/cron-heartbeat');
+      if (res.ok) {
+        const json = await res.json();
+        setCrons(json.crons ?? []);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    loadCrons();
+    const t = setInterval(loadCrons, 60000); // auto-refresh 60s
+    return () => clearInterval(t);
+  }, [loadCrons]);
 
   const loadHealth = useCallback(async () => {
     try {
@@ -280,6 +361,16 @@ export default function SREPage() {
         {checks.length > 0 && (
           <div className="flex flex-wrap gap-3">
             {checks.map(c => <HealthCard key={c.id} check={c} onReprocess={handleReprocessService} />)}
+          </div>
+        )}
+
+        {/* Cron Monitor */}
+        {crons.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-widest">⏱ Crons VPS</h2>
+            <div className="flex flex-wrap gap-3">
+              {crons.map(c => <CronCard key={c.cron_id} cron={c} />)}
+            </div>
           </div>
         )}
 

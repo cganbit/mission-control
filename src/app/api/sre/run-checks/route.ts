@@ -50,18 +50,62 @@ async function checkEvolution(): Promise<CheckResult> {
 
 async function checkMlTokens(db: ReturnType<typeof getPool>): Promise<CheckResult> {
   try {
-    const row = await db.query(`SELECT value FROM connector_configs WHERE key = 'ml_tokens_json' LIMIT 1`);
-    if (!row.rows[0]) return { service: 'ml_tokens', check_name: 'token_expiry_24h', status: 'warning', error: 'ml_tokens_json não encontrado' };
+    const row = await db.query(`SELECT value, updated_at FROM connector_configs WHERE key = 'ml_tokens_json' LIMIT 1`);
+    if (!row.rows[0]) return { service: 'ml_tokens', check_name: 'token_expiry_4h', status: 'warning', error: 'ml_tokens_json não encontrado' };
+
     const accounts: any[] = JSON.parse(row.rows[0].value)?.accounts ?? JSON.parse(row.rows[0].value);
-    const threshold = Date.now() + 4 * 60 * 60 * 1000; // alerta se expira em < 4h (2 ciclos de refresh perdidos)
-    const expiring = accounts.filter((a: any) => a.expires_at && new Date(a.expires_at).getTime() < threshold);
-    if (expiring.length > 0) {
-      const names = expiring.map((a: any) => a.nickname ?? a.seller_id).join(', ');
+    const now = Date.now();
+
+    // Verificar se cron está parado (>5h sem refresh)
+    const lastUpdated = row.rows[0].updated_at ? new Date(row.rows[0].updated_at).getTime() : null;
+    const cronAgeMin = lastUpdated ? Math.round((now - lastUpdated) / 60000) : null;
+    const cronStale = cronAgeMin !== null && cronAgeMin > 300; // >5h
+
+    // Tokens próximos de expirar (<60min)
+    const expiringSoon = accounts.filter((a: any) => a.expires_at && (new Date(a.expires_at).getTime() - now) < 60 * 60 * 1000);
+
+    // Self-healing: se cron parado >4h E algum token <2h → disparar POST refresh
+    const cronVeryStale = cronAgeMin !== null && cronAgeMin > 240; // >4h
+    const criticalExpiry = accounts.some((a: any) => a.expires_at && (new Date(a.expires_at).getTime() - now) < 2 * 60 * 60 * 1000);
+
+    if (cronVeryStale && criticalExpiry) {
+      // Self-heal: disparar refresh assíncrono
+      const MC_BASE = process.env.MC_BASE_URL ?? 'http://localhost:3001';
+      const WORKER_KEY_VAL = process.env.MC_WORKER_KEY ?? '';
+      fetch(`${MC_BASE}/api/paraguai/ml-token-refresh`, {
+        method: 'POST',
+        headers: { 'x-worker-key': WORKER_KEY_VAL },
+        signal: AbortSignal.timeout(3000),
+      }).catch(e => console.error('[SRE] Self-heal ml_tokens failed:', e.message));
+
+      const names = expiringSoon.map((a: any) => a.nickname ?? a.seller_id).join(', ') || 'conta(s)';
+      return {
+        service: 'ml_tokens', check_name: 'token_expiry_4h', status: 'warning',
+        error: `Self-heal ativado: cron parado ${cronAgeMin}min, ${names} expirando em breve`,
+      };
+    }
+
+    if (expiringSoon.length > 0) {
+      const names = expiringSoon.map((a: any) => a.nickname ?? a.seller_id).join(', ');
+      const cronMsg = cronStale ? ` (cron parado ${cronAgeMin}min)` : '';
+      return { service: 'ml_tokens', check_name: 'token_expiry_4h', status: 'warning', error: `Expirando em 1h: ${names}${cronMsg}` };
+    }
+
+    if (cronStale) {
+      return { service: 'ml_tokens', check_name: 'token_expiry_4h', status: 'warning', error: `${accounts.length} contas OK mas cron parado ${cronAgeMin}min` };
+    }
+
+    // Normal: check threshold 4h
+    const threshold4h = now + 4 * 60 * 60 * 1000;
+    const expiring4h = accounts.filter((a: any) => a.expires_at && new Date(a.expires_at).getTime() < threshold4h);
+    if (expiring4h.length > 0) {
+      const names = expiring4h.map((a: any) => a.nickname ?? a.seller_id).join(', ');
       return { service: 'ml_tokens', check_name: 'token_expiry_4h', status: 'warning', error: `Expirando em 4h: ${names}` };
     }
+
     return { service: 'ml_tokens', check_name: 'token_expiry_4h', status: 'ok' };
   } catch (e: any) {
-    return { service: 'ml_tokens', check_name: 'token_expiry_24h', status: 'error', error: e.message };
+    return { service: 'ml_tokens', check_name: 'token_expiry_4h', status: 'error', error: e.message };
   }
 }
 
