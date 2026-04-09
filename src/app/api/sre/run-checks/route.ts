@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { getSessionFromRequest } from '@/lib/auth';
 import { sendWhatsApp } from '@/lib/whatsapp';
 
 const WORKER_KEY      = process.env.MC_WORKER_KEY ?? '';
@@ -223,14 +224,15 @@ async function persistCheck(db: ReturnType<typeof getPool>, result: CheckResult,
 export async function POST(req: NextRequest) {
   const cloned = req.clone();
   const body = await cloned.json().catch(() => null);
-  const isReprocessUi = body?.action === 'reprocess';
 
-  if (!isReprocessUi) {
-    const key = req.headers.get('x-worker-key');
-    if (!WORKER_KEY || key !== WORKER_KEY) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  // Auth FIRST — antes de qualquer branch (C1 security fix)
+  const key = req.headers.get('x-worker-key');
+  const session = await getSessionFromRequest(req);
+  if (!session && (!WORKER_KEY || key !== WORKER_KEY)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const isReprocessUi = body?.action === 'reprocess';
 
   // Healer Trigger da UI: Se vier action = reprocess, envia pra bridge
   try {

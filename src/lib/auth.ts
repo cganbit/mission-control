@@ -79,3 +79,12 @@ export function hasRole(session: SessionPayload | null, minRole: 'admin' | 'memb
   if (!session) return false;
   return (ROLE_LEVEL[session.role] ?? 0) >= (ROLE_LEVEL[minRole] ?? 99);
 }
+
+// ─── Worker Key verification (M1 security fix) ────────────────────────────────
+// Centralizado para evitar bypass por MC_WORKER_KEY vazio em cada rota
+
+export function verifyWorkerKey(req: NextRequest): boolean {
+  const envKey = process.env.MC_WORKER_KEY ?? '';
+  if (!envKey) return false; // vazio = sempre nega (não permite bypass acidental)
+  return req.headers.get('x-worker-key') === envKey;
+}

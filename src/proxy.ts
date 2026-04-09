@@ -29,7 +29,7 @@ export async function proxy(req: NextRequest) {
     pathname.startsWith('/api/sre/health') || // state_gate + monitoring — autenticado por x-worker-key
     pathname.startsWith('/api/sre/cron-heartbeat') || // cron monitor — autenticado por x-worker-key
     pathname === '/api/tasks/batch' || // Jarvis — cria tasks em batch via x-worker-key
-    pathname.endsWith('/heartbeat') || // Jarvis — heartbeat de tasks via x-worker-key
+    /^\/api\/tasks\/[^/]+\/heartbeat$/.test(pathname) || // Jarvis — heartbeat de tasks via x-worker-key (regex exato — M2 fix)
     pathname === '/api/jarvis/task' || // Jarvis — PATCH de conclusão via x-worker-key (POST requer sessão)
     pathname === '/api/agents' || // Jarvis — step 0: descobre agent_ids via x-worker-key
     pathname === '/api/squads' || // Jarvis — descobre squad_ids via x-worker-key

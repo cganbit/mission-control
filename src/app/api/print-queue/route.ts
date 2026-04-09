@@ -32,7 +32,8 @@ export async function GET(req: NextRequest) {
 // ─── DELETE /api/print-queue — limpar fila (requer QUEUE_KEY) ────────────────
 
 export async function DELETE(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get('key');
+  // Accept x-queue-key header (preferred) or query param (backward compat)
+  const key = req.headers.get('x-queue-key') ?? req.nextUrl.searchParams.get('key');
   if (!key || key !== (process.env.QUEUE_KEY ?? '')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

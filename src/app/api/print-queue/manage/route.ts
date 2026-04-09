@@ -9,8 +9,8 @@ function unauthorized() {
 }
 
 async function checkAuth(req: NextRequest): Promise<boolean> {
-  // Accept QUEUE_KEY or session JWT
-  const key = req.nextUrl.searchParams.get('key');
+  // Accept QUEUE_KEY via header (preferred) or query param (backward compat)
+  const key = req.headers.get('x-queue-key') ?? req.nextUrl.searchParams.get('key');
   if (!!QUEUE_KEY && key === QUEUE_KEY) return true;
   const session = await getSessionFromRequest(req);
   return !!session;

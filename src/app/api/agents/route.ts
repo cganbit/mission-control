@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionFromRequest } from '@/lib/auth';
+import { getSessionFromRequest, hasRole, verifyWorkerKey } from '@/lib/auth';
 import { query } from '@/lib/db';
-
-const WORKER_KEY = process.env.MC_WORKER_KEY ?? '';
-
-function isAuthorized(req: NextRequest) {
-  return req.headers.get('x-worker-key') === WORKER_KEY && WORKER_KEY !== '';
-}
 
 export async function GET(req: NextRequest) {
   const session = await getSessionFromRequest(req);
-  if (!session && !isAuthorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Via sessão: exige role member+ (viewer não vê system_prompt dos agentes — M3 fix)
+  if (session && !hasRole(session, 'member')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  // Sem sessão: exige worker-key válida (vazio = nega — M1 fix)
+  if (!session && !verifyWorkerKey(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   const squadId = req.nextUrl.searchParams.get('squad_id');
   const params: unknown[] = [];
