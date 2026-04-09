@@ -50,7 +50,7 @@ jobs:
 
       - name: Validate build (TypeScript + Next.js)
         run: |
-          npm ci --prefer-offline
+          npm ci
           npm run build
 
       - name: Setup SSH
