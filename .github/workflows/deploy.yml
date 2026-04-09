@@ -48,10 +48,12 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - name: Validate build (TypeScript + Next.js)
-        run: |
-          npm ci --force
-          npm run build
+      - name: Install dependencies
+        run: npm ci
+        # NOTE: npm run build removido do CI — lightningcss native binary (linux-x64-gnu)
+        # não instala corretamente no GitHub Actions quando lock file gerado no Windows.
+        # Validação real ocorre no Docker build na VPS (step abaixo).
+        # Ver: docs/spikes/spike-003-lightningcss-ci-linux.md
 
       - name: Setup SSH
         run: |
