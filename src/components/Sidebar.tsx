@@ -90,15 +90,19 @@ interface Me { name: string; username: string; role: string }
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  isMobile?: boolean;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 // ─── Nav link component ───────────────────────────────────────────────────────
 
-function NavLink({ item, active, collapsed }: { item: NavItem; active: boolean; collapsed: boolean }) {
+function NavLink({ item, active, collapsed, onClick }: { item: NavItem; active: boolean; collapsed: boolean; onClick?: () => void }) {
   const Icon = item.icon;
   return (
     <Link
       href={item.href}
+      onClick={onClick}
       title={collapsed ? item.label : undefined}
       className={cn(
         'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative',
@@ -116,7 +120,7 @@ function NavLink({ item, active, collapsed }: { item: NavItem; active: boolean; 
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
-export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, isMobile = false, isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router   = useRouter();
   const [me, setMe] = useState<Me | null>(null);
@@ -135,6 +139,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const roleLevel   = ROLE_LEVEL[me?.role ?? ''] ?? 0;
   const isAppActive = APPS.some(a => pathname.startsWith(a.href));
+  const navOnClick  = isMobile ? onClose : undefined;
 
   const visibleGroups = NAV_GROUPS.map(g => ({
     ...g,
@@ -148,175 +153,200 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     router.push('/login');
   }
 
-  return (
-    <aside className={cn(
-      'fixed left-0 top-0 h-screen flex flex-col border-r border-[var(--border-default)] bg-[var(--bg-surface)] transition-[width] duration-200 z-40',
-      collapsed ? 'w-16' : 'w-60'
-    )}>
+  // In mobile mode, sidebar is always expanded (not collapsed)
+  const isCollapsed = collapsed && !isMobile;
 
-      {/* Logo */}
-      <div className={cn(
-        'flex items-center border-b border-[var(--border-default)] flex-shrink-0',
-        collapsed ? 'justify-center py-5 px-2' : 'justify-between px-4 py-5'
+  return (
+    <>
+      {isMobile && isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50"
+          onClick={onClose}
+        />
+      )}
+      <aside className={cn(
+        'fixed left-0 top-0 h-screen flex flex-col border-r border-[var(--border-default)] bg-[var(--bg-surface)]',
+        isMobile
+          ? cn('w-60 transition-transform duration-200 z-50', isOpen ? 'translate-x-0' : '-translate-x-full')
+          : cn('transition-[width] duration-200 z-40', collapsed ? 'w-16' : 'w-60')
       )}>
-        {!collapsed && (
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-[var(--brand-muted)] border flex items-center justify-center flex-shrink-0" style={{ borderColor: 'rgba(245, 158, 11, 0.2)' }}>
+
+        {/* Logo */}
+        <div className={cn(
+          'flex items-center border-b border-[var(--border-default)] flex-shrink-0',
+          isCollapsed ? 'justify-center py-5 px-2' : 'justify-between px-4 py-5'
+        )}>
+          {!isCollapsed && (
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-[var(--brand-muted)] border flex items-center justify-center flex-shrink-0" style={{ borderColor: 'rgba(245, 158, 11, 0.2)' }}>
+                <span className="font-black text-sm font-mono text-[var(--brand)]">MC</span>
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold text-[var(--text-primary)] text-sm leading-tight truncate">Mission Control</div>
+                <div className="text-[10px] text-[var(--text-muted)]">OpenClaw</div>
+              </div>
+            </div>
+          )}
+          {isCollapsed && (
+            <div className="w-8 h-8 rounded-lg bg-[var(--brand-muted)] border flex items-center justify-center" style={{ borderColor: 'rgba(245, 158, 11, 0.2)' }}>
               <span className="font-black text-sm font-mono text-[var(--brand)]">MC</span>
             </div>
-            <div className="min-w-0">
-              <div className="font-bold text-[var(--text-primary)] text-sm leading-tight truncate">Mission Control</div>
-              <div className="text-[10px] text-[var(--text-muted)]">OpenClaw</div>
-            </div>
-          </div>
-        )}
-        {collapsed && (
-          <div className="w-8 h-8 rounded-lg bg-[var(--brand-muted)] border flex items-center justify-center" style={{ borderColor: 'rgba(245, 158, 11, 0.2)' }}>
-            <span className="font-black text-sm font-mono text-[var(--brand)]">MC</span>
-          </div>
-        )}
-        {!collapsed && (
-          <button
-            onClick={onToggle}
-            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1 rounded flex-shrink-0"
-            title="Recolher sidebar"
-          >
-            <PanelLeftClose className="h-4 w-4" />
-          </button>
-        )}
-      </div>
+          )}
+          {!isCollapsed && !isMobile && (
+            <button
+              onClick={onToggle}
+              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1 rounded flex-shrink-0"
+              title="Recolher sidebar"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          )}
+          {isMobile && (
+            <button
+              onClick={onClose}
+              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1 rounded flex-shrink-0"
+              title="Fechar menu"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          )}
+        </div>
 
-      {/* Nav */}
-      <nav className={cn('flex-1 overflow-y-auto py-3 space-y-4', collapsed ? 'px-2' : 'px-3')}>
+        {/* Nav */}
+        <nav className={cn('flex-1 overflow-y-auto py-3 space-y-4', isCollapsed ? 'px-2' : 'px-3')}>
 
-        {visibleGroups.map(group => (
-          <div key={group.label}>
-            {!collapsed && (
-              <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold px-3 mb-1.5">
-                {group.label}
-              </p>
-            )}
-            <div className="space-y-0.5">
-              {group.items.map(item => (
-                <NavLink
-                  key={item.href}
-                  item={item}
-                  active={pathname === item.href}
-                  collapsed={collapsed}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {/* Apps */}
-        {visibleApps.length > 0 && (
-          <div>
-            {!collapsed && (
-              <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold px-3 mb-1.5">
-                Apps
-              </p>
-            )}
-            {!collapsed ? (
+          {visibleGroups.map(group => (
+            <div key={group.label}>
+              {!isCollapsed && (
+                <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold px-3 mb-1.5">
+                  {group.label}
+                </p>
+              )}
               <div className="space-y-0.5">
-                <button
-                  onClick={() => setAppsOpen(o => !o)}
-                  className={cn(
-                    'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors border-l-2',
-                    isAppActive
-                      ? 'text-[var(--brand)] border-[var(--brand)] bg-[var(--brand-muted)]'
-                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 border-transparent'
-                  )}
-                >
-                  <AppWindow className="h-4 w-4 flex-shrink-0" />
-                  <span className="flex-1 text-left">Explorar</span>
-                  {appsOpen
-                    ? <ChevronUp className="h-3 w-3 text-[var(--text-muted)]" />
-                    : <ChevronDown className="h-3 w-3 text-[var(--text-muted)]" />}
-                </button>
-                {appsOpen && (
-                  <div className="ml-3 pl-3 border-l border-[var(--border-default)] space-y-0.5 mt-0.5">
-                    {visibleApps.map(app => (
-                      <NavLink
-                        key={app.href}
-                        item={app}
-                        active={pathname.startsWith(app.href)}
-                        collapsed={false}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-0.5">
-                {visibleApps.map(app => (
+                {group.items.map(item => (
                   <NavLink
-                    key={app.href}
-                    item={app}
-                    active={pathname.startsWith(app.href)}
-                    collapsed={true}
+                    key={item.href}
+                    item={item}
+                    active={pathname === item.href}
+                    collapsed={isCollapsed}
+                    onClick={navOnClick}
                   />
                 ))}
               </div>
+            </div>
+          ))}
+
+          {/* Apps */}
+          {visibleApps.length > 0 && (
+            <div>
+              {!isCollapsed && (
+                <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold px-3 mb-1.5">
+                  Apps
+                </p>
+              )}
+              {!isCollapsed ? (
+                <div className="space-y-0.5">
+                  <button
+                    onClick={() => setAppsOpen(o => !o)}
+                    className={cn(
+                      'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors border-l-2',
+                      isAppActive
+                        ? 'text-[var(--brand)] border-[var(--brand)] bg-[var(--brand-muted)]'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 border-transparent'
+                    )}
+                  >
+                    <AppWindow className="h-4 w-4 flex-shrink-0" />
+                    <span className="flex-1 text-left">Explorar</span>
+                    {appsOpen
+                      ? <ChevronUp className="h-3 w-3 text-[var(--text-muted)]" />
+                      : <ChevronDown className="h-3 w-3 text-[var(--text-muted)]" />}
+                  </button>
+                  {appsOpen && (
+                    <div className="ml-3 pl-3 border-l border-[var(--border-default)] space-y-0.5 mt-0.5">
+                      {visibleApps.map(app => (
+                        <NavLink
+                          key={app.href}
+                          item={app}
+                          active={pathname.startsWith(app.href)}
+                          collapsed={false}
+                          onClick={navOnClick}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-0.5">
+                  {visibleApps.map(app => (
+                    <NavLink
+                      key={app.href}
+                      item={app}
+                      active={pathname.startsWith(app.href)}
+                      collapsed={true}
+                      onClick={navOnClick}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </nav>
+
+        {/* Expand button (collapsed desktop only) */}
+        {isCollapsed && (
+          <div className="px-2 pb-2">
+            <button
+              onClick={onToggle}
+              className="w-full flex items-center justify-center py-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 rounded-lg transition-colors"
+              title="Expandir sidebar"
+            >
+              <PanelLeftOpen className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* User card */}
+        {me && (
+          <div className={cn('border-t border-[var(--border-default)] flex-shrink-0', isCollapsed ? 'px-2 py-3' : 'px-3 py-3')}>
+            {isCollapsed ? (
+              <div
+                className="w-8 h-8 mx-auto rounded-full border bg-[var(--brand-muted)] flex items-center justify-center cursor-default text-xs font-bold text-[var(--brand)]"
+                style={{ borderColor: 'rgba(217, 119, 6, 0.3)' }}
+                title={`${me.name} (${ROLE_LABEL[me.role] ?? me.role})`}
+              >
+                {(me.name || me.username || '?').charAt(0).toUpperCase()}
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/5 transition-colors">
+                <div className="w-7 h-7 rounded-full border bg-[var(--brand-muted)] flex items-center justify-center text-xs font-bold flex-shrink-0 text-[var(--brand)]" style={{ borderColor: 'rgba(245, 158, 11, 0.3)' }}>
+                  {(me.name || me.username || '?').charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-[var(--text-primary)] truncate">{me.name}</div>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${ROLE_COLOR[me.role] ?? 'bg-[var(--bg-muted)] text-[var(--text-secondary)]'}`}>
+                    {ROLE_LABEL[me.role] ?? me.role}
+                  </span>
+                </div>
+              </div>
             )}
           </div>
         )}
-      </nav>
 
-      {/* Expand button (collapsed mode) */}
-      {collapsed && (
-        <div className="px-2 pb-2">
+        {/* Logout */}
+        <div className={cn('pb-3 flex-shrink-0', isCollapsed ? 'px-2' : 'px-3')}>
           <button
-            onClick={onToggle}
-            className="w-full flex items-center justify-center py-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 rounded-lg transition-colors"
-            title="Expandir sidebar"
+            onClick={handleLogout}
+            title="Sair"
+            className={cn(
+              'flex items-center gap-3 rounded-lg text-sm text-[var(--text-muted)] hover:text-[var(--destructive)] hover:bg-[var(--destructive-muted)] transition-colors',
+              isCollapsed ? 'w-full justify-center py-2.5' : 'w-full px-3 py-2'
+            )}
           >
-            <PanelLeftOpen className="h-4 w-4" />
+            <LogOut className={cn('flex-shrink-0', isCollapsed ? 'h-5 w-5' : 'h-4 w-4')} />
+            {!isCollapsed && 'Sair'}
           </button>
         </div>
-      )}
-
-      {/* User card */}
-      {me && (
-        <div className={cn('border-t border-[var(--border-default)] flex-shrink-0', collapsed ? 'px-2 py-3' : 'px-3 py-3')}>
-          {collapsed ? (
-            <div
-              className="w-8 h-8 mx-auto rounded-full border bg-[var(--brand-muted)] flex items-center justify-center cursor-default text-xs font-bold text-[var(--brand)]"
-              style={{ borderColor: 'rgba(217, 119, 6, 0.3)' }}
-              title={`${me.name} (${ROLE_LABEL[me.role] ?? me.role})`}
-            >
-              {(me.name || me.username || '?').charAt(0).toUpperCase()}
-            </div>
-          ) : (
-            <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/5 transition-colors">
-              <div className="w-7 h-7 rounded-full border bg-[var(--brand-muted)] flex items-center justify-center text-xs font-bold flex-shrink-0 text-[var(--brand)]" style={{ borderColor: 'rgba(245, 158, 11, 0.3)' }}>
-                {(me.name || me.username || '?').charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium text-[var(--text-primary)] truncate">{me.name}</div>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${ROLE_COLOR[me.role] ?? 'bg-[var(--bg-muted)] text-[var(--text-secondary)]'}`}>
-                  {ROLE_LABEL[me.role] ?? me.role}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Logout */}
-      <div className={cn('pb-3 flex-shrink-0', collapsed ? 'px-2' : 'px-3')}>
-        <button
-          onClick={handleLogout}
-          title="Sair"
-          className={cn(
-            'flex items-center gap-3 rounded-lg text-sm text-[var(--text-muted)] hover:text-[var(--destructive)] hover:bg-[var(--destructive-muted)] transition-colors',
-            collapsed ? 'w-full justify-center py-2.5' : 'w-full px-3 py-2'
-          )}
-        >
-          <LogOut className={cn('flex-shrink-0', collapsed ? 'h-5 w-5' : 'h-4 w-4')} />
-          {!collapsed && 'Sair'}
-        </button>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }
