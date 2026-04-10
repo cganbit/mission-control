@@ -35,9 +35,9 @@ export default function AgentPerformanceTable({ data }: { data: AgentRow[] }) {
     { key: 'agent_name', label: 'Agente' },
     { key: 'model', label: 'Modelo' },
     { key: 'sessions', label: 'Sessões' },
-    { key: 'avg_tool_calls', label: 'Avg Tools' },
-    { key: 'avg_context_pct', label: 'Avg Ctx %', format: v => `${v?.toFixed(1)}%` },
-    { key: 'avg_rating', label: 'Avg Rating', format: v => v?.toFixed(1) },
+    { key: 'avg_tool_calls', label: 'Tool Calls' },
+    { key: 'avg_context_pct', label: 'Uso de Contexto', format: v => `${v?.toFixed(1)}%` },
+    { key: 'avg_rating', label: 'Avaliação', format: v => v?.toFixed(1) },
     { key: 'total_cost', label: 'Custo Total', format: v => `$${v?.toFixed(2)}` },
   ];
 

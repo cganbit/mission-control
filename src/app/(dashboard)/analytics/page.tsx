@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { BarChart2, DollarSign, Zap, Database } from 'lucide-react';
-import SprintSelector from './SprintSelector';
+import FilterBar from './FilterBar';
 import SprintEvolutionChart from './SprintEvolutionChart';
 import CacheHitChart from './CacheHitChart';
 import CostVsHoursChart from './CostVsHoursChart';
@@ -37,7 +37,7 @@ interface AgentRow {
 const STAT_CARDS = [
   { key: 'total_sessions', label: 'Sprints', icon: BarChart2, color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-muted)]', format: (v: number) => String(v ?? 0) },
   { key: 'total_cost', label: 'Custo Total', icon: DollarSign, color: 'text-[var(--brand)]', bg: 'bg-[var(--brand)]/10', format: (v: number) => `$${(v ?? 0).toFixed(2)}` },
-  { key: 'avg_cache_hit', label: 'Avg Cache Hit', icon: Zap, color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-muted)]', format: (v: number) => `${(v ?? 0).toFixed(1)}%` },
+  { key: 'avg_cache_hit', label: 'Cache Hit %', icon: Zap, color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-muted)]', format: (v: number) => `${(v ?? 0).toFixed(1)}%` },
   { key: 'total_tokens', label: 'Total Tokens', icon: Database, color: 'text-[var(--text-secondary)]', bg: 'bg-[var(--bg-muted)]', format: (v: number) => {
     if (!v) return '0';
     if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
@@ -94,7 +94,7 @@ export default function AnalyticsPage() {
           <h1 className="text-xl font-bold text-[var(--text-primary)]">Sprint Analytics</h1>
           <p className="text-sm text-[var(--text-muted)] mt-0.5">Performance, custo e eficiência por sprint</p>
         </div>
-        <SprintSelector project={project} projects={allProjects} onProjectChange={setProject} />
+        <FilterBar project={project} projects={allProjects} onProjectChange={setProject} />
       </div>
 
       {/* Loading state */}
