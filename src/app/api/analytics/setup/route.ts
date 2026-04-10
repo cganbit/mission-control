@@ -67,5 +67,21 @@ export async function POST(req: NextRequest) {
   await query(`CREATE INDEX IF NOT EXISTS idx_sessions_date    ON sprint_sessions(session_date)`);
   await query(`CREATE INDEX IF NOT EXISTS idx_agent_session    ON sprint_agent_metrics(session_id)`);
 
+  await query(`
+    CREATE TABLE IF NOT EXISTS harness_health_scores (
+      id               SERIAL PRIMARY KEY,
+      sprint_number    INT NOT NULL UNIQUE,
+      sprint_date      DATE NOT NULL,
+      pipeline_pct     INT,
+      enforcement_pct  INT,
+      architecture_pct INT,
+      sre_security_pct INT,
+      alerts           TEXT,
+      conclusion       TEXT,
+      created_at       TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_harness_sprint ON harness_health_scores(sprint_number)`);
+
   return NextResponse.json({ ok: true, message: 'Analytics tables created' }, { status: 201 });
 }
