@@ -8,6 +8,7 @@ import CacheHitChart from './CacheHitChart';
 import CostVsHoursChart from './CostVsHoursChart';
 import AgentPerformanceTable from './AgentPerformanceTable';
 import LLMRecommendationsPanel from './LLMRecommendationsPanel';
+import HarnessHealthChart from './HarnessHealthChart';
 
 interface Summary {
   total_sessions: number;
@@ -22,6 +23,17 @@ interface DashboardData {
   cacheHitBySprint: Array<{ sprint_number: number; avg_cache_hit: number }>;
   costVsHours: Array<{ sprint_number: number; cost_usd: number; duration_hours: number }>;
   recommendations: Array<{ id: number; agent_name: string; current_model: string; recommended: string; reason: string; sprint_number: number }>;
+}
+
+interface HarnessHealthRow {
+  sprint_number: number;
+  sprint_date: string;
+  pipeline_pct: number | null;
+  enforcement_pct: number | null;
+  architecture_pct: number | null;
+  sre_security_pct: number | null;
+  alerts: string | null;
+  conclusion: string | null;
 }
 
 interface AgentRow {
@@ -51,18 +63,21 @@ export default function AnalyticsPage() {
   const [project, setProject] = useState('');
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [agents, setAgents] = useState<AgentRow[]>([]);
+  const [harnessHealth, setHarnessHealth] = useState<HarnessHealthRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const qs = project ? `?project=${encodeURIComponent(project)}` : '';
-      const [dashRes, agentsRes] = await Promise.all([
+      const [dashRes, agentsRes, harnessRes] = await Promise.all([
         fetch(`/api/analytics/dashboard${qs}`),
         fetch(`/api/analytics/agents${qs}`),
+        fetch('/api/analytics/harness-health'),
       ]);
       if (dashRes.ok) setDashboard(await dashRes.json());
       if (agentsRes.ok) setAgents(await agentsRes.json());
+      if (harnessRes.ok) setHarnessHealth(await harnessRes.json());
     } finally {
       setLoading(false);
     }
@@ -138,6 +153,9 @@ export default function AnalyticsPage() {
             <CostVsHoursChart data={dashboard.costVsHours} />
             <LLMRecommendationsPanel data={dashboard.recommendations} onApplied={fetchData} />
           </div>
+
+          {/* Harness health chart */}
+          <HarnessHealthChart data={harnessHealth} />
 
           {/* Agent table */}
           <AgentPerformanceTable data={agents} />
