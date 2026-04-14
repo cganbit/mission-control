@@ -36,6 +36,7 @@ export async function proxy(req: NextRequest) {
     pathname === '/api/analytics/setup' || // Analytics — criação de schema via x-worker-key
     pathname === '/api/analytics/sessions' || // Analytics — POST métricas via x-worker-key (GET aceita session)
     pathname.startsWith('/api/analytics/') || // Analytics — todos endpoints aceitam dual auth (worker-key ou session)
+    pathname.startsWith('/api/pipeline-runs') || // Pipeline Runs — dual auth (worker-key para harness, session para UI)
     pathname.startsWith('/api/melhor-envio/') || // Melhor Envio — dual auth (worker-key ou session)
     pathname === '/api/mercado-livre/pedidos/backfill' // Backfill one-shot — auth via x-worker-key
   ) {
