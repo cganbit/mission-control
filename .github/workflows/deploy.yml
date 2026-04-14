@@ -128,6 +128,27 @@ jobs:
           sleep 15
           curl -f https://mc.wingx.app.br/api/mercado-livre/webhook || exit 1
 
+      - name: Run idempotent migrations
+        run: |
+          BASE=https://mc.wingx.app.br
+          KEY="${{ secrets.WORKER_KEY }}"
+
+          run_setup() {
+            local name="$1" path="$2"
+            status=$(curl -s -o /tmp/mig.out -w "%{http_code}" -X POST "$BASE$path" \
+              -H "x-worker-key: $KEY")
+            if [ "$status" = "201" ] || [ "$status" = "200" ]; then
+              echo "✅ $name ($status)"
+            else
+              echo "❌ $name — esperado 201/200, recebeu $status"
+              cat /tmp/mig.out
+              exit 1
+            fi
+          }
+
+          run_setup "analytics schema"     "/api/analytics/setup"
+          run_setup "pipeline-runs schema" "/api/pipeline-runs/setup"
+
       - name: Smoke tests
         run: |
           BASE=https://mc.wingx.app.br
