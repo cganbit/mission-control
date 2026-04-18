@@ -92,6 +92,19 @@ export async function POST(req: NextRequest) {
   await query(`ALTER TABLE harness_health_scores ADD COLUMN IF NOT EXISTS llm_efficiency_pct INT`);
   await query(`ALTER TABLE harness_health_scores ADD COLUMN IF NOT EXISTS full_report JSONB`);
 
+  // PRD-035 Week 1 Item 2 — multi-tenancy prep (D13/D14).
+  // `projects` table + FK come in Week 5. Until then, paraguai is the only tenant;
+  // every existing row backfills to PARAGUAI_PROJECT_ID, every new row defaults to it.
+  const PARAGUAI_PROJECT_ID = '00000000-0000-0000-0000-000000000001';
+  await query(
+    `ALTER TABLE pipeline_runs ADD COLUMN IF NOT EXISTS project_id UUID NOT NULL DEFAULT '${PARAGUAI_PROJECT_ID}'::uuid`
+  );
+  await query(
+    `ALTER TABLE harness_health_scores ADD COLUMN IF NOT EXISTS project_id UUID NOT NULL DEFAULT '${PARAGUAI_PROJECT_ID}'::uuid`
+  );
+  await query(`CREATE INDEX IF NOT EXISTS idx_pipeline_runs_project   ON pipeline_runs(project_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_harness_health_project ON harness_health_scores(project_id)`);
+
   return NextResponse.json(
     { ok: true, message: 'Pipeline Runs tables created' },
     { status: 201 }
