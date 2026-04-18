@@ -1,7 +1,7 @@
 {
   "platform": "@wingx-app/platform",
-  "version": "1.0.0-rc.4",
-  "installedAt": "2026-04-18T22:03:28.427Z",
+  "version": "1.0.0-rc.5",
+  "installedAt": "2026-04-18T23:13:00.222Z",
   "artifacts": {
     "commands": 4,
     "agents": 10,

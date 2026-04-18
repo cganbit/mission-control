@@ -270,7 +270,7 @@ FASE VERIFY (PARALELO, 4 steps):
   - step 17 run_full_tests — suite completa
   - step 18 static_analysis — linter repo-wide
   - step 19 change_impact_check — hook `hooks/pre-commit/change-impact-check.cjs`
-  - step 20 security_scan — trufflehog soft-skip
+  - step 20 security_scan — **primary:** `@wingx-app/platform` `scanText(diff, { layers: ['secrets','injection','pii'] })` via skill `security-guardrails` (fail-close em violations). **Fallback (rc.3/rc.4 sem export):** trufflehog soft-skip. Trufflehog permanece como complemento opcional pra git history.
 
 FASE REVIEW:
   - step 21 self_review (sonnet) — lê diffs + acceptance + plan, confere cobertura
@@ -316,6 +316,15 @@ Capture resultado estruturado.
 
 ### step 23 — update_prd_status
 Se `step 1.5.prd_id != null`, atualize seção Progress do PRD (não o status global sem approval).
+
+**Concorrência:** envelope o append em `withLock` da skill `atomic-locks` pra evitar race com outro `/task` ou `/fix` concorrente no mesmo PRD:
+
+```js
+const { withLock } = require('@wingx-app/platform');
+await withLock(`.wingx/locks/${prd_id}.lock`, () => { /* Edit append */ }, { ttlMs: 15_000 });
+```
+
+**Fallback rc.3/rc.4:** se `withLock` não existe, append direto (race aceita como known-issue pre-rc.5).
 
 **Target section (D30):**
 - Se `task_slug` existe: localize seção por slug e append Progress DENTRO da seção

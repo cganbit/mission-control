@@ -18,6 +18,14 @@
             "command": "node .claude/hooks/user-prompt-submit/gap-no-bypass.cjs"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/user-prompt-submit/pii-scrubber.cjs"
+          }
+        ]
       }
     ]
   }

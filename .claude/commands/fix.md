@@ -189,7 +189,7 @@ ORDEM DE TRABALHO (13 steps):
    - step 14 run_full_tests — suite completa do consumer
    - step 15 static_analysis — linter repo-wide
    - step 16 change_impact_check — rode hook `hooks/pre-commit/change-impact-check.cjs` do platform contra staged
-   - step 17 security_scan — trufflehog ou npx@latest. Soft-skip se ausente (não bloqueia).
+   - step 17 security_scan — **primary:** `@wingx-app/platform` `scanText(diff, { layers: ['secrets','injection','pii'] })` via skill `security-guardrails` (fail-close em violations). **Fallback (rc.3/rc.4 sem export):** trufflehog/gitleaks soft-skip se ausente. Trufflehog permanece como complemento opcional pra git history scan (soft-skip, não-bloqueante).
 
 3. Review:
    - step 18 self_review — lê diffs + spec, confere se aplicação bateu. Sonnet.
@@ -204,7 +204,7 @@ REGRAS:
 - Se step 11 ou step 13/14 falhar após retries → terminal failure
 - NÃO commite automaticamente (só gere o commit_msg)
 - NÃO pushe
-- Respeite as skills do platform: `dev` (step 10), `systematic-debugging` (se precisar redebug), `change-impact` (step 16), `security` (step 17 fallback)
+- Respeite as skills do platform: `dev` (step 10), `systematic-debugging` (se precisar redebug), `change-impact` (step 16), `security-guardrails` (step 17 primary), `security` (step 17 fallback — design-time OWASP checklist), `atomic-locks` (step 22 PRD Progress append)
 
 OUTPUT OBRIGATÓRIO (formato JSON, no fim da resposta):
 
@@ -241,7 +241,11 @@ Capture o resultado estruturado do agent.
 
 Se success:
 - Emita telemetria via `@wingx-app/platform` `McTelemetry.trackRun({command: 'fix', status: 'success', duration_ms, step_events, branch, prd_id, task_slug, ...})` fire-forget
-- Se `prd_id != null`, append Progress no PRD (1 linha, via Edit)
+- Se `prd_id != null`, append Progress no PRD (1 linha, via Edit) **envelopado em `withLock`** da skill `atomic-locks` pra evitar race com outros `/fix` concorrentes no mesmo PRD:
+  ```
+  await withLock(`.wingx/locks/${prd_id}.lock`, () => { /* Edit append */ }, { ttlMs: 10_000 });
+  ```
+  **Fallback rc.3/rc.4:** se `require('@wingx-app/platform').withLock` não existe, append direto (race aceita como known-issue pre-rc.5).
 - Delete `.wingx/fix-spec-<ts>.md` do consumer dir
 - Imprima exit message de sucesso (formato abaixo)
 
@@ -327,7 +331,8 @@ Descartar tudo:
 - **Windows ExFAT** — worktree falha em drives ExFAT (atime). Runtime retorna erro graceful; reporte ao user e sugira rodar fora do drive externo.
 - **node_modules grande** — worktree duplica checkout (~500MB pra Paraguai-size). Se disk < 2GB livres, abortar no step 8.6 antes de criar.
 - **Schema drift spec vs execute** — se agent no worktree alterar escopo (files novos não previstos no spec), `emit_review_summary` deve flagrar como `needs_revision` e pedir re-run do /fix (não aplicar além do spec).
-- **trufflehog ausente** — soft-skip do step 17 com warning, não bloqueia.
+- **security-guardrails ausente (rc.3/rc.4)** — step 17 cai em trufflehog-only (soft-skip se esse também ausente). Bump pra rc.5+ adiciona scanText como primary.
+- **trufflehog ausente** — complementar ao security-guardrails (primary). Soft-skip com warning, não bloqueia.
 - **Linter language-specific** — step 11 detecta toolchain. Se não detectar (ex: consumer é Ruby sem linter configurado), skip com warning, não bloqueia.
 - **Testes que tocam rede** — step 14 pode ser lento. Respeitar timeout do consumer (vitest.config, jest.config); não forçar.
 
@@ -341,5 +346,8 @@ Descartar tudo:
 - `skills/systematic-debugging/SKILL.md` — discovery opus
 - `skills/dev/SKILL.md` — propose_diff patterns
 - `skills/change-impact/SKILL.md` — step 16 hook
-- `skills/security/SKILL.md` — step 17 fallback
+- `skills/security/SKILL.md` — step 17 design-time fallback (OWASP checklist)
+- `skills/security-guardrails/SKILL.md` — step 17 runtime primary (rc.5+)
+- `skills/atomic-locks/SKILL.md` — step 22 PRD Progress append concurrency
 - `hooks/pre-commit/change-impact-check.cjs` — implementação do step 16
+- `hooks/user-prompt-submit/pii-scrubber.cjs` — gate upstream (pre-step-catalog)
