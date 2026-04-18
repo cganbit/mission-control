@@ -1,7 +1,7 @@
 # Mission Control Design System
 
-**Version:** 1.0 (Supabase Foundation)  
-**Last Updated:** 2026-04-08  
+**Version:** 2.0 (V2 Complete — Full Component Rollout)  
+**Last Updated:** 2026-04-09  
 **Status:** Active
 
 Design tokens and visual guidelines for Mission Control — the OpenClaw orchestration dashboard.
@@ -46,6 +46,12 @@ Design tokens and visual guidelines for Mission Control — the OpenClaw orchest
 | **Danger** | `--danger` | #ef4444 | Critical alerts, failed states |
 | **Warning** | `--warning` | #fbbf24 | Warnings, alerts, in-progress states |
 | **Success** | `--success` | #22c55e | Success messages, completed states |
+| **Info** | `--info` | #3b82f6 | Informational badges, neutral status |
+| **Brand Muted** | `--brand-muted` | #f59e0b20 | Nav hover, brand badge backgrounds |
+| **Info Muted** | `--info-muted` | #3b82f620 | Info badge backgrounds |
+| **Destructive Muted** | `--destructive-muted` | #ef444420 | Error/delete badge backgrounds |
+| **Success Muted** | `--success-muted` | #22c55e20 | Success badge backgrounds |
+| **Warning Muted** | `--warning-muted` | #fbbf2420 | Warning badge backgrounds |
 
 ### Chart Colors
 
@@ -330,6 +336,44 @@ Animations are purposeful — task completion celebrates completion with `taskDo
 2. Provide visible focus indicators (2px+ outline or border)
 3. Test with `prefers-reduced-motion` media query
 4. Use semantic HTML and ARIA labels where needed
+
+---
+
+## Migration Status — V2 Complete
+
+**PRD-017 V1** (Sprint 65): Foundation — globals.css tokens + 3 core files (layout.tsx, SidebarLayout.tsx, Sidebar.tsx).
+
+**PRD-017 V2** (Sprint 66): Full component rollout — all 23 remaining .tsx files migrated.
+
+| File | Status | Notes |
+|------|--------|-------|
+| `layout.tsx` | ✅ V1 | Core layout |
+| `SidebarLayout.tsx` | ✅ V1 | Layout shell |
+| `components/Sidebar.tsx` | ✅ V2 | Role badges + active link migrated |
+| `(dashboard)/paraguai/page.tsx` | ✅ V2 | ~210 replacements |
+| `(dashboard)/mercado-livre/page.tsx` | ✅ V2 | 18 semantic replacements |
+| `(dashboard)/mercado-livre/pedidos/page.tsx` | ✅ V2 | 39 status badge replacements |
+| `(dashboard)/mercado-livre/clientes/page.tsx` | ✅ V2 | Already migrated |
+| `(dashboard)/mercado-livre/contas/page.tsx` | ✅ V2 | Already migrated |
+| `fila/page.tsx` | ✅ V2 | 3 semantic replacements |
+| `(dashboard)/tasks/page.tsx` | ✅ V2 | 1 replacement |
+| `(dashboard)/sre/page.tsx` | ✅ V2 | 23 semantic replacements |
+| `(dashboard)/paraguai-assets/page.tsx` | ✅ V2 | Status colors migrated |
+| `(dashboard)/dashboard/page.tsx` | ✅ V2 | Already migrated |
+| `(dashboard)/connectors/page.tsx` | ✅ V2 | Already migrated |
+| `analytics/SprintEvolutionChart.tsx` | ✅ V2 | 10 hex → chart tokens |
+| `analytics/CacheHitChart.tsx` | ✅ V2 | 7 hex → chart tokens |
+| `analytics/CostVsHoursChart.tsx` | ✅ V2 | 5 hex → chart tokens |
+| `(dashboard)/team/page.tsx` | ✅ V2 | Status + hex migrated |
+| `(dashboard)/agents/page.tsx` | ✅ V2 | Status + hex migrated |
+| `(dashboard)/documents/page.tsx` | ✅ V2 | TYPE_COLORS migrated |
+| `(dashboard)/memory/page.tsx` | ✅ V2 | CATEGORY_COLORS migrated |
+| `(dashboard)/calendar/page.tsx` | ✅ V2 | Already migrated |
+| `(dashboard)/squads/page.tsx` | ✅ V2 | Already migrated |
+| `(dashboard)/activity/page.tsx` | ✅ V2 | Already migrated |
+| `(dashboard)/tokens/page.tsx` | ✅ V2 | Already migrated |
+
+**Zero raw color classes remaining. `next build` passes. Two vocabularies (gray + slate) eliminated.**
 
 ---
 
