@@ -77,20 +77,19 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          # Retry ssh-keyscan 3× com backoff — GitHub Actions runner sofre timeouts transientes
-          for attempt in 1 2 3; do
-            if ssh-keyscan -T 10 -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/tmp/keyscan.err; then
-              echo "✅ ssh-keyscan OK (tentativa $attempt)"
-              break
-            fi
-            if [ "$attempt" = "3" ]; then
-              echo "❌ ssh-keyscan falhou após 3 tentativas"
-              cat /tmp/keyscan.err
-              exit 1
-            fi
-            echo "⚠️ ssh-keyscan tentativa $attempt falhou, retry em $((attempt * 5))s"
-            sleep $((attempt * 5))
-          done
+          # ssh-keyscan via TCP/22 bloqueado do GitHub Actions runner pra VPS
+          # (firewall ou rate limit). Trocado por StrictHostKeyChecking=accept-new
+          # via ~/.ssh/config — aceita host key no primeiro handshake e persiste
+          # em known_hosts pros próximos steps do mesmo run. Runner é descartável;
+          # VPS é nosso (MITM window aceitável pra CI).
+          cat > ~/.ssh/config << 'SSHCFG'
+          Host *
+            StrictHostKeyChecking accept-new
+            UserKnownHostsFile ~/.ssh/known_hosts
+            ServerAliveInterval 30
+            ServerAliveCountMax 3
+          SSHCFG
+          chmod 600 ~/.ssh/config
 
       - name: Sync files to VPS
         run: |
