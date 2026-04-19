@@ -35,6 +35,8 @@ export interface SessionPayload {
   username: string;
   name: string;
   role: 'admin' | 'member' | 'viewer';
+  projectId?: string;       // active project uuid — optional for backwards-compat (D37 fallback)
+  organizationId?: string;  // owner org of active project
 }
 
 export async function signToken(payload: SessionPayload): Promise<string> {
