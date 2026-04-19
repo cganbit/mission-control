@@ -142,6 +142,31 @@ Determinístico. Schema: `{spec_md: string, acceptance: string[], files_to_edit:
 ### step 8 — estimate_token_budget
 Determinístico. Estimar tokens do execute phase baseado em LOC dos files_to_edit × 4 (read + diff + apply + review). Se > 30k, warning. Se > 60k, abort sugerindo `/task`.
 
+**Cost emit (PRD-035 Week 5 Fase B, P3 absorção):** além dos tokens, invocar `estimateCost` do `@wingx-app/platform` e emitir `cost_usd` estimado. Modelo default = `claude-sonnet-4-6` (execute tier; main-thread opus é contabilizado separado). Proporção input/output assumida 80/20 do budget total.
+
+Feature-detect com try/catch — consumers rc.3/rc.4 sem `estimateCost` exportado caem no fallback token-only (comportamento anterior, nenhum cost emit):
+
+```js
+let cost_usd = null;
+let pricing_table_version = null;
+try {
+  const pkg = require('@wingx-app/platform');
+  if (typeof pkg.estimateCost === 'function') {
+    const tokensIn = Math.round(estimatedTokens * 0.8);
+    const tokensOut = Math.round(estimatedTokens * 0.2);
+    const r = pkg.estimateCost({ model: 'claude-sonnet-4-6', tokensInput: tokensIn, tokensOutput: tokensOut });
+    cost_usd = r.cost_usd;
+    pricing_table_version = pkg.PRICING_TABLE_VERSION;
+  }
+} catch { /* rc.3/rc.4 fallback — skip cost emit */ }
+```
+
+**Cost cap:** threshold default **$5.00**. Se `cost_usd !== null && cost_usd > cap` → abort com warning. Override via env `WINGX_COST_CAP=<USD>` (ex: `WINGX_COST_CAP=20`) ou flag `--force-cost-over-cap` nos argumentos do `/fix`. Skip cap check quando `cost_usd === null` (fallback rc.3/rc.4 — preserve comportamento legacy).
+
+Skill de referência: `skills/cost-accounting/SKILL.md`.
+
+Output do step (JSON): `{ estimated_tokens, cost_usd, pricing_table_version, cap_usd, cap_exceeded }`.
+
 ---
 
 ## FASE 2.5 — approval gate (main thread)

@@ -38,7 +38,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^4.1.2",
-    "@wingx-app/platform": "^1.0.0-rc.5",
+    "@wingx-app/platform": "^1.0.0-rc.6",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
