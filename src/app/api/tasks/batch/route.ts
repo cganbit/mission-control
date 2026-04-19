@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
     const [task] = await query(
       `INSERT INTO tasks (squad_id, title, description, priority, status, type, parent_id, created_by)
        VALUES ($1, $2, $3, $4, 'backlog', $5, $6, 'jarvis') RETURNING *`,
-      [squad_id, t.title, t.description ?? null, t.priority ?? 'medium', t.type ?? 'task', t.parent_id ?? null]
+      [squad_id, t.title, t.description ?? null, t.priority ?? 'medium', t.type ?? 'task', t.parent_id ?? null],
+      { worker: true }
     );
     created.push(task);
   }

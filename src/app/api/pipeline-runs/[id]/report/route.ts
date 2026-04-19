@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { query, queryOne } from '@/lib/db';
+import { getProjectScopeFromRequest } from '@/lib/session-scope';
 
 const WORKER_KEY = process.env.MC_WORKER_KEY ?? '';
 
@@ -28,7 +29,8 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
 
   const run = await queryOne<{ id: string; sprint_number: number }>(
     `SELECT id, sprint_number FROM pipeline_runs WHERE id = $1`,
-    [runId]
+    [runId],
+    { worker: true }
   );
   if (!run)
     return NextResponse.json({ error: 'Run not found' }, { status: 404 });
@@ -38,7 +40,8 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     `UPDATE pipeline_runs
         SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('report', $1::jsonb)
       WHERE id = $2`,
-    [JSON.stringify(report), runId]
+    [JSON.stringify(report), runId],
+    { worker: true }
   );
 
   // If harness_health snapshot was sent (close-sprint runs), upsert into harness_health_scores
@@ -80,7 +83,8 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
           alerts ?? null,
           conclusion ?? null,
           JSON.stringify(report),
-        ]
+        ],
+        { worker: true }
       );
     }
   }
@@ -91,14 +95,17 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
 // GET — fetch the stored report (UI usage — "Ver Report" button)
 export async function GET(req: NextRequest, ctx: RouteContext) {
   const session = await getSessionFromRequest(req);
-  if (!session && !isAuthorized(req))
+  const isWorker = isAuthorized(req);
+  if (!session && !isWorker)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const scope = isWorker ? { worker: true } : await getProjectScopeFromRequest(req);
   const { id: runId } = await ctx.params;
 
   const row = await queryOne<{ metadata: { report?: unknown } | null }>(
     `SELECT metadata FROM pipeline_runs WHERE id = $1`,
-    [runId]
+    [runId],
+    scope
   );
 
   if (!row)

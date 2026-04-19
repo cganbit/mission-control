@@ -105,7 +105,8 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
       error_message ?? null,
       runId,
       step_id,
-    ]
+    ],
+    { worker: true }
   );
 
   if (!step)
@@ -123,7 +124,8 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
             cache_read_tokens    = COALESCE((SELECT SUM(cache_read_tokens)   FROM pipeline_steps WHERE run_id = $1), 0),
             cache_create_tokens  = COALESCE((SELECT SUM(cache_create_tokens) FROM pipeline_steps WHERE run_id = $1), 0)
       WHERE id = $1`,
-    [runId]
+    [runId],
+    { worker: true }
   );
 
   // If run_status provided, finalize the run
@@ -144,7 +146,8 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     }>(
       `SELECT total_input_tokens, total_output_tokens, cache_read_tokens, cache_create_tokens
        FROM pipeline_runs WHERE id = $1`,
-      [runId]
+      [runId],
+      { worker: true }
     );
 
     const cost = calculateCost({
@@ -162,7 +165,8 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
               estimated_cost_usd = $2,
               error_message      = COALESCE($3, error_message)
         WHERE id = $4`,
-      [run_status, cost.toFixed(4), error_message ?? null, runId]
+      [run_status, cost.toFixed(4), error_message ?? null, runId],
+      { worker: true }
     );
   }
 
