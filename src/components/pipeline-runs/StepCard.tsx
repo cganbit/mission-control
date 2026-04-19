@@ -92,7 +92,7 @@ export function StepCard({ step, index, totalSteps }: StepCardProps) {
 
           {isFailed && step.error_message && !expanded && (
             <p className="text-xs text-[var(--destructive)] mt-1 truncate">
-              {step.error_message}
+              <span className="font-semibold">Erro:</span> {step.error_message}
             </p>
           )}
 
@@ -141,10 +141,20 @@ export function StepCard({ step, index, totalSteps }: StepCardProps) {
           )}
           {step.error_message && (
             <div className="text-xs">
-              <p className="text-[var(--destructive)] mb-1">Error</p>
-              <p className="text-[var(--text-secondary)] whitespace-pre-wrap break-words font-mono">
-                {step.error_message}
+              <p className="text-[var(--destructive)] font-semibold mb-1">
+                Falha neste step
               </p>
+              <p className="text-[var(--text-secondary)] mb-2">
+                O step foi interrompido antes de concluir.
+              </p>
+              <details>
+                <summary className="cursor-pointer text-[var(--text-muted)] hover:text-[var(--text-primary)] select-none">
+                  Detalhes técnicos
+                </summary>
+                <p className="mt-2 text-[var(--text-secondary)] whitespace-pre-wrap break-words font-mono">
+                  {step.error_message}
+                </p>
+              </details>
             </div>
           )}
         </div>

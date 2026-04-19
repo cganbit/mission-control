@@ -156,10 +156,18 @@ export function RunHeader({ run, steps }: RunHeaderProps) {
       {/* Error banner */}
       {run.error_message && (
         <div className="mt-4 p-3 rounded-lg bg-[var(--destructive-muted)] border border-[var(--destructive)]/30">
-          <p className="text-xs font-semibold text-[var(--destructive)] mb-1">Error</p>
-          <p className="text-xs text-[var(--text-primary)] font-mono whitespace-pre-wrap break-words">
-            {run.error_message}
+          <p className="text-xs font-semibold text-[var(--destructive)] mb-1">Falha na execução</p>
+          <p className="text-xs text-[var(--text-primary)] mb-2">
+            A pipeline foi interrompida antes de concluir.
           </p>
+          <details className="text-xs">
+            <summary className="cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)] select-none">
+              Detalhes técnicos
+            </summary>
+            <p className="mt-2 text-[var(--text-primary)] font-mono whitespace-pre-wrap break-words">
+              {run.error_message}
+            </p>
+          </details>
         </div>
       )}
     </div>
