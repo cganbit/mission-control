@@ -77,7 +77,20 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+          # Retry ssh-keyscan 3× com backoff — GitHub Actions runner sofre timeouts transientes
+          for attempt in 1 2 3; do
+            if ssh-keyscan -T 10 -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/tmp/keyscan.err; then
+              echo "✅ ssh-keyscan OK (tentativa $attempt)"
+              break
+            fi
+            if [ "$attempt" = "3" ]; then
+              echo "❌ ssh-keyscan falhou após 3 tentativas"
+              cat /tmp/keyscan.err
+              exit 1
+            fi
+            echo "⚠️ ssh-keyscan tentativa $attempt falhou, retry em $((attempt * 5))s"
+            sleep $((attempt * 5))
+          done
 
       - name: Sync files to VPS
         run: |
