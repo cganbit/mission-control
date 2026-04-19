@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { ChevronDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,7 +21,6 @@ interface Props {
 }
 
 export default function ProjectSwitcher({ currentProject, availableProjects, collapsed }: Props) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +46,10 @@ export default function ProjectSwitcher({ currentProject, availableProjects, col
         return;
       }
       setOpen(false);
-      router.refresh();
+      // Hard reload: router.refresh() nao re-mount client components (Sidebar useState
+      // permanece cached com availableProjects + currentProject antigos). Reload forca
+      // re-fetch do /api/auth/me com novo JWT cookie.
+      window.location.reload();
     } catch {
       setError('Erro de rede');
     } finally {
