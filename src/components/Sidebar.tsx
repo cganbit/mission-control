@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
+import ProjectSwitcher, { type ProjectRef } from './ProjectSwitcher';
 import {
   LayoutDashboard, Shield, ClipboardList, Bot, Zap, Calendar, Brain,
   FolderOpen, CircleDollarSign, Plug, Users, BarChart2,
@@ -87,7 +88,13 @@ const ROLE_COLOR: Record<string, string>  = {
   viewer: 'bg-[var(--bg-muted)] text-[var(--text-secondary)] border border-[var(--border-default)]',
 };
 
-interface Me { name: string; username: string; role: string }
+interface Me {
+  name: string;
+  username: string;
+  role: string;
+  currentProject: ProjectRef | null;
+  availableProjects: ProjectRef[];
+}
 
 interface SidebarProps {
   collapsed: boolean;
@@ -213,6 +220,15 @@ export default function Sidebar({ collapsed, onToggle, isMobile = false, isOpen 
             </button>
           )}
         </div>
+
+        {/* Project switcher */}
+        {me && (
+          <ProjectSwitcher
+            currentProject={me.currentProject}
+            availableProjects={me.availableProjects}
+            collapsed={isCollapsed}
+          />
+        )}
 
         {/* Nav */}
         <nav className={cn('flex-1 overflow-y-auto py-3 space-y-4', isCollapsed ? 'px-2' : 'px-3')}>
