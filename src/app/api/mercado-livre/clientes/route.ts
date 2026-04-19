@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
         COALESCE(c.notas, '') AS notas,
         c.created_at,
         COUNT(p.id)::int                              AS total_pedidos,
-        COALESCE(SUM(p.total_amount), 0)::numeric     AS total_gasto,
+        COALESCE(SUM(p.total), 0)::numeric            AS total_gasto,
         MAX(p.created_at)                             AS ultima_compra,
         STRING_AGG(DISTINCT p.seller_nickname, ', ')  AS lojas
        FROM ml_clientes c
