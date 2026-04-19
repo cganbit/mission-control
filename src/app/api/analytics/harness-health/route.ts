@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { getProjectScopeFromRequest } from '@/lib/session-scope';
 
 const WORKER_KEY = process.env.MC_WORKER_KEY ?? '';
 
@@ -10,14 +11,19 @@ function isAuthorized(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const session = await getSessionFromRequest(req);
-  if (!session && !isAuthorized(req))
+  const isWorker = isAuthorized(req);
+  if (!session && !isWorker)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const scope = isWorker ? { worker: true } : await getProjectScopeFromRequest(req);
 
   const rows = await query(
     `SELECT sprint_number, sprint_date, pipeline_pct, enforcement_pct,
             architecture_pct, sre_security_pct, alerts, conclusion
      FROM harness_health_scores
-     ORDER BY sprint_number ASC`
+     ORDER BY sprint_number ASC`,
+    [],
+    scope
   );
 
   return NextResponse.json(rows);
@@ -48,7 +54,8 @@ export async function POST(req: NextRequest) {
        alerts           = EXCLUDED.alerts,
        conclusion       = EXCLUDED.conclusion`,
     [sprint_number, sprint_date, pipeline_pct ?? null, enforcement_pct ?? null,
-     architecture_pct ?? null, sre_security_pct ?? null, alerts ?? null, conclusion ?? null]
+     architecture_pct ?? null, sre_security_pct ?? null, alerts ?? null, conclusion ?? null],
+    { worker: true }
   );
 
   return NextResponse.json({ ok: true, sprint_number }, { status: 201 });

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { getProjectScopeFromRequest } from '@/lib/session-scope';
 
 export async function GET(req: NextRequest) {
   if (!await getSessionFromRequest(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const scope = await getProjectScopeFromRequest(req);
 
   const squadId = req.nextUrl.searchParams.get('squad_id');
   const status  = req.nextUrl.searchParams.get('status');
@@ -23,28 +26,35 @@ export async function GET(req: NextRequest) {
     LEFT JOIN squads s ON s.id = t.squad_id
     ${where}
     ORDER BY t.created_at DESC
-  `, params);
+  `, params, scope);
 
   return NextResponse.json(tasks);
 }
 
 export async function POST(req: NextRequest) {
-  if (!await getSessionFromRequest(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await getSessionFromRequest(req);
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session.projectId) {
+    return NextResponse.json({ error: 'No active project in session' }, { status: 400 });
+  }
 
   const { squad_id, agent_id, title, description, priority, due_date } = await req.json();
   if (!squad_id || !title) return NextResponse.json({ error: 'squad_id and title required' }, { status: 400 });
 
+  const opts = { projectId: session.projectId };
+
   const [task] = await query(
-    `INSERT INTO tasks (squad_id, agent_id, title, description, priority, due_date, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, 'user') RETURNING *`,
-    [squad_id, agent_id || null, title, description || null, priority || 'medium', due_date || null]
+    `INSERT INTO tasks (squad_id, agent_id, title, description, priority, due_date, created_by, project_id)
+     VALUES ($1, $2, $3, $4, $5, $6, 'user', $7) RETURNING *`,
+    [squad_id, agent_id || null, title, description || null, priority || 'medium', due_date || null, session.projectId],
+    opts
   );
 
-  // Log activity
   await query(
-    `INSERT INTO activity_log (squad_id, agent_id, action, detail)
-     VALUES ($1, $2, 'task_created', $3)`,
-    [squad_id, agent_id ?? null, `Tarefa criada: ${title}`]
+    `INSERT INTO activity_log (squad_id, agent_id, action, detail, project_id)
+     VALUES ($1, $2, 'task_created', $3, $4)`,
+    [squad_id, agent_id ?? null, `Tarefa criada: ${title}`, session.projectId],
+    opts
   );
 
   return NextResponse.json(task, { status: 201 });

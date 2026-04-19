@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { getProjectScopeFromRequest } from '@/lib/session-scope';
 
 export async function GET(req: NextRequest) {
   if (!await getSessionFromRequest(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const scope = await getProjectScopeFromRequest(req);
 
   const search   = req.nextUrl.searchParams.get('q') ?? '';
   const agentId  = req.nextUrl.searchParams.get('agent_id') ?? '';
@@ -29,21 +32,26 @@ export async function GET(req: NextRequest) {
     WHERE ${conditions.join(' AND ')}
     ORDER BY m.created_at DESC
     LIMIT 200
-  `, params);
+  `, params, scope);
 
   return NextResponse.json(rows);
 }
 
 export async function POST(req: NextRequest) {
-  if (!await getSessionFromRequest(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await getSessionFromRequest(req);
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session.projectId) {
+    return NextResponse.json({ error: 'No active project in session' }, { status: 400 });
+  }
 
   const { agent_id, squad_id, content, category = 'general', tags, source } = await req.json();
   if (!content || !squad_id) return NextResponse.json({ error: 'content and squad_id required' }, { status: 400 });
 
   const [row] = await query(
-    `INSERT INTO agent_memories (agent_id, squad_id, content, category, tags, source)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [agent_id || null, squad_id, content, category, tags || null, source || null]
+    `INSERT INTO agent_memories (agent_id, squad_id, content, category, tags, source, project_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [agent_id || null, squad_id, content, category, tags || null, source || null, session.projectId],
+    { projectId: session.projectId }
   );
   return NextResponse.json(row, { status: 201 });
 }

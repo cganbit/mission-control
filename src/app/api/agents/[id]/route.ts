@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest, hasRole } from '@/lib/auth';
 import { query, queryOne } from '@/lib/db';
+import { getProjectScopeFromRequest } from '@/lib/session-scope';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await getSessionFromRequest(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await params;
-  const agent = await queryOne('SELECT * FROM agents WHERE id = $1', [id]);
+  const scope = await getProjectScopeFromRequest(req);
+  const agent = await queryOne('SELECT * FROM agents WHERE id = $1', [id], scope);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json(agent);
 }
@@ -14,6 +16,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const session = await getSessionFromRequest(req);
   if (!hasRole(session, 'member')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const { id } = await params;
+  const scope = await getProjectScopeFromRequest(req);
   const body = await req.json();
 
   const [agent] = await query(
@@ -26,7 +29,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       workflow      = COALESCE($6, workflow),
       last_heartbeat = CASE WHEN $3 = 'active' THEN NOW() ELSE last_heartbeat END
      WHERE id = $7 RETURNING *`,
-    [body.name, body.role, body.status, body.system_prompt, body.tools, body.workflow, id]
+    [body.name, body.role, body.status, body.system_prompt, body.tools, body.workflow, id],
+    scope
   );
   return NextResponse.json(agent);
 }
@@ -35,6 +39,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const session = await getSessionFromRequest(req);
   if (!hasRole(session, 'admin')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const { id } = await params;
-  await query('DELETE FROM agents WHERE id = $1', [id]);
+  const scope = await getProjectScopeFromRequest(req);
+  await query('DELETE FROM agents WHERE id = $1', [id], scope);
   return NextResponse.json({ ok: true });
 }

@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest, hasRole, verifyWorkerKey } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { getProjectScopeFromRequest } from '@/lib/session-scope';
 
 export async function GET(req: NextRequest) {
   const session = await getSessionFromRequest(req);
-  // Via sessão: exige role member+ (viewer não vê system_prompt dos agentes — M3 fix)
+  const isWorker = !session && verifyWorkerKey(req);
   if (session && !hasRole(session, 'member')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
-  // Sem sessão: exige worker-key válida (vazio = nega — M1 fix)
-  if (!session && !verifyWorkerKey(req)) {
+  if (!session && !isWorker) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const scope = isWorker ? { worker: true } : await getProjectScopeFromRequest(req);
 
   const squadId = req.nextUrl.searchParams.get('squad_id');
   const params: unknown[] = [];
@@ -26,21 +28,26 @@ export async function GET(req: NextRequest) {
     ${where}
     GROUP BY a.id, s.name, s.color
     ORDER BY s.name, a.name
-  `, params);
+  `, params, scope);
 
   return NextResponse.json(agents);
 }
 
 export async function POST(req: NextRequest) {
-  if (!await getSessionFromRequest(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await getSessionFromRequest(req);
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session.projectId) {
+    return NextResponse.json({ error: 'No active project in session' }, { status: 400 });
+  }
 
   const { squad_id, name, role, system_prompt } = await req.json();
   if (!squad_id || !name) return NextResponse.json({ error: 'squad_id and name required' }, { status: 400 });
 
   const [agent] = await query(
-    `INSERT INTO agents (squad_id, name, role, system_prompt)
-     VALUES ($1, $2, $3, $4) RETURNING *`,
-    [squad_id, name, role ?? null, system_prompt ?? null]
+    `INSERT INTO agents (squad_id, name, role, system_prompt, project_id)
+     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [squad_id, name, role ?? null, system_prompt ?? null, session.projectId],
+    { projectId: session.projectId }
   );
 
   return NextResponse.json(agent, { status: 201 });

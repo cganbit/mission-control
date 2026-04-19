@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { getProjectScopeFromRequest } from '@/lib/session-scope';
 
 export async function GET(req: NextRequest) {
   if (!await getSessionFromRequest(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const scope = await getProjectScopeFromRequest(req);
 
   const squadId = req.nextUrl.searchParams.get('squad_id');
   const limit   = Math.min(parseInt(req.nextUrl.searchParams.get('limit') ?? '50'), 200);
@@ -21,7 +24,7 @@ export async function GET(req: NextRequest) {
     ${where}
     ORDER BY al.timestamp DESC
     LIMIT $${limitIdx}
-  `, params);
+  `, params, scope);
 
   return NextResponse.json(activities);
 }

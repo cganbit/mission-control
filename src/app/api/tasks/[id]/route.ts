@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest, hasRole } from '@/lib/auth';
 import { query, queryOne } from '@/lib/db';
+import { getProjectScopeFromRequest } from '@/lib/session-scope';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionFromRequest(req);
   if (!hasRole(session, 'member')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const { id } = await params;
+  const scope = await getProjectScopeFromRequest(req);
   const body = await req.json();
 
   const task = await queryOne<{ squad_id: string; title: string }>(
-    'SELECT squad_id, title FROM tasks WHERE id = $1', [id]
+    'SELECT squad_id, title FROM tasks WHERE id = $1', [id], scope
   );
   if (!task) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
@@ -28,14 +30,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       due_date    = COALESCE($6, due_date),
       updated_at  = NOW()${extraSQL}
      WHERE id = $7 RETURNING *`,
-    [body.title, body.description, body.status, body.agent_id, body.priority, body.due_date, id]
+    [body.title, body.description, body.status, body.agent_id, body.priority, body.due_date, id],
+    scope
   );
 
   if (body.status) {
-    await query(
-      `INSERT INTO activity_log (squad_id, action, detail) VALUES ($1, 'task_moved', $2)`,
-      [task.squad_id, `"${task.title}" → ${body.status}`]
-    );
+    if (session?.projectId) {
+      await query(
+        `INSERT INTO activity_log (squad_id, action, detail, project_id) VALUES ($1, 'task_moved', $2, $3)`,
+        [task.squad_id, `"${task.title}" → ${body.status}`, session.projectId],
+        scope
+      );
+    } else {
+      // Fallback D37 — sem projectId no JWT antigo, insert usa DEFAULT do schema
+      await query(
+        `INSERT INTO activity_log (squad_id, action, detail) VALUES ($1, 'task_moved', $2)`,
+        [task.squad_id, `"${task.title}" → ${body.status}`]
+      );
+    }
   }
 
   return NextResponse.json(updated);
@@ -45,6 +57,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const session = await getSessionFromRequest(req);
   if (!hasRole(session, 'member')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const { id } = await params;
-  await query('DELETE FROM tasks WHERE id = $1', [id]);
+  const scope = await getProjectScopeFromRequest(req);
+  await query('DELETE FROM tasks WHERE id = $1', [id], scope);
   return NextResponse.json({ ok: true });
 }

@@ -1,14 +1,17 @@
 import { NextRequest } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { getProjectScopeFromSession } from '@/lib/session-scope';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  if (!await getSessionFromRequest(req)) {
+  const session = await getSessionFromRequest(req);
+  if (!session) {
     return new Response('Unauthorized', { status: 401 });
   }
 
+  const scope = getProjectScopeFromSession(session);
   const squadId = req.nextUrl.searchParams.get('squad_id');
 
   const encoder = new TextEncoder();
@@ -45,7 +48,7 @@ export async function GET(req: NextRequest) {
             ${where}
             ORDER BY al.timestamp ASC
             LIMIT 20
-          `, params) as { timestamp: string }[];
+          `, params, scope) as { timestamp: string }[];
 
           if (rows.length > 0) {
             lastTimestamp = rows[rows.length - 1].timestamp;

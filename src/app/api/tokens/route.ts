@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { getProjectScopeFromRequest } from '@/lib/session-scope';
 
 // Model pricing per 1M tokens (USD)
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
@@ -17,6 +18,8 @@ function calcCost(model: string, tokensIn: number, tokensOut: number): number {
 
 export async function GET(req: NextRequest) {
   if (!await getSessionFromRequest(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const scope = await getProjectScopeFromRequest(req);
 
   const agentId = req.nextUrl.searchParams.get('agent_id');
   const squadId = req.nextUrl.searchParams.get('squad_id');
@@ -41,7 +44,7 @@ export async function GET(req: NextRequest) {
       WHERE ${where}
       GROUP BY a.id, a.name, s.name, s.color
       ORDER BY SUM(tu.tokens_in + tu.tokens_out) DESC
-    `, params),
+    `, params, scope),
 
     // Usage per day (last N days)
     query(`
@@ -53,7 +56,7 @@ export async function GET(req: NextRequest) {
       WHERE ${where}
       GROUP BY tu.date
       ORDER BY tu.date ASC
-    `, params),
+    `, params, scope),
 
     // Grand totals
     query(`
@@ -63,14 +66,18 @@ export async function GET(req: NextRequest) {
              COUNT(DISTINCT tu.agent_id) AS agents_count
       FROM token_usage tu
       WHERE ${where}
-    `, params),
+    `, params, scope),
   ]);
 
   return NextResponse.json({ byAgent, byDay, totals: totals[0] ?? {} });
 }
 
 export async function POST(req: NextRequest) {
-  if (!await getSessionFromRequest(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await getSessionFromRequest(req);
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session.projectId) {
+    return NextResponse.json({ error: 'No active project in session' }, { status: 400 });
+  }
 
   const { agent_id, squad_id, model = 'claude-sonnet-4-6', tokens_in = 0, tokens_out = 0, session_id } = await req.json();
   if (!squad_id) return NextResponse.json({ error: 'squad_id required' }, { status: 400 });
@@ -78,9 +85,10 @@ export async function POST(req: NextRequest) {
   const cost_usd = calcCost(model, tokens_in, tokens_out);
 
   const [row] = await query(
-    `INSERT INTO token_usage (agent_id, squad_id, model, tokens_in, tokens_out, cost_usd, session_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-    [agent_id || null, squad_id, model, tokens_in, tokens_out, cost_usd, session_id || null]
+    `INSERT INTO token_usage (agent_id, squad_id, model, tokens_in, tokens_out, cost_usd, session_id, project_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+    [agent_id || null, squad_id, model, tokens_in, tokens_out, cost_usd, session_id || null, session.projectId],
+    { projectId: session.projectId }
   );
 
   return NextResponse.json(row, { status: 201 });
