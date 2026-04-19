@@ -152,12 +152,17 @@ jobs:
       - name: Smoke tests
         run: |
           BASE=https://mc.wingx.app.br
+          JAR=/tmp/mc-smoke-cookies.txt
           PASS=0
           FAIL=0
 
           check() {
-            local name="$1" url="$2" expected="$3" extra_args="${4:-}"
-            status=$(curl -s -o /dev/null -w "%{http_code}" $extra_args "$url")
+            local name="$1" url="$2" expected="$3" use_cookie="${4:-}"
+            if [ "$use_cookie" = "auth" ]; then
+              status=$(curl -s -o /dev/null -w "%{http_code}" -b "$JAR" "$url")
+            else
+              status=$(curl -s -o /dev/null -w "%{http_code}" "$url")
+            fi
             if [ "$status" = "$expected" ]; then
               echo "✅ $name ($status)"
               PASS=$((PASS+1))
@@ -167,11 +172,12 @@ jobs:
             fi
           }
 
-          # Login para obter cookie JWT
-          COOKIE=$(curl -s -c - -X POST "$BASE/api/auth/login" \
+          # Login escrevendo cookie jar (evita quoting issue de -H 'Cookie: ...')
+          rm -f "$JAR"
+          LOGIN_STATUS=$(curl -s -c "$JAR" -o /tmp/login.out -w "%{http_code}" \
+            -X POST "$BASE/api/auth/login" \
             -H "Content-Type: application/json" \
-            -d "{\"username\":\"admin\",\"password\":\"${{ secrets.ADMIN_PASSWORD }}\"}" \
-            | grep mc_token | awk '{print "mc_token="$NF}')
+            -d "{\"username\":\"admin\",\"password\":\"${{ secrets.ADMIN_PASSWORD }}\"}")
 
           # Públicos
           check "health"             "$BASE/api/health"                      "200"
@@ -182,13 +188,20 @@ jobs:
           check "fila manage"        "$BASE/api/print-queue/manage?key=${{ secrets.QUEUE_KEY }}" "200"
 
           # Com JWT
-          if [ -n "$COOKIE" ]; then
-            check "clientes ML"      "$BASE/api/mercado-livre/clientes"       "200" "-H 'Cookie: $COOKIE'"
-            check "stats ML"         "$BASE/api/mercado-livre/stats"          "200" "-H 'Cookie: $COOKIE'"
-            check "SRE events"       "$BASE/api/sre/events"                   "200" "-H 'Cookie: $COOKIE'"
-            check "print queue"      "$BASE/api/print-queue"                  "401" "-H 'Cookie: $COOKIE'"
+          if [ "$LOGIN_STATUS" = "200" ] && [ -s "$JAR" ] && grep -q mc_token "$JAR"; then
+            echo "✅ login ($LOGIN_STATUS)"
+            PASS=$((PASS+1))
+            check "clientes ML"      "$BASE/api/mercado-livre/clientes"       "200" "auth"
+            check "stats ML"         "$BASE/api/mercado-livre/stats"          "200" "auth"
+            check "SRE events"       "$BASE/api/sre/events"                   "200" "auth"
+            check "print queue"      "$BASE/api/print-queue"                  "401" "auth"
+            # Multi-tenant checks (C3.1-C3.4)
+            check "me currentProject" "$BASE/api/auth/me"                     "200" "auth"
+            check "organizations"     "$BASE/api/organizations"               "200" "auth"
+            check "projects"          "$BASE/api/projects"                    "200" "auth"
           else
-            echo "⚠️  Login falhou — testes JWT pulados"
+            echo "❌ login falhou — status=$LOGIN_STATUS, jar=$(wc -c < "$JAR" 2>/dev/null || echo 0)B"
+            cat /tmp/login.out | head -c 300
             FAIL=$((FAIL+1))
           fi
 
