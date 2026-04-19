@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { query, queryOne } from '@/lib/db';
+import { getProjectScopeFromSession } from '@/lib/session-scope';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,15 +65,18 @@ interface StepRow {
  */
 export async function GET(req: NextRequest, ctx: RouteContext) {
   const session = await getSessionFromRequest(req);
-  if (!session && !isAuthorized(req)) {
+  const isWorker = isAuthorized(req);
+  if (!session && !isWorker) {
     return new Response('Unauthorized', { status: 401 });
   }
 
+  const scope = isWorker ? { worker: true } : getProjectScopeFromSession(session);
   const { id } = await ctx.params;
 
   const run0 = await queryOne<RunRow>(
     `SELECT * FROM pipeline_runs WHERE id = $1`,
-    [id]
+    [id],
+    scope
   );
   if (!run0) {
     return new Response('Run not found', { status: 404 });
@@ -108,7 +112,8 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       // Initial snapshot
       const steps0 = await query<StepRow>(
         `SELECT * FROM pipeline_steps WHERE run_id = $1 ORDER BY step_index ASC`,
-        [id]
+        [id],
+        scope
       );
       send('snapshot', { run: run0, steps: steps0 });
       runSig = sigForRun(run0);
@@ -128,7 +133,8 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
         try {
           const run = await queryOne<RunRow>(
             `SELECT * FROM pipeline_runs WHERE id = $1`,
-            [id]
+            [id],
+            scope
           );
           if (!run) return;
 
@@ -140,7 +146,8 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
 
           const steps = await query<StepRow>(
             `SELECT * FROM pipeline_steps WHERE run_id = $1 ORDER BY step_index ASC`,
-            [id]
+            [id],
+            scope
           );
           for (const s of steps) {
             const sig = sigForStep(s);

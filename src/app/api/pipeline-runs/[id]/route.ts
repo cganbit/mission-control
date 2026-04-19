@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { query, queryOne } from '@/lib/db';
+import { getProjectScopeFromRequest } from '@/lib/session-scope';
 
 const WORKER_KEY = process.env.MC_WORKER_KEY ?? '';
 
@@ -13,21 +14,25 @@ type RouteContext = { params: Promise<{ id: string }> };
 // GET — run detail with steps and log event counts (dual auth)
 export async function GET(req: NextRequest, ctx: RouteContext) {
   const session = await getSessionFromRequest(req);
-  if (!session && !isAuthorized(req))
+  const isWorker = isAuthorized(req);
+  if (!session && !isWorker)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const scope = isWorker ? { worker: true } : await getProjectScopeFromRequest(req);
   const { id } = await ctx.params;
 
   const run = await queryOne(
     `SELECT * FROM pipeline_runs WHERE id = $1`,
-    [id]
+    [id],
+    scope
   );
   if (!run)
     return NextResponse.json({ error: 'Run not found' }, { status: 404 });
 
   const steps = await query(
     `SELECT * FROM pipeline_steps WHERE run_id = $1 ORDER BY step_index ASC`,
-    [id]
+    [id],
+    scope
   );
 
   const logCounts = await queryOne<{
@@ -41,7 +46,8 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
        COUNT(*) FILTER (WHERE level = 'error')::TEXT AS errors
      FROM pipeline_log_events
      WHERE run_id = $1`,
-    [id]
+    [id],
+    scope
   );
 
   return NextResponse.json({
@@ -61,11 +67,13 @@ export async function DELETE(req: NextRequest, ctx: RouteContext) {
   if (!session)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const scope = await getProjectScopeFromRequest(req);
   const { id } = await ctx.params;
 
   const run = await queryOne<{ status: string }>(
     `SELECT status FROM pipeline_runs WHERE id = $1`,
-    [id]
+    [id],
+    scope
   );
   if (!run)
     return NextResponse.json({ error: 'Run not found' }, { status: 404 });
@@ -76,7 +84,7 @@ export async function DELETE(req: NextRequest, ctx: RouteContext) {
       { status: 409 }
     );
 
-  await query(`DELETE FROM pipeline_runs WHERE id = $1`, [id]);
+  await query(`DELETE FROM pipeline_runs WHERE id = $1`, [id], scope);
 
   return NextResponse.json({ ok: true, id });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { query, queryOne } from '@/lib/db';
+import { getProjectScopeFromRequest } from '@/lib/session-scope';
 
 const WORKER_KEY = process.env.MC_WORKER_KEY ?? '';
 
@@ -8,7 +9,7 @@ function isAuthorized(req: NextRequest) {
   return req.headers.get('x-worker-key') === WORKER_KEY && WORKER_KEY !== '';
 }
 
-// POST — harness creates a new pipeline run (worker-key only)
+// POST — harness creates a new pipeline run (worker-key only, uses DEFAULT project)
 export async function POST(req: NextRequest) {
   if (!isAuthorized(req))
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -50,7 +51,8 @@ export async function POST(req: NextRequest) {
       task_id ?? null,
       triggered_by ?? null,
       metadata ? JSON.stringify(metadata) : null,
-    ]
+    ],
+    { worker: true }
   );
 
   const runId = run!.id;
@@ -63,7 +65,8 @@ export async function POST(req: NextRequest) {
         `INSERT INTO pipeline_steps
            (run_id, step_index, step_id, agent, status, parallel_group)
          VALUES ($1, $2, $3, $4, 'pending', $5)`,
-        [runId, i, s.step_id, s.agent ?? null, s.parallel_group ?? null]
+        [runId, i, s.step_id, s.agent ?? null, s.parallel_group ?? null],
+        { worker: true }
       );
     }
   }
@@ -74,8 +77,11 @@ export async function POST(req: NextRequest) {
 // GET — list runs with filters + facets (dual auth: UI session or worker-key)
 export async function GET(req: NextRequest) {
   const session = await getSessionFromRequest(req);
-  if (!session && !isAuthorized(req))
+  const isWorker = isAuthorized(req);
+  if (!session && !isWorker)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const scope = isWorker ? { worker: true } : await getProjectScopeFromRequest(req);
 
   const url = req.nextUrl;
   const prd = url.searchParams.get('prd');
@@ -131,29 +137,35 @@ export async function GET(req: NextRequest) {
      ${where}
      ORDER BY pr.started_at DESC
      LIMIT $${idx++} OFFSET $${idx++}`,
-    listParams
+    listParams,
+    scope
   );
 
   // Total count (same filters, no pagination)
   const totalRow = await queryOne<{ count: string }>(
     `SELECT COUNT(*)::TEXT AS count FROM pipeline_runs ${where}`,
-    params
+    params,
+    scope
   );
   const total = parseInt(totalRow?.count ?? '0', 10);
 
   // Facets — populate filter dropdowns (cheap queries, no where clause)
   const [prdFacets, typeFacets, statusFacets, sprintFacets] = await Promise.all([
     query<{ prd_id: string; count: string }>(
-      `SELECT prd_id, COUNT(*)::TEXT AS count FROM pipeline_runs WHERE prd_id IS NOT NULL GROUP BY prd_id ORDER BY prd_id`
+      `SELECT prd_id, COUNT(*)::TEXT AS count FROM pipeline_runs WHERE prd_id IS NOT NULL GROUP BY prd_id ORDER BY prd_id`,
+      [], scope
     ),
     query<{ run_type: string; count: string }>(
-      `SELECT run_type, COUNT(*)::TEXT AS count FROM pipeline_runs GROUP BY run_type ORDER BY run_type`
+      `SELECT run_type, COUNT(*)::TEXT AS count FROM pipeline_runs GROUP BY run_type ORDER BY run_type`,
+      [], scope
     ),
     query<{ status: string; count: string }>(
-      `SELECT status, COUNT(*)::TEXT AS count FROM pipeline_runs GROUP BY status ORDER BY status`
+      `SELECT status, COUNT(*)::TEXT AS count FROM pipeline_runs GROUP BY status ORDER BY status`,
+      [], scope
     ),
     query<{ sprint_number: number; count: string }>(
-      `SELECT sprint_number, COUNT(*)::TEXT AS count FROM pipeline_runs WHERE sprint_number IS NOT NULL GROUP BY sprint_number ORDER BY sprint_number DESC LIMIT 30`
+      `SELECT sprint_number, COUNT(*)::TEXT AS count FROM pipeline_runs WHERE sprint_number IS NOT NULL GROUP BY sprint_number ORDER BY sprint_number DESC LIMIT 30`,
+      [], scope
     ),
   ]);
 

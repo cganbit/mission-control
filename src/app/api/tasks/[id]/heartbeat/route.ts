@@ -25,7 +25,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (status === 'review' || status === 'done') updates.push(`completed_at = NOW()`);
 
   values.push(id);
-  await query(`UPDATE tasks SET ${updates.join(', ')} WHERE id = $${values.length}`, values);
+  await query(`UPDATE tasks SET ${updates.join(', ')} WHERE id = $${values.length}`, values, { worker: true });
 
   return NextResponse.json({ ok: true });
 }

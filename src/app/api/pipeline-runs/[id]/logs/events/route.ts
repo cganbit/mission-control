@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { query, queryOne } from '@/lib/db';
+import { getProjectScopeFromRequest } from '@/lib/session-scope';
 
 const WORKER_KEY = process.env.MC_WORKER_KEY ?? '';
 
@@ -38,7 +39,8 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
   // Verify run exists before inserting (avoid orphan events)
   const run = await queryOne<{ id: string }>(
     `SELECT id FROM pipeline_runs WHERE id = $1`,
-    [runId]
+    [runId],
+    { worker: true }
   );
   if (!run)
     return NextResponse.json({ error: 'Run not found' }, { status: 404 });
@@ -61,7 +63,8 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
         ev.payload ? JSON.stringify(ev.payload) : null,
         ev.occurred_at ?? null,
         ev.line_number_in_file ?? null,
-      ]
+      ],
+      { worker: true }
     );
     inserted++;
   }
@@ -73,9 +76,11 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
 // Query: ?step_id=X&level=warn&limit=200&offset=0
 export async function GET(req: NextRequest, ctx: RouteContext) {
   const session = await getSessionFromRequest(req);
-  if (!session && !isAuthorized(req))
+  const isWorker = isAuthorized(req);
+  if (!session && !isWorker)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const scope = isWorker ? { worker: true } : await getProjectScopeFromRequest(req);
   const { id: runId } = await ctx.params;
   const url = req.nextUrl;
   const stepId = url.searchParams.get('step_id');
@@ -98,7 +103,8 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       WHERE ${conditions.join(' AND ')}
       ORDER BY occurred_at ASC
       LIMIT $${idx++} OFFSET $${idx}`,
-    params
+    params,
+    scope
   );
 
   return NextResponse.json({ events: rows });
