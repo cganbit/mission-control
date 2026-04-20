@@ -38,7 +38,9 @@ export async function proxy(req: NextRequest) {
     pathname.startsWith('/api/analytics/') || // Analytics — todos endpoints aceitam dual auth (worker-key ou session)
     pathname.startsWith('/api/pipeline-runs') || // Pipeline Runs — dual auth (worker-key para harness, session para UI)
     pathname.startsWith('/api/melhor-envio/') || // Melhor Envio — dual auth (worker-key ou session)
-    pathname === '/api/mercado-livre/pedidos/backfill' // Backfill one-shot — auth via x-worker-key
+    pathname === '/api/mercado-livre/pedidos/backfill' || // Backfill one-shot — auth via x-worker-key
+    (pathname.startsWith('/api/') && pathname.endsWith('/setup')) || // /setup endpoints — todos self-auth via x-worker-key (D41)
+    pathname === '/api/github/webhooks' // GitHub webhook receiver — auth via HMAC-SHA256 (MC_GITHUB_WEBHOOK_SECRET)
   ) {
     return NextResponse.next();
   }
