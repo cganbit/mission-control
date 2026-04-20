@@ -3,28 +3,7 @@ import { getSessionFromRequest } from '@/lib/auth';
 import { getArbitragemPool } from '@/lib/db';
 import { logAudit } from '@/lib/audit';
 
-async function ensureTable(db: any) {
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS paraguai_assets (
-      id BIGSERIAL PRIMARY KEY,
-      fingerprint TEXT NOT NULL,
-      titulo TEXT NOT NULL,
-      qty INTEGER NOT NULL DEFAULT 1,
-      preco_usd NUMERIC(10,2) NOT NULL,
-      fornecedor TEXT,
-      data_compra DATE NOT NULL DEFAULT CURRENT_DATE,
-      status TEXT NOT NULL DEFAULT 'comprado' CHECK (status IN ('comprado','em_transito','em_estoque','vendido','cancelado')),
-      preco_venda_brl NUMERIC(10,2),
-      data_venda DATE,
-      observacoes TEXT,
-      created_by TEXT NOT NULL,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      updated_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-  await db.query(`CREATE INDEX IF NOT EXISTS idx_assets_fingerprint ON paraguai_assets(fingerprint)`);
-  await db.query(`CREATE INDEX IF NOT EXISTS idx_assets_status ON paraguai_assets(status)`);
-}
+// Schema moved to /api/paraguai/assets/setup (invoked by deploy.yml).
 
 // GET — lista assets (?fingerprint=X&status=em_estoque)
 export async function GET(req: NextRequest) {
@@ -36,7 +15,6 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get('status');
 
   const db = getArbitragemPool();
-  await ensureTable(db);
 
   const conditions: string[] = [];
   const params: unknown[] = [];
@@ -81,7 +59,6 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getArbitragemPool();
-  await ensureTable(db);
 
   const { fingerprint, titulo, qty = 1, preco_usd, fornecedor, data_compra, status = 'comprado', observacoes } = body;
 
@@ -111,7 +88,6 @@ export async function PATCH(req: NextRequest) {
   }
 
   const db = getArbitragemPool();
-  await ensureTable(db);
 
   const { id, status, qty, preco_usd, preco_venda_brl, data_venda, observacoes, fornecedor } = body;
 

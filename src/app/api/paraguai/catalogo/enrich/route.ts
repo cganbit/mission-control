@@ -20,11 +20,7 @@ async function getFirecrawlKey(): Promise<string> {
   throw new Error('Firecrawl key not configured. Set FIRECRAWL_KEY env var or add to connector_configs (key: firecrawl_key)');
 }
 
-async function ensureEnrichedColumn(db: any) {
-  await db.query(`
-    ALTER TABLE preco_ml_cache ADD COLUMN IF NOT EXISTS ml_enriched_json JSONB
-  `).catch(() => {});
-}
+// Schema moved to /api/paraguai/catalogo/enrich/setup (invoked by deploy.yml).
 
 function parseMarkdownForEnrichment(markdown: string) {
   // sold_quantity: "+1000 vendidos" or "1.234 vendidos"
@@ -242,7 +238,6 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getArbitragemPool();
-  await ensureEnrichedColumn(db);
 
   const cacheRow = await db.query(
     `SELECT ml_catalog_id, ml_catalogs_json, ml_catalog_url FROM preco_ml_cache WHERE fingerprint = $1`,

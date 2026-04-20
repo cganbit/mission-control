@@ -2,20 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { getArbitragemPool } from '@/lib/db';
 
-async function ensureTable(db: any) {
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS paraguai_audit_log (
-      id BIGSERIAL PRIMARY KEY,
-      username TEXT NOT NULL,
-      action TEXT NOT NULL,
-      fingerprint TEXT,
-      detail JSONB,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-  await db.query(`CREATE INDEX IF NOT EXISTS idx_audit_fingerprint ON paraguai_audit_log(fingerprint)`);
-  await db.query(`CREATE INDEX IF NOT EXISTS idx_audit_created_at ON paraguai_audit_log(created_at DESC)`);
-}
+// Schema moved to /api/paraguai/audit/setup (invoked by deploy.yml).
 
 // GET — lista auditoria (opcional: ?fingerprint=X&limit=100)
 export async function GET(req: NextRequest) {
@@ -27,7 +14,6 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(parseInt(searchParams.get('limit') || '200'), 500);
 
   const db = getArbitragemPool();
-  await ensureTable(db);
 
   const conditions: string[] = [];
   const params: unknown[] = [];
@@ -67,7 +53,6 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getArbitragemPool();
-  await ensureTable(db);
 
   await db.query(
     `INSERT INTO paraguai_audit_log (username, action, fingerprint, detail)

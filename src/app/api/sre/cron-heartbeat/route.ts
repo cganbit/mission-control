@@ -4,35 +4,7 @@ import { getSessionFromRequest } from '@/lib/auth';
 
 const WORKER_KEY = process.env.MC_WORKER_KEY ?? '';
 
-// ─── Schema + Seed ────────────────────────────────────────────────────────────
-
-async function ensureTable(db: ReturnType<typeof getPool>): Promise<void> {
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS cron_heartbeats (
-      cron_id          VARCHAR(50) PRIMARY KEY,
-      label            TEXT NOT NULL,
-      schedule_human   TEXT,
-      warn_after_min   INT  NOT NULL DEFAULT 300,
-      error_after_min  INT  NOT NULL DEFAULT 420,
-      last_ping_at     TIMESTAMPTZ,
-      last_status      VARCHAR(10),
-      last_duration_ms INT,
-      last_error       TEXT,
-      updated_at       TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-
-  await db.query(`
-    INSERT INTO cron_heartbeats (cron_id, label, schedule_human, warn_after_min, error_after_min)
-    VALUES
-      ('ml_token_refresh', 'Token Refresh ML',   'a cada 4h',    300,  420),
-      ('sre_check',        'SRE Health Check',   'a cada 5min',  10,   20),
-      ('sre_escalate',     'SRE Escalação',      'a cada 30min', 45,   90),
-      ('pg_backup',        'Backup PostgreSQL',  'a cada 3h',    240,  360),
-      ('n8n_paraguai',     'Catálogo Paraguai',  'on-demand',    1440, 2880)
-    ON CONFLICT DO NOTHING
-  `);
-}
+// Schema + seed moved to /api/sre/cron-heartbeat/setup (invoked by deploy.yml).
 
 // ─── Status color logic ───────────────────────────────────────────────────────
 
@@ -85,7 +57,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const db = getPool();
-  await ensureTable(db);
 
   // Validate cron_id exists
   const existing = await db.query(
@@ -129,7 +100,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   const db = getPool();
-  await ensureTable(db);
 
   const result = await db.query(
     `SELECT cron_id, label, schedule_human, warn_after_min, error_after_min,

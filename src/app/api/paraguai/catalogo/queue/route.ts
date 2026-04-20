@@ -6,23 +6,8 @@ import { logAudit } from '@/lib/audit';
 const WORKER_KEY = process.env.MC_WORKER_KEY;
 const ML_API = 'https://api.mercadolibre.com';
 
-async function ensureTable(db: any) {
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS catalog_refresh_queue (
-      id SERIAL PRIMARY KEY,
-      fingerprint TEXT NOT NULL,
-      product_name TEXT NOT NULL,
-      min_price NUMERIC DEFAULT 0,
-      status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'done', 'error')),
-      requested_at TIMESTAMP DEFAULT NOW(),
-      processed_at TIMESTAMP,
-      error_detail TEXT,
-      UNIQUE(fingerprint)
-    )
-  `);
-  // Add error_detail if table already exists without it
-  await db.query(`ALTER TABLE catalog_refresh_queue ADD COLUMN IF NOT EXISTS error_detail TEXT`).catch(() => {});
-}
+// Schema moved to /api/paraguai/catalogo/queue/setup (invoked by deploy.yml).
+// Also handles preco_ml_cache column extensions previously inline in processJobInline.
 
 // ─── ML Token helpers (reads from connector_configs or env) ──────────────────
 
@@ -294,16 +279,7 @@ async function processJobInline(job: { id: number; fingerprint: string; product_
     const premium = primary.price_premium ?? null;
     const classic = primary.price_classic ?? null;
 
-    // Ensure extra columns exist (idempotent — safe to run repeatedly)
-    await db.query(`
-      ALTER TABLE preco_ml_cache
-        ADD COLUMN IF NOT EXISTS ml_catalog_id    TEXT,
-        ADD COLUMN IF NOT EXISTS ml_catalog_url   TEXT,
-        ADD COLUMN IF NOT EXISTS ml_catalogs_json JSONB,
-        ADD COLUMN IF NOT EXISTS ml_price_premium NUMERIC(10,2),
-        ADD COLUMN IF NOT EXISTS ml_price_classic NUMERIC(10,2),
-        ADD COLUMN IF NOT EXISTS ml_shipping_type TEXT
-    `).catch(() => {}); // ignore if ALTER is not supported (no perms) — columns probably already exist
+    // preco_ml_cache column extensions moved to /api/paraguai/catalogo/queue/setup.
 
     await db.query(
       `INSERT INTO preco_ml_cache
@@ -364,7 +340,6 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getArbitragemPool();
-  await ensureTable(db);
 
   await db.query(
     `INSERT INTO catalog_refresh_queue (fingerprint, product_name, min_price, status, requested_at)
@@ -386,7 +361,6 @@ export async function GET(req: NextRequest) {
   const fingerprint = url.searchParams.get('fingerprint');
 
   const db = getArbitragemPool();
-  await ensureTable(db);
 
   // Browser checking status of a specific fingerprint
   if (fingerprint) {

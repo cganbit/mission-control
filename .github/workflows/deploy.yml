@@ -158,8 +158,15 @@ jobs:
             fi
           }
 
-          run_setup "analytics schema"     "/api/analytics/setup"
-          run_setup "pipeline-runs schema" "/api/pipeline-runs/setup"
+          run_setup "analytics schema"       "/api/analytics/setup"
+          run_setup "pipeline-runs schema"   "/api/pipeline-runs/setup"
+          run_setup "auth/login schema"      "/api/auth/login/setup"
+          run_setup "connectors schema"      "/api/connectors/setup"
+          run_setup "cron-heartbeat schema"  "/api/sre/cron-heartbeat/setup"
+          run_setup "paraguai/assets schema" "/api/paraguai/assets/setup"
+          run_setup "paraguai/audit schema"  "/api/paraguai/audit/setup"
+          run_setup "catalogo/queue schema"  "/api/paraguai/catalogo/queue/setup"
+          run_setup "catalogo/enrich schema" "/api/paraguai/catalogo/enrich/setup"
 
       - name: Smoke tests
         run: |
