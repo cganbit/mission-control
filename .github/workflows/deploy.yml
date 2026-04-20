@@ -167,6 +167,7 @@ jobs:
           run_setup "paraguai/audit schema"  "/api/paraguai/audit/setup"
           run_setup "catalogo/queue schema"  "/api/paraguai/catalogo/queue/setup"
           run_setup "catalogo/enrich schema" "/api/paraguai/catalogo/enrich/setup"
+          run_setup "github webhooks schema" "/api/github/webhooks/setup"
 
       - name: Smoke tests
         run: |
