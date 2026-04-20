@@ -16,7 +16,11 @@ export function getPool(): Pool {
 
 export function getArbitragemPool(): Pool {
   if (!arbitragemPool) {
-    const url = (process.env.DATABASE_URL ?? '').replace('/mission_control', '/arbitragem');
+    const explicit = process.env.ARBITRAGEM_DATABASE_URL;
+    const url =
+      explicit && explicit.length > 0
+        ? explicit
+        : (process.env.DATABASE_URL ?? '').replace('/mission_control', '/arbitragem');
     arbitragemPool = new Pool({
       connectionString: url,
       ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,

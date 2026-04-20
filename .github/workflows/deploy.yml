@@ -50,6 +50,7 @@ jobs:
           [ -z "${{ secrets.ME_PROD_TOKEN }}" ]          && WARNINGS="$WARNINGS ME_PROD_TOKEN"
           [ -z "${{ secrets.ME_PROD_CLIENT_SECRET }}" ]  && WARNINGS="$WARNINGS ME_PROD_CLIENT_SECRET"
           [ -z "${{ secrets.MC_GITHUB_WEBHOOK_SECRET }}" ] && WARNINGS="$WARNINGS MC_GITHUB_WEBHOOK_SECRET"
+          [ -z "${{ secrets.ARBITRAGEM_DATABASE_URL }}" ]  && WARNINGS="$WARNINGS ARBITRAGEM_DATABASE_URL"
 
           if [ -n "$WARNINGS" ]; then
             echo "::warning::Secrets ausentes (features degradadas):$WARNINGS"
@@ -127,6 +128,7 @@ jobs:
           ME_PROD_TOKEN=${{ secrets.ME_PROD_TOKEN }}
           ME_PROD_CLIENT_SECRET=${{ secrets.ME_PROD_CLIENT_SECRET }}
           MC_GITHUB_WEBHOOK_SECRET=${{ secrets.MC_GITHUB_WEBHOOK_SECRET }}
+          ARBITRAGEM_DATABASE_URL=${{ secrets.ARBITRAGEM_DATABASE_URL }}
           ENVEOF"
 
       - name: Build & restart container
