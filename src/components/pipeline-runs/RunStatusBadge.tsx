@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import { StatusBadge, type StatusTone } from '@/components/ui/StatusBadge';
 
 export type RunStatus =
   | 'pending'
@@ -10,26 +10,16 @@ export type RunStatus =
   | 'cancelled'
   | 'warning';
 
-interface RunStatusBadgeProps {
-  status: RunStatus | string;
-  className?: string;
-}
-
-const STYLES: Record<string, string> = {
-  running:
-    'bg-[var(--info-muted)] text-[var(--info)] border-[var(--info)]/40',
-  ok: 'bg-[var(--success-muted,rgba(16,185,129,0.15))] text-[var(--success,#10b981)] border-[var(--success,#10b981)]/40',
-  failed:
-    'bg-[var(--destructive-muted)] text-[var(--destructive)] border-[var(--destructive)]/40',
-  cancelled:
-    'bg-[var(--bg-muted)] text-[var(--text-muted)] border-[var(--border)]',
-  warning:
-    'bg-[var(--brand-muted)] text-[var(--brand)] border-[var(--brand)]/40',
-  pending:
-    'bg-[var(--bg-muted)] text-[var(--text-muted)] border-[var(--border)]',
+const RUN_TONE: Record<string, StatusTone> = {
+  running: 'info',
+  ok: 'success',
+  failed: 'failed',
+  warning: 'warning',
+  cancelled: 'neutral',
+  pending: 'neutral',
 };
 
-const LABELS: Record<string, string> = {
+const RUN_LABEL: Record<string, string> = {
   running: 'Running',
   ok: 'OK',
   failed: 'Failed',
@@ -38,21 +28,18 @@ const LABELS: Record<string, string> = {
   pending: 'Pending',
 };
 
+interface RunStatusBadgeProps {
+  status: RunStatus | string;
+  className?: string;
+}
+
 export function RunStatusBadge({ status, className }: RunStatusBadgeProps) {
-  const style = STYLES[status] ?? STYLES.pending;
-  const label = LABELS[status] ?? status;
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold uppercase tracking-wider border',
-        style,
-        className
-      )}
-    >
-      {status === 'running' && (
-        <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-      )}
-      {label}
-    </span>
+    <StatusBadge
+      label={RUN_LABEL[status] ?? status}
+      tone={RUN_TONE[status] ?? 'neutral'}
+      pulse={status === 'running'}
+      className={className}
+    />
   );
 }
