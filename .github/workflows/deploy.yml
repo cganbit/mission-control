@@ -49,6 +49,7 @@ jobs:
           [ -z "${{ secrets.PRINT_AGENT_KEY }}" ]        && WARNINGS="$WARNINGS PRINT_AGENT_KEY"
           [ -z "${{ secrets.ME_PROD_TOKEN }}" ]          && WARNINGS="$WARNINGS ME_PROD_TOKEN"
           [ -z "${{ secrets.ME_PROD_CLIENT_SECRET }}" ]  && WARNINGS="$WARNINGS ME_PROD_CLIENT_SECRET"
+          [ -z "${{ secrets.MC_GITHUB_WEBHOOK_SECRET }}" ] && WARNINGS="$WARNINGS MC_GITHUB_WEBHOOK_SECRET"
 
           if [ -n "$WARNINGS" ]; then
             echo "::warning::Secrets ausentes (features degradadas):$WARNINGS"
@@ -125,6 +126,7 @@ jobs:
           ME_SANDBOX_CLIENT_SECRET=${{ secrets.ME_SANDBOX_CLIENT_SECRET }}
           ME_PROD_TOKEN=${{ secrets.ME_PROD_TOKEN }}
           ME_PROD_CLIENT_SECRET=${{ secrets.ME_PROD_CLIENT_SECRET }}
+          MC_GITHUB_WEBHOOK_SECRET=${{ secrets.MC_GITHUB_WEBHOOK_SECRET }}
           ENVEOF"
 
       - name: Build & restart container
