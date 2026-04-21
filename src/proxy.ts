@@ -40,7 +40,7 @@ export async function proxy(req: NextRequest) {
     pathname.startsWith('/api/melhor-envio/') || // Melhor Envio — dual auth (worker-key ou session)
     pathname === '/api/mercado-livre/pedidos/backfill' || // Backfill one-shot — auth via x-worker-key
     (pathname.startsWith('/api/') && pathname.endsWith('/setup')) || // /setup endpoints — todos self-auth via x-worker-key (D41)
-    pathname === '/api/github/webhooks' // GitHub webhook receiver — auth via HMAC-SHA256 (MC_GITHUB_WEBHOOK_SECRET)
+    pathname.startsWith('/api/github/') // GitHub: webhooks (HMAC auth) + events/issues/prs (session auth inside route, returns 401 JSON)
   ) {
     return NextResponse.next();
   }
