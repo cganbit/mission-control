@@ -1,5 +1,157 @@
 @import "tailwindcss";
 
+/*
+ * ─────────────────────────────────────────────────────────────────────────────
+ * wingx design tokens — ported from wingx-platform/template/DESIGN.md
+ * Fase C item 1 · violet/cyan · Geist · OKLCH · dark-first
+ *
+ * Namespaced as --wingx-* to stay additive alongside MC's existing amber/green
+ * identity. Exposed to Tailwind via @theme inline below as wingx-* utilities
+ * (e.g. bg-wingx-primary, text-wingx-accent, border-wingx-ring).
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+/* Light mode baseline */
+:root {
+  /* wingx brand — light */
+  --wingx-background:          oklch(1 0 0);
+  --wingx-foreground:          oklch(0.145 0 0);
+  --wingx-card:                oklch(1 0 0);
+  --wingx-card-foreground:     oklch(0.145 0 0);
+  --wingx-popover:             oklch(1 0 0);
+  --wingx-popover-foreground:  oklch(0.145 0 0);
+
+  /* Brand */
+  --wingx-primary:             oklch(0.55 0.22 285);   /* violet CTA */
+  --wingx-primary-foreground:  oklch(0.98 0 0);
+  --wingx-accent:              oklch(0.72 0.15 200);   /* cyan — agent activity */
+  --wingx-accent-foreground:   oklch(0.145 0 0);
+  --wingx-secondary:           oklch(0.97 0 0);
+  --wingx-secondary-foreground: oklch(0.205 0 0);
+
+  /* Surfaces */
+  --wingx-muted:               oklch(0.97 0 0);
+  --wingx-muted-foreground:    oklch(0.556 0 0);
+
+  /* Semantic */
+  --wingx-destructive:         oklch(0.577 0.245 27.325);
+  --wingx-destructive-foreground: oklch(0.98 0 0);
+  --wingx-success:             oklch(0.73 0.2 150);
+  --wingx-success-foreground:  oklch(0.145 0 0);
+  --wingx-warning:             oklch(0.79 0.17 70);
+  --wingx-warning-foreground:  oklch(0.145 0 0);
+  --wingx-info:                oklch(0.65 0.2 240);
+  --wingx-info-foreground:     oklch(0.98 0 0);
+
+  /* Structure */
+  --wingx-border:              oklch(0.922 0 0);
+  --wingx-input:               oklch(0.922 0 0);
+  --wingx-ring:                oklch(0.55 0.22 285);
+
+  /* Radius scale */
+  --wingx-radius:              0.625rem;
+  --wingx-radius-sm:           calc(var(--wingx-radius) - 4px);
+  --wingx-radius-md:           calc(var(--wingx-radius) - 2px);
+  --wingx-radius-lg:           var(--wingx-radius);
+  --wingx-radius-xl:           calc(var(--wingx-radius) + 4px);
+
+  /* Charts */
+  --wingx-chart-1:             oklch(0.55 0.22 285);
+  --wingx-chart-2:             oklch(0.72 0.15 200);
+  --wingx-chart-3:             oklch(0.73 0.2 150);
+  --wingx-chart-4:             oklch(0.79 0.17 70);
+  --wingx-chart-5:             oklch(0.577 0.245 27.325);
+}
+
+/* Dark mode overrides — dark is the canonical wingx presentation */
+.dark {
+  --wingx-background:          oklch(0.145 0 0);
+  --wingx-foreground:          oklch(0.98 0 0);
+  --wingx-card:                oklch(0.18 0 0);
+  --wingx-card-foreground:     oklch(0.98 0 0);
+  --wingx-popover:             oklch(0.18 0 0);
+  --wingx-popover-foreground:  oklch(0.98 0 0);
+
+  --wingx-primary:             oklch(0.62 0.22 285);
+  --wingx-primary-foreground:  oklch(0.145 0 0);
+  --wingx-accent:              oklch(0.78 0.15 200);
+  --wingx-accent-foreground:   oklch(0.145 0 0);
+  --wingx-secondary:           oklch(0.22 0 0);
+  --wingx-secondary-foreground: oklch(0.98 0 0);
+
+  --wingx-muted:               oklch(0.22 0 0);
+  --wingx-muted-foreground:    oklch(0.63 0 0);
+
+  --wingx-destructive:         oklch(0.65 0.24 27);
+  --wingx-destructive-foreground: oklch(0.98 0 0);
+  --wingx-success:             oklch(0.78 0.19 150);
+  --wingx-success-foreground:  oklch(0.145 0 0);
+  --wingx-warning:             oklch(0.82 0.17 70);
+  --wingx-warning-foreground:  oklch(0.145 0 0);
+  --wingx-info:                oklch(0.7 0.2 240);
+  --wingx-info-foreground:     oklch(0.98 0 0);
+
+  --wingx-border:              oklch(0.27 0 0);
+  --wingx-input:               oklch(0.27 0 0);
+  --wingx-ring:                oklch(0.62 0.22 285);
+
+  --wingx-chart-1:             oklch(0.62 0.22 285);
+  --wingx-chart-2:             oklch(0.78 0.15 200);
+  --wingx-chart-3:             oklch(0.78 0.19 150);
+  --wingx-chart-4:             oklch(0.82 0.17 70);
+  --wingx-chart-5:             oklch(0.65 0.24 27);
+}
+
+/*
+ * Tailwind v4 @theme inline — maps wingx-* CSS vars to utility classes.
+ * bg-wingx-primary, text-wingx-accent, border-wingx-ring, etc.
+ */
+@theme inline {
+  --color-wingx-background:          var(--wingx-background);
+  --color-wingx-foreground:          var(--wingx-foreground);
+  --color-wingx-card:                var(--wingx-card);
+  --color-wingx-card-foreground:     var(--wingx-card-foreground);
+  --color-wingx-popover:             var(--wingx-popover);
+  --color-wingx-popover-foreground:  var(--wingx-popover-foreground);
+  --color-wingx-primary:             var(--wingx-primary);
+  --color-wingx-primary-foreground:  var(--wingx-primary-foreground);
+  --color-wingx-accent:              var(--wingx-accent);
+  --color-wingx-accent-foreground:   var(--wingx-accent-foreground);
+  --color-wingx-secondary:           var(--wingx-secondary);
+  --color-wingx-secondary-foreground: var(--wingx-secondary-foreground);
+  --color-wingx-muted:               var(--wingx-muted);
+  --color-wingx-muted-foreground:     var(--wingx-muted-foreground);
+  --color-wingx-destructive:         var(--wingx-destructive);
+  --color-wingx-destructive-foreground: var(--wingx-destructive-foreground);
+  --color-wingx-success:             var(--wingx-success);
+  --color-wingx-success-foreground:  var(--wingx-success-foreground);
+  --color-wingx-warning:             var(--wingx-warning);
+  --color-wingx-warning-foreground:  var(--wingx-warning-foreground);
+  --color-wingx-info:                var(--wingx-info);
+  --color-wingx-info-foreground:     var(--wingx-info-foreground);
+  --color-wingx-border:              var(--wingx-border);
+  --color-wingx-input:               var(--wingx-input);
+  --color-wingx-ring:                var(--wingx-ring);
+  --color-wingx-chart-1:             var(--wingx-chart-1);
+  --color-wingx-chart-2:             var(--wingx-chart-2);
+  --color-wingx-chart-3:             var(--wingx-chart-3);
+  --color-wingx-chart-4:             var(--wingx-chart-4);
+  --color-wingx-chart-5:             var(--wingx-chart-5);
+
+  /* Font vars — consumers must load Geist via next/font/google */
+  --font-geist-sans: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: "Geist Mono", ui-monospace, monospace;
+
+  /* Radius utilities */
+  --radius-wingx:    var(--wingx-radius);
+  --radius-wingx-sm: var(--wingx-radius-sm);
+  --radius-wingx-md: var(--wingx-radius-md);
+  --radius-wingx-lg: var(--wingx-radius-lg);
+  --radius-wingx-xl: var(--wingx-radius-xl);
+}
+
+/* ─── MC existing tokens (unchanged) ─── */
+
 :root {
   /* Backgrounds */
   --bg-base: #171717;
