@@ -94,7 +94,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     await q(
       `INSERT INTO github_webhook_events (project_id, event_type, delivery_id, payload)
        VALUES ($1, $2, $3, $4)`,
-      [projectId, eventType, deliveryId, rawBody]
+      [projectId, eventType, deliveryId, JSON.stringify(payload)]
     );
 
     if (eventType === 'issues') {
