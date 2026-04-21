@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { withWorkerBypass } from '@/lib/db';
+import { extractJsonPayload } from '@/lib/github-webhook-helpers';
 
 // PRD-040 Camada 1 — GitHub webhook receiver (observability read-only).
 // TODO: project_id resolution via repo→project mapping. MVP usa Paraguai default
@@ -77,9 +78,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let payload: unknown;
   try {
-    payload = JSON.parse(rawBody);
+    payload = extractJsonPayload(rawBody, req.headers.get('content-type'));
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
   }
 
   const eventType = req.headers.get('x-github-event') ?? 'unknown';
