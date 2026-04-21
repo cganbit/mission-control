@@ -10,7 +10,7 @@ import {
   FolderOpen, CircleDollarSign, Plug, Users, BarChart2,
   TrendingUp, Package, ShoppingBag, KeyRound, Activity, UsersRound,
   PanelLeftClose, PanelLeftOpen, LogOut, ChevronDown, ChevronUp, AppWindow, Sparkles, Printer,
-  Workflow,
+  Workflow, GitPullRequest,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -45,7 +45,8 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Operações',
     items: [
       { href: '/activity',      label: 'Activity Feed', icon: Zap,          minRole: 'viewer' },
-      { href: '/pipeline-runs', label: 'Pipeline Runs', icon: Workflow,     minRole: 'viewer' },
+      { href: '/pipeline-runs', label: 'Pipeline Runs', icon: Workflow,        minRole: 'viewer' },
+      { href: '/issues-prs',   label: 'Issues & PRs',  icon: GitPullRequest,  minRole: 'viewer' },
       { href: '/calendar',      label: 'Calendar',      icon: Calendar,     minRole: 'viewer' },
       { href: '/memory',        label: 'Memory',        icon: Brain,        minRole: 'viewer' },
       { href: '/documents',     label: 'Documentos',    icon: FolderOpen,   minRole: 'viewer' },
