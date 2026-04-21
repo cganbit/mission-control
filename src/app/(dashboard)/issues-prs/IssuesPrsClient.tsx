@@ -10,35 +10,47 @@ import { formatDate } from '@/lib/utils';
 
 interface GithubEvent {
   id: string;
-  repo: string;
   event_type: string;
-  action: string | null;
+  delivery_id: string;
   payload: Record<string, unknown>;
-  created_at: string;
-  github_url: string | null;
+  received_at: string;
 }
 
 interface GithubIssue {
   id: string;
   repo: string;
-  github_number: number;
+  number: number;
   title: string;
   state: string;
-  author: string | null;
-  github_url: string | null;
   updated_at: string;
 }
 
 interface GithubPr {
   id: string;
   repo: string;
-  github_number: number;
+  number: number;
   title: string;
   state: string;
-  author: string | null;
-  github_url: string | null;
   updated_at: string;
   merged_at: string | null;
+}
+
+function eventRepo(ev: GithubEvent): string | null {
+  const repo = (ev.payload as { repository?: { full_name?: string } } | undefined)?.repository?.full_name;
+  return repo ?? null;
+}
+
+function eventAction(ev: GithubEvent): string | null {
+  const action = (ev.payload as { action?: string } | undefined)?.action;
+  return action ?? null;
+}
+
+function issueUrl(issue: { repo: string; number: number }): string {
+  return `https://github.com/${issue.repo}/issues/${issue.number}`;
+}
+
+function prUrl(pr: { repo: string; number: number }): string {
+  return `https://github.com/${pr.repo}/pull/${pr.number}`;
 }
 
 interface PagedResponse<T> {
@@ -108,22 +120,25 @@ function Modal({ onClose, children }: ModalProps) {
 // ----- Event detail -----
 
 function EventDetail({ event, onClose }: { event: GithubEvent; onClose: () => void }) {
+  const repo = eventRepo(event);
+  const action = eventAction(event);
   return (
     <Modal onClose={onClose}>
       <div className="space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge label={event.event_type} tone={eventTypeTone(event.event_type)} />
-          {event.action && (
-            <StatusBadge label={event.action} tone="neutral" />
+          {action && (
+            <StatusBadge label={action} tone="neutral" />
           )}
         </div>
         <div>
-          <p className="text-xs text-[var(--text-muted)] font-mono mb-1">{event.repo}</p>
-          <p className="text-xs text-[var(--text-muted)]">{formatDate(event.created_at)}</p>
+          {repo && <p className="text-xs text-[var(--text-muted)] font-mono mb-1">{repo}</p>}
+          <p className="text-xs text-[var(--text-muted)] font-mono mb-1">delivery: {event.delivery_id}</p>
+          <p className="text-xs text-[var(--text-muted)]">{formatDate(event.received_at)}</p>
         </div>
-        {event.github_url && (
+        {repo && (
           <a
-            href={event.github_url}
+            href={`https://github.com/${repo}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-xs text-[var(--brand)] hover:underline"
@@ -147,33 +162,31 @@ function EventDetail({ event, onClose }: { event: GithubEvent; onClose: () => vo
 
 function IssueOrPrDetail({ item, onClose }: { item: GithubIssue | GithubPr; onClose: () => void }) {
   const pr = 'merged_at' in item ? item as GithubPr : null;
+  const url = pr ? prUrl(pr) : issueUrl(item);
   return (
     <Modal onClose={onClose}>
       <div className="space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge label={item.state} tone={stateTone(item.state)} />
-          <span className="text-xs text-[var(--text-muted)] font-mono">#{item.github_number}</span>
+          <span className="text-xs text-[var(--text-muted)] font-mono">#{item.number}</span>
         </div>
         <p className="text-sm font-semibold text-[var(--text-primary)]">{item.title}</p>
         <div className="space-y-1 text-xs text-[var(--text-muted)]">
           <p><span className="text-[var(--text-secondary)]">Repo:</span> {item.repo}</p>
-          {item.author && <p><span className="text-[var(--text-secondary)]">Author:</span> {item.author}</p>}
           <p><span className="text-[var(--text-secondary)]">Updated:</span> {formatDate(item.updated_at)}</p>
           {pr?.merged_at && (
             <p><span className="text-[var(--text-secondary)]">Merged:</span> {formatDate(pr.merged_at)}</p>
           )}
         </div>
-        {item.github_url && (
-          <a
-            href={item.github_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-[var(--brand)] hover:underline"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            Open on GitHub
-          </a>
-        )}
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs text-[var(--brand)] hover:underline"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          Open on GitHub
+        </a>
       </div>
     </Modal>
   );
@@ -438,12 +451,12 @@ export function IssuesPrsClient() {
                       onClick={() => setSelectedEvent(ev)}
                       className="border-b border-[var(--border)] last:border-0 hover:bg-white/5 cursor-pointer transition-colors"
                     >
-                      <Td mono>{ev.repo}</Td>
+                      <Td mono>{eventRepo(ev) ?? '—'}</Td>
                       <Td>
                         <StatusBadge label={ev.event_type} tone={eventTypeTone(ev.event_type)} />
                       </Td>
-                      <Td>{ev.action ?? '—'}</Td>
-                      <Td muted>{formatDate(ev.created_at)}</Td>
+                      <Td>{eventAction(ev) ?? '—'}</Td>
+                      <Td muted>{formatDate(ev.received_at)}</Td>
                     </tr>
                   ))}
                 </tbody>
@@ -476,7 +489,6 @@ export function IssuesPrsClient() {
                     <Th>#</Th>
                     <Th>Title</Th>
                     <Th>State</Th>
-                    <Th>Author</Th>
                     <Th>Updated</Th>
                   </tr>
                 </thead>
@@ -488,14 +500,13 @@ export function IssuesPrsClient() {
                       className="border-b border-[var(--border)] last:border-0 hover:bg-white/5 cursor-pointer transition-colors"
                     >
                       <Td mono>{issue.repo}</Td>
-                      <Td mono>#{issue.github_number}</Td>
+                      <Td mono>#{issue.number}</Td>
                       <Td>
                         <span className="truncate max-w-[280px] block">{issue.title}</span>
                       </Td>
                       <Td>
                         <StatusBadge label={issue.state} tone={stateTone(issue.state)} />
                       </Td>
-                      <Td muted>{issue.author ?? '—'}</Td>
                       <Td muted>{formatDate(issue.updated_at)}</Td>
                     </tr>
                   ))}
@@ -529,7 +540,6 @@ export function IssuesPrsClient() {
                     <Th>#</Th>
                     <Th>Title</Th>
                     <Th>State</Th>
-                    <Th>Author</Th>
                     <Th>Updated</Th>
                     <Th>Merged</Th>
                   </tr>
@@ -542,14 +552,13 @@ export function IssuesPrsClient() {
                       className="border-b border-[var(--border)] last:border-0 hover:bg-white/5 cursor-pointer transition-colors"
                     >
                       <Td mono>{pr.repo}</Td>
-                      <Td mono>#{pr.github_number}</Td>
+                      <Td mono>#{pr.number}</Td>
                       <Td>
                         <span className="truncate max-w-[240px] block">{pr.title}</span>
                       </Td>
                       <Td>
                         <StatusBadge label={pr.state} tone={stateTone(pr.state)} />
                       </Td>
-                      <Td muted>{pr.author ?? '—'}</Td>
                       <Td muted>{formatDate(pr.updated_at)}</Td>
                       <Td muted>{pr.merged_at ? formatDate(pr.merged_at) : '—'}</Td>
                     </tr>
