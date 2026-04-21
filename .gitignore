@@ -10,6 +10,7 @@
 node_modules/
 .next/
 .npm/
+tsconfig.tsbuildinfo
 
 # OS / IDE
 __pycache__/
