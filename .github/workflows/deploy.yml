@@ -70,12 +70,13 @@ jobs:
           scope: '@wingx-app'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
-        # NOTE: npm run build removido do CI — lightningcss native binary (linux-x64-gnu)
-        # não instala corretamente no GitHub Actions quando lock file gerado no Windows.
-        # Validação real ocorre no Docker build na VPS (step abaixo).
+        # NOTE: npm install (not npm ci) — lock file generated on Windows has invalid
+        # dedup for esbuild (vite@8 wants ^0.27, lockfile deduped @0.18) + lightningcss
+        # native binary (linux-x64-gnu) not installable in GH Actions from Windows lockfile.
+        # Real build + validation happen in Docker build on VPS (step below).
         # Ver: docs/spikes/spike-003-lightningcss-ci-linux.md
 
       - name: Setup SSH
