@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { GitBranch, Search, RefreshCw, X, ExternalLink } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { GitBranch, Search, RefreshCw, X, ExternalLink, Wrench } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import type { StatusTone } from '@/components/ui/StatusBadge';
 import { formatDate } from '@/lib/utils';
@@ -257,6 +258,7 @@ function Pagination({
 // ----- Main component -----
 
 export function IssuesPrsClient() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('events');
 
   // Filters
@@ -281,6 +283,53 @@ export function IssuesPrsClient() {
   // Modals
   const [selectedEvent, setSelectedEvent] = useState<GithubEvent | null>(null);
   const [selectedIssueOrPr, setSelectedIssueOrPr] = useState<GithubIssue | GithubPr | null>(null);
+
+  // Dispatch state: eventId → 'loading' | 'done' | 'error'
+  const [dispatchState, setDispatchState] = useState<Record<string, 'loading' | 'done' | 'error'>>({});
+  const [dispatchToast, setDispatchToast] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
+
+  const dispatchFix = useCallback(async (ev: GithubEvent, e: { stopPropagation: () => void }) => {
+    e.stopPropagation(); // prevent row click → modal
+    const repo = eventRepo(ev);
+    if (!repo) return;
+
+    setDispatchState(prev => ({ ...prev, [ev.id]: 'loading' }));
+    setDispatchToast(null);
+
+    try {
+      const res = await fetch('/api/github/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: ev.id, target_repo: repo }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error ?? `HTTP ${res.status}`);
+      }
+
+      setDispatchState(prev => ({ ...prev, [ev.id]: 'done' }));
+
+      if (data.warning) {
+        setDispatchToast({ message: `Pipeline criado (sem dispatch GH): ${data.warning}`, type: 'warning' });
+      } else {
+        setDispatchToast({ message: 'Pipeline iniciado com sucesso.', type: 'success' });
+      }
+
+      if (data.pipeline_run_id) {
+        setTimeout(() => {
+          router.push(`/pipeline-runs/${data.pipeline_run_id}`);
+        }, 1200);
+      }
+    } catch (err) {
+      setDispatchState(prev => ({ ...prev, [ev.id]: 'error' }));
+      setDispatchToast({
+        message: `Erro ao despachar: ${err instanceof Error ? err.message : String(err)}`,
+        type: 'error',
+      });
+    }
+  }, [router]);
 
   const fetchEvents = useCallback(async () => {
     setLoading(true);
@@ -473,6 +522,27 @@ export function IssuesPrsClient() {
         </div>
       )}
 
+      {/* Dispatch toast */}
+      {dispatchToast && (
+        <div
+          className={`rounded-lg border px-4 py-3 text-sm flex items-center justify-between gap-3 ${
+            dispatchToast.type === 'success'
+              ? 'border-green-500/40 bg-green-500/10 text-green-400'
+              : dispatchToast.type === 'warning'
+              ? 'border-yellow-500/40 bg-yellow-500/10 text-yellow-400'
+              : 'border-[var(--destructive)]/40 bg-[var(--destructive-muted)] text-[var(--destructive)]'
+          }`}
+        >
+          <span>{dispatchToast.message}</span>
+          <button
+            onClick={() => setDispatchToast(null)}
+            className="shrink-0 opacity-70 hover:opacity-100 transition-opacity"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Loading skeleton */}
       {loading && !eventsData && !issuesData && !prsData && (
         <div className="flex items-center justify-center py-20">
@@ -495,6 +565,7 @@ export function IssuesPrsClient() {
                     <Th>Action</Th>
                     <Th>Classification</Th>
                     <Th>Received</Th>
+                    <Th>Actions</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -513,6 +584,34 @@ export function IssuesPrsClient() {
                         <ClassificationBadge value={ev.classification} />
                       </Td>
                       <Td muted>{formatDate(ev.received_at)}</Td>
+                      <Td>
+                        {ev.classification === 'trivial_fix' && (
+                          <button
+                            onClick={(e: { stopPropagation: () => void }) => dispatchFix(ev, e)}
+                            disabled={dispatchState[ev.id] === 'loading' || dispatchState[ev.id] === 'done'}
+                            title="Criar pipeline_run e disparar workflow fix.yml"
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-colors
+                              ${dispatchState[ev.id] === 'done'
+                                ? 'border-green-500/40 bg-green-500/10 text-green-400 cursor-default'
+                                : dispatchState[ev.id] === 'error'
+                                ? 'border-[var(--destructive)]/40 bg-[var(--destructive-muted)] text-[var(--destructive)] hover:bg-[var(--destructive-muted)]'
+                                : 'border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5'
+                              }
+                              disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {dispatchState[ev.id] === 'loading' ? (
+                              <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Wrench className="h-3 w-3" />
+                            )}
+                            {dispatchState[ev.id] === 'done'
+                              ? 'Iniciado'
+                              : dispatchState[ev.id] === 'error'
+                              ? 'Erro'
+                              : 'Tentar /fix'}
+                          </button>
+                        )}
+                      </Td>
                     </tr>
                   ))}
                 </tbody>
