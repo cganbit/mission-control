@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getBalance } from '@wingx-app/api-me';
 import { getSessionFromRequest } from '@/lib/auth';
-import { meGetBalance } from '@/lib/melhor-envio';
+import { getPool } from '@/lib/db';
 
+// GET /api/melhor-envio/balance
 export async function GET(req: NextRequest) {
-  const session = await getSessionFromRequest(req);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
   try {
-    const data = await meGetBalance();
-    return NextResponse.json({
-      balance: data.balance,
-      reserved: data.reserved,
-      debts: data.debts,
-    });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    const session = await getSessionFromRequest(req);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const input = { projectId: session.project_id };
+    const result = await getBalance(getPool(), input);
+    return NextResponse.json(result);
+  } catch (err: any) {
+    console.error('[api/melhor-envio/balance]', err);
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }
