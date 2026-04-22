@@ -115,8 +115,8 @@ export default function PipelineRunsPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
-            <Workflow className="h-5 w-5 text-[var(--brand)]" />
-            <h1 className="text-xl font-bold text-[var(--text-primary)]">Pipeline Runs</h1>
+            <Workflow className="h-5 w-5 text-wingx-accent" />
+            <h1 className="text-xl font-bold text-[var(--text-primary)]"><span className="text-wingx-accent">Pipeline</span> Runs</h1>
           </div>
           <p className="text-sm text-[var(--text-muted)] mt-0.5">
             Execuções do harness em tempo real — sprint-close, tasks, fixes e spikes
@@ -141,7 +141,7 @@ export default function PipelineRunsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search title, PRD, epic..."
-            className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]/60 focus:outline-none focus:border-[var(--brand)]/50"
+            className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]/60 focus:outline-none focus:border-wingx-ring/50 focus:ring-1 focus:ring-wingx-ring/30"
           />
         </div>
         <select
