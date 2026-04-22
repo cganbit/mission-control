@@ -3,8 +3,11 @@ FROM node:20-alpine AS base
 # Install dependencies only when needed
 FROM base AS deps
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+ARG NODE_AUTH_TOKEN
+COPY package.json package-lock.json* ./
+RUN printf '@wingx-app:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=%s\n' "${NODE_AUTH_TOKEN}" > .npmrc \
+    && npm install --no-audit --no-fund \
+    && rm .npmrc
 
 # Build the source code
 FROM base AS builder

@@ -1,6 +1,9 @@
 services:
   mission-control:
-    build: .
+    build:
+      context: .
+      args:
+        NODE_AUTH_TOKEN: ${NODE_AUTH_TOKEN}
     container_name: mission-control
     restart: unless-stopped
     ports:
