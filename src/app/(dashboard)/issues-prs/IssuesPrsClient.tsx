@@ -338,8 +338,8 @@ export function IssuesPrsClient() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
-            <GitBranch className="h-5 w-5 text-[var(--brand)]" />
-            <h1 className="text-xl font-bold text-[var(--text-primary)]">GitHub Activity</h1>
+            <GitBranch className="h-5 w-5 text-wingx-accent" />
+            <h1 className="text-xl font-bold text-[var(--text-primary)]"><span className="text-wingx-accent">GitHub</span> Activity</h1>
           </div>
           <p className="text-sm text-[var(--text-muted)] mt-0.5">
             Webhook events, issues and pull requests received via PRD-040
@@ -363,7 +363,7 @@ export function IssuesPrsClient() {
             onClick={() => setActiveTab(t.key)}
             className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
               activeTab === t.key
-                ? 'border-[var(--brand)] text-[var(--text-primary)]'
+                ? 'border-wingx-primary text-[var(--text-primary)]'
                 : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
             }`}
           >
@@ -381,7 +381,7 @@ export function IssuesPrsClient() {
             value={repoFilter}
             onChange={e => { setRepoFilter(e.target.value); setEventsPage(1); setIssuesPage(1); setPrsPage(1); }}
             placeholder="Filter by repo..."
-            className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]/60 focus:outline-none focus:border-[var(--brand)]/50"
+            className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]/60 focus:outline-none focus:border-wingx-ring/50 focus:ring-1 focus:ring-wingx-ring/30"
           />
         </div>
         {activeTab === 'events' && (

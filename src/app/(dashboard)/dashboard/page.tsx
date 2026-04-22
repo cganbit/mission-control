@@ -11,7 +11,7 @@ const STAT_CONFIG: Record<string, { icon: LucideIcon; borderColor: string; iconC
   indigo:  { icon: Shield,        borderColor: 'border-t-blue-500/60',    iconColor: 'text-blue-400',    bgColor: 'bg-blue-500/5' },
   yellow:  { icon: ClipboardList, borderColor: 'border-t-amber-400/60',   iconColor: 'text-amber-400',   bgColor: 'bg-amber-500/5' },
   green:   { icon: Bot,           borderColor: 'border-t-emerald-500/60', iconColor: 'text-emerald-400', bgColor: 'bg-emerald-500/5' },
-  emerald: { icon: CheckCircle2,  borderColor: 'border-t-emerald-400/60', iconColor: 'text-emerald-400', bgColor: 'bg-emerald-500/5' },
+  emerald: { icon: CheckCircle2,  borderColor: 'border-t-wingx-primary/60', iconColor: 'text-wingx-primary', bgColor: 'bg-wingx-primary/5' },
 };
 
 const TASK_STATUSES = [
@@ -19,7 +19,7 @@ const TASK_STATUSES = [
   { status: 'assigned',    label: 'Atribuído',    color: 'bg-blue-500',    dot: '#3b82f6' },
   { status: 'in_progress', label: 'Em Progresso', color: 'bg-amber-400',   dot: '#fbbf24' },
   { status: 'review',      label: 'Revisão',      color: 'bg-violet-500',  dot: '#8b5cf6' },
-  { status: 'done',        label: 'Concluído',    color: 'bg-emerald-500', dot: '#22c55e' },
+  { status: 'done',        label: 'Concluído',    color: 'bg-wingx-success', dot: '#22c55e' },
 ];
 
 export default async function DashboardPage() {
@@ -60,7 +60,9 @@ export default async function DashboardPage() {
     <div className="p-8 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+          <span className="text-wingx-accent">Dashboard</span>
+        </h1>
         <p className="text-[var(--text-muted)] text-sm mt-1">Visão geral de todos os squads e agentes</p>
       </div>
 
