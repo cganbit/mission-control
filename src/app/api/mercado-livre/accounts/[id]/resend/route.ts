@@ -1,3 +1,5 @@
+// TODO F7 Fase 3: refactor to use MlAccountsProvider from @wingx-app/api-ml once
+// oauth/token-refresh functions are extracted (PRD-036 F7 Fase 3). Kept as-is for now.
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { getSessionFromRequest, hasRole } from '@/lib/auth';
