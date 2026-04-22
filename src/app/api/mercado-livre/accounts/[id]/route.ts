@@ -1,64 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPool } from '@/lib/db';
+import { updateAccount, deleteAccount } from '@wingx-app/api-ml';
 import { getSessionFromRequest, hasRole } from '@/lib/auth';
+import { getPool } from '@/lib/db';
 
-// ─── PATCH /api/mercado-livre/accounts/[id] ───────────────────────────────────
-
+// PATCH /api/mercado-livre/accounts/[id]
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionFromRequest(req);
   if (!session || !hasRole(session, 'member')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { id } = await params;
-  const body = await req.json();
-  const db = getPool();
+  try {
+    const { id } = await params;
+    const body = await req.json();
+    const db = getPool();
 
-  // Verificar ownership (admin pode editar qualquer um)
-  const existing = await db.query(`SELECT * FROM ml_account_configs WHERE id = $1`, [id]);
-  if (!existing.rows[0]) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const account = await updateAccount(db, {
+      id,
+      isAdmin:              hasRole(session, 'admin'),
+      callerUserId:         session.sub,
+      notification_group:   body.notification_group,
+      print_queue_enabled:  body.print_queue_enabled,
+      test_mode:            body.test_mode,
+    });
 
-  if (!hasRole(session, 'admin') && existing.rows[0].owner_user_id !== session.sub) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!account) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json({ account });
+  } catch (err: any) {
+    console.error('[api/mercado-livre/accounts/[id] PATCH]', err);
+    const status = err?.status ?? 500;
+    if (status === 403) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (status === 400) return NextResponse.json({ error: err.message }, { status: 400 });
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
-
-  const fields: string[] = [];
-  const values: any[] = [];
-  let i = 1;
-
-  if (body.notification_group !== undefined) { fields.push(`notification_group = $${i++}`); values.push(body.notification_group); }
-  if (body.print_queue_enabled !== undefined) { fields.push(`print_queue_enabled = $${i++}`); values.push(body.print_queue_enabled); }
-  if (body.test_mode !== undefined) { fields.push(`test_mode = $${i++}`); values.push(body.test_mode); }
-
-  if (!fields.length) return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 });
-
-  values.push(id);
-  const result = await db.query(
-    `UPDATE ml_account_configs SET ${fields.join(', ')} WHERE id = $${i} RETURNING *`,
-    values
-  );
-
-  return NextResponse.json({ account: result.rows[0] });
 }
 
-// ─── DELETE /api/mercado-livre/accounts/[id] ──────────────────────────────────
-
+// DELETE /api/mercado-livre/accounts/[id]
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionFromRequest(req);
   if (!session || !hasRole(session, 'member')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { id } = await params;
-  const db = getPool();
+  try {
+    const { id } = await params;
+    const db = getPool();
 
-  const existing = await db.query(`SELECT * FROM ml_account_configs WHERE id = $1`, [id]);
-  if (!existing.rows[0]) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const found = await deleteAccount(db, {
+      id,
+      isAdmin:      hasRole(session, 'admin'),
+      callerUserId: session.sub,
+    });
 
-  if (!hasRole(session, 'admin') && existing.rows[0].owner_user_id !== session.sub) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!found) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    console.error('[api/mercado-livre/accounts/[id] DELETE]', err);
+    const status = err?.status ?? 500;
+    if (status === 403) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
-
-  await db.query(`DELETE FROM ml_account_configs WHERE id = $1`, [id]);
-  return NextResponse.json({ ok: true });
 }
