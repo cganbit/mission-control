@@ -33,7 +33,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   // Build MLTokenSet from MC's ml-tokens lib
   const mlTokens: MLTokenSet = {
     async getTokenForSeller(nickname: string): Promise<string | null> {
-      const accounts = await getMlAccounts();
+      const accounts = await getMlAccounts(getPool());
       const found = accounts.find(a => a.nickname === nickname);
       if (!found) {
         console.error(`[label] Token não encontrado para seller: "${nickname}". Contas disponíveis: ${accounts.map(a => a.nickname).join(', ')}`);

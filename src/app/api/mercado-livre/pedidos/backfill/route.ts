@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { backfillPedidos, getMlAccounts } from '@wingx-app/api-ml';
+import type { BackfillProvider } from '@wingx-app/api-ml';
 import { getPool } from '@/lib/db';
 
 // POST /api/mercado-livre/pedidos/backfill
@@ -13,7 +14,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const db = getPool();
-    const provider = { getMlAccounts };
+    const provider: BackfillProvider = {
+      getMlAccounts: () => getMlAccounts(db),
+    };
     const result = await backfillPedidos(db, provider);
     return NextResponse.json(result);
   } catch (err: any) {

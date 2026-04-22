@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listListings, updateListing, getMlAccounts } from '@wingx-app/api-ml';
+import type { ListingsMlAccountsProvider } from '@wingx-app/api-ml';
 import { getSessionFromRequest } from '@/lib/auth';
+import { getPool } from '@/lib/db';
 
-const provider = { getMlAccounts };
+const provider: ListingsMlAccountsProvider = {
+  getMlAccounts: () => getMlAccounts(getPool()),
+};
 
 // GET /api/mercado-livre/listings?seller_id=X&status=active&offset=0&limit=50
 export async function GET(req: NextRequest) {

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listQuestions, answerQuestion, getMlAccounts } from '@wingx-app/api-ml';
+import type { QuestionsMlAccountsProvider } from '@wingx-app/api-ml';
 import { getSessionFromRequest } from '@/lib/auth';
+import { getPool } from '@/lib/db';
 
-const provider = { getMlAccounts };
+const provider: QuestionsMlAccountsProvider = {
+  getMlAccounts: () => getMlAccounts(getPool()),
+};
 
 // GET /api/mercado-livre/questions?seller_id=X
 // Lista perguntas não respondidas com contexto do produto

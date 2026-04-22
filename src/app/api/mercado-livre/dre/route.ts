@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { computeDRE, getMlAccounts } from '@wingx-app/api-ml';
+import type { DREMlAccountsProvider } from '@wingx-app/api-ml';
 import { getSessionFromRequest } from '@/lib/auth';
+import { getPool } from '@/lib/db';
 
-const provider = { getMlAccounts };
+const provider: DREMlAccountsProvider = {
+  getMlAccounts: () => getMlAccounts(getPool()),
+};
 
 // GET /api/mercado-livre/dre?seller_id=X&from=...&to=...
 // seller_id é opcional — se omitido, retorna DRE de todas as contas

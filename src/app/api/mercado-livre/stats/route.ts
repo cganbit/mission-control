@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
 import { getMlAccounts } from "@wingx-app/api-ml";
-import { query } from "@/lib/db";
+import { query, getPool } from "@/lib/db";
 
 const ML_API = "https://api.mercadolibre.com";
 
@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
   const { from, to, label } = parsePeriod(period, sp.get('from') ?? undefined, sp.get('to') ?? undefined);
 
   try {
-    const accounts = await getMlAccounts();
+    const accounts = await getMlAccounts(getPool());
     if (!accounts.length) return NextResponse.json({ error: "Nenhuma conta ML configurada." }, { status: 404 });
 
     const results = await Promise.all(accounts.map(async (acc) => {
