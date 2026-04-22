@@ -14,6 +14,7 @@ interface GithubEvent {
   delivery_id: string;
   payload: Record<string, unknown>;
   received_at: string;
+  classification?: string | null;
 }
 
 interface GithubIssue {
@@ -82,6 +83,34 @@ function eventTypeTone(type: string): StatusTone {
   return 'neutral';
 }
 
+type ClassificationValue = 'trivial_fix' | 'needs_human' | 'noise';
+
+const CLASSIFICATION_LABEL: Record<ClassificationValue, string> = {
+  trivial_fix: 'Trivial fix',
+  needs_human: 'Precisa humano',
+  noise: 'Ruído',
+};
+
+const CLASSIFICATION_TONE: Record<ClassificationValue, StatusTone> = {
+  trivial_fix: 'success',
+  needs_human: 'warning',
+  noise: 'neutral',
+};
+
+function isKnownClassification(v: string | null | undefined): v is ClassificationValue {
+  return v === 'trivial_fix' || v === 'needs_human' || v === 'noise';
+}
+
+function ClassificationBadge({ value }: { value: string | null | undefined }) {
+  if (!isKnownClassification(value)) return null;
+  return (
+    <StatusBadge
+      label={CLASSIFICATION_LABEL[value]}
+      tone={CLASSIFICATION_TONE[value]}
+    />
+  );
+}
+
 // ----- Modal -----
 
 interface ModalProps {
@@ -130,6 +159,7 @@ function EventDetail({ event, onClose }: { event: GithubEvent; onClose: () => vo
           {action && (
             <StatusBadge label={action} tone="neutral" />
           )}
+          <ClassificationBadge value={event.classification} />
         </div>
         <div>
           {repo && <p className="text-xs text-[var(--text-muted)] font-mono mb-1">{repo}</p>}
@@ -233,6 +263,7 @@ export function IssuesPrsClient() {
   const [repoFilter, setRepoFilter] = useState('');
   const [stateFilter, setStateFilter] = useState('');
   const [eventTypeFilter, setEventTypeFilter] = useState('');
+  const [classificationFilter, setClassificationFilter] = useState('');
 
   // Pages per tab
   const [eventsPage, setEventsPage] = useState(1);
@@ -258,17 +289,26 @@ export function IssuesPrsClient() {
       const params = new URLSearchParams();
       if (repoFilter) params.set('repo', repoFilter);
       if (eventTypeFilter) params.set('event_type', eventTypeFilter);
+      // Pass classification to API — W1 backend may support it; client fallback below handles if not
+      if (classificationFilter) params.set('classification', classificationFilter);
       params.set('page', String(eventsPage));
       params.set('limit', String(PAGE_SIZE));
       const res = await fetch(`/api/github/events?${params}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setEventsData(await res.json());
+      const data: PagedResponse<GithubEvent> = await res.json();
+      // Client-side fallback: if API didn't filter by classification, filter locally
+      if (classificationFilter && data.items.some(ev => ev.classification !== classificationFilter)) {
+        const filtered = data.items.filter(ev => ev.classification === classificationFilter);
+        setEventsData({ ...data, items: filtered, total: filtered.length });
+      } else {
+        setEventsData(data);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load events');
     } finally {
       setLoading(false);
     }
-  }, [repoFilter, eventTypeFilter, eventsPage]);
+  }, [repoFilter, eventTypeFilter, classificationFilter, eventsPage]);
 
   const fetchIssues = useCallback(async () => {
     setLoading(true);
@@ -400,6 +440,18 @@ export function IssuesPrsClient() {
             <option value="workflow_run">workflow_run</option>
           </select>
         )}
+        {activeTab === 'events' && (
+          <select
+            value={classificationFilter}
+            onChange={e => { setClassificationFilter(e.target.value); setEventsPage(1); }}
+            className="px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)]/50"
+          >
+            <option value="">All classifications</option>
+            <option value="trivial_fix">Trivial fix</option>
+            <option value="needs_human">Precisa humano</option>
+            <option value="noise">Ruído</option>
+          </select>
+        )}
         {(activeTab === 'issues' || activeTab === 'prs') && (
           <select
             value={stateFilter}
@@ -441,6 +493,7 @@ export function IssuesPrsClient() {
                     <Th>Repo</Th>
                     <Th>Event Type</Th>
                     <Th>Action</Th>
+                    <Th>Classification</Th>
                     <Th>Received</Th>
                   </tr>
                 </thead>
@@ -456,6 +509,9 @@ export function IssuesPrsClient() {
                         <StatusBadge label={ev.event_type} tone={eventTypeTone(ev.event_type)} />
                       </Td>
                       <Td>{eventAction(ev) ?? '—'}</Td>
+                      <Td>
+                        <ClassificationBadge value={ev.classification} />
+                      </Td>
                       <Td muted>{formatDate(ev.received_at)}</Td>
                     </tr>
                   ))}
