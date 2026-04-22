@@ -9,11 +9,8 @@ export async function GET(req: NextRequest) {
     const session = await getSessionFromRequest(req);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const sp = req.nextUrl.searchParams;
-    const input = {
-      projectId: session.project_id,
-      orderId: sp.get('orderId') ?? '',
-    };
-    const result = await trackShipment(getPool(), input);
+    const order_id = sp.get('orderId') ?? sp.get('order_id') ?? '';
+    const result = await trackShipment(getPool(), { order_id });
     return NextResponse.json(result);
   } catch (err: any) {
     console.error('[api/melhor-envio/track]', err);

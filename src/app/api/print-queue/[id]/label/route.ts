@@ -43,7 +43,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     },
   };
 
-  const audit: AuditLogger = (entry) => auditLog(entry);
+  const audit: AuditLogger = (entry) => auditLog(entry as Parameters<typeof auditLog>[0]);
 
   const db = getPool();
 

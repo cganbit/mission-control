@@ -37,7 +37,14 @@ function makeRequest(url = 'http://localhost/api/github/classifier-metrics') {
 }
 
 function fakeSession() {
-  return { userId: 'u1', projectId: 'p1' };
+  return {
+    sub: 'u1',
+    sid: 'sid-test',
+    username: 'testuser',
+    name: 'Test User',
+    role: 'admin' as const,
+    projectId: 'p1',
+  };
 }
 
 function fakeScope() {

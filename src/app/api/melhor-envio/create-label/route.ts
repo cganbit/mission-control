@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json();
     const input = {
-      projectId: session.project_id,
+      projectId: session.projectId,
       ...body,
       cryptoAdapter: { safeDecrypt: (s: string) => safeDecrypt(s) },
       labelsDir: process.env.ME_LABELS_DIR ?? './labels',

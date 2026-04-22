@@ -8,8 +8,8 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getSessionFromRequest(req);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const input = { projectId: session.project_id };
-    const result = await getAddress(getPool(), input);
+    const order_id = req.nextUrl.searchParams.get('order_id') ?? '';
+    const result = await getAddress(getPool(), { order_id });
     return NextResponse.json(result);
   } catch (err: any) {
     console.error('[api/melhor-envio/confirm-address GET]', err);
@@ -23,8 +23,7 @@ export async function PATCH(req: NextRequest) {
     const session = await getSessionFromRequest(req);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json();
-    const input = { projectId: session.project_id, ...body };
-    const result = await confirmAddress(getPool(), input);
+    const result = await confirmAddress(getPool(), body);
     return NextResponse.json(result);
   } catch (err: any) {
     console.error('[api/melhor-envio/confirm-address PATCH]', err);
