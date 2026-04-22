@@ -66,9 +66,13 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@wingx-app'
 
       - name: Install dependencies
         run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
         # NOTE: npm run build removido do CI — lightningcss native binary (linux-x64-gnu)
         # não instala corretamente no GitHub Actions quando lock file gerado no Windows.
         # Validação real ocorre no Docker build na VPS (step abaixo).
