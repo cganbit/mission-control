@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { MobileHeader } from "./MobileHeader";
-import type { SidebarNavItem, NavGroup } from "./types";
+import type { SidebarNavItem, NavGroup, SlotRenderer } from "./types";
 
 export interface AdminLayoutProps {
   /** Flat nav items (backward-compat). Ignored when `groups` is provided. */
@@ -13,10 +13,18 @@ export interface AdminLayoutProps {
   storageKey?: string;
   /** Grouped nav structure. When present, takes precedence over `items`. */
   groups?: NavGroup[];
-  /** Rendered at the top of the sidebar, above the nav (e.g. ProjectSwitcher). */
-  headerSlot?: React.ReactNode;
-  /** Rendered at the bottom of the sidebar, below the nav (e.g. user info + LogOut). */
-  footerSlot?: React.ReactNode;
+  /**
+   * Rendered at the top of the sidebar, above the nav (e.g. ProjectSwitcher).
+   * Accepts a plain ReactNode (backward-compat) or a render-prop
+   * `(ctx: { collapsed: boolean }) => ReactNode` to receive collapsed state.
+   */
+  headerSlot?: SlotRenderer;
+  /**
+   * Rendered at the bottom of the sidebar, below the nav (e.g. user info + LogOut).
+   * Accepts a plain ReactNode (backward-compat) or a render-prop
+   * `(ctx: { collapsed: boolean }) => ReactNode` to receive collapsed state.
+   */
+  footerSlot?: SlotRenderer;
   /** Override active pathname for nav highlighting (defaults to usePathname inside Sidebar). */
   activePathname?: string;
   /** Per-item filter for role-based visibility. Return false to hide an item. */
