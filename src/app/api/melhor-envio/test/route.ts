@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { testConnection } from '@wingx-app/api-me';
 import { getSessionFromRequest } from '@/lib/auth';
-import { getPool } from '@/lib/db';
-
 // GET /api/melhor-envio/test
 export async function GET(req: NextRequest) {
   try {
     const session = await getSessionFromRequest(req);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const input = { projectId: session.project_id };
-    const result = await testConnection(getPool(), input);
+    const result = await testConnection();
     return NextResponse.json(result);
   } catch (err: any) {
     console.error('[api/melhor-envio/test]', err);

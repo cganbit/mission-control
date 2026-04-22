@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 import { getPool } from '@/lib/db';
-import { meCancelShipment } from '@/lib/melhor-envio';
+import { meCancelShipment } from '@wingx-app/api-me';
 
 const WORKER_KEY = process.env.MC_WORKER_KEY ?? '';
 

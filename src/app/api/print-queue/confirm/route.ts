@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
 
   const db = getPool();
 
-  const audit: AuditLogger = (entry) => auditLog(entry);
+  const audit: AuditLogger = (entry) => auditLog(entry as Parameters<typeof auditLog>[0]);
 
   const result = await confirmJobByQr(db, { token }, audit);
 
