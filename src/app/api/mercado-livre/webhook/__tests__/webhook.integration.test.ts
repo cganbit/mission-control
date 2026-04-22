@@ -66,7 +66,8 @@ describe('ML Webhook Integration', () => {
     const calls = mockQuery.mock.calls;
     const dbInsertPedidos = calls.find(c => String(c[0]).includes('INSERT INTO ml_pedidos'));
     expect(dbInsertPedidos).toBeDefined();
-    expect(dbInsertPedidos![1][0]).toBe(12345); // ml_order_id
-    expect(dbInsertPedidos![1][1]).toBe(777);   // buyer_id
+    if (!dbInsertPedidos) throw new Error('INSERT INTO ml_pedidos call not found');
+    expect(dbInsertPedidos[1][0]).toBe(12345); // ml_order_id
+    expect(dbInsertPedidos[1][1]).toBe(777);   // buyer_id
   });
 });
