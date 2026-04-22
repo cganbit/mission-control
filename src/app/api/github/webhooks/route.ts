@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { withWorkerBypass } from '@/lib/db';
 import { extractJsonPayload } from '@/lib/github-webhook-helpers';
+import { classifyEvent } from '@/lib/github-classifier';
 
 // PRD-040 Camada 1 — GitHub webhook receiver (observability read-only).
 // TODO: project_id resolution via repo→project mapping. MVP usa Paraguai default
@@ -90,11 +91,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     (payload as { repository?: { full_name?: string } })?.repository?.full_name ?? null;
   const projectId = resolveProjectId(repoName);
 
+  // PRD-040 Camada 2 — classify event before insert.
+  const p = payload as GitHubIssuePayload & GitHubPullRequestPayload;
+  const classifierInput = {
+    event_type: eventType,
+    action: p.action,
+    title: p.issue?.title ?? p.pull_request?.title,
+    body: p.issue?.body ?? p.pull_request?.body ?? undefined,
+    labels: (p.issue?.labels ?? p.pull_request?.labels ?? []).map(
+      (l) => (typeof l === 'string' ? l : l.name)
+    ),
+  };
+  const classification = classifyEvent(classifierInput);
+
   await withWorkerBypass(async (q) => {
     await q(
-      `INSERT INTO github_webhook_events (project_id, event_type, delivery_id, payload)
-       VALUES ($1, $2, $3, $4)`,
-      [projectId, eventType, deliveryId, JSON.stringify(payload)]
+      `INSERT INTO github_webhook_events (project_id, event_type, delivery_id, payload, classification)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [projectId, eventType, deliveryId, JSON.stringify(payload), classification]
     );
 
     if (eventType === 'issues') {
