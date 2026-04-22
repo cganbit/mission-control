@@ -3,20 +3,39 @@
 import { useEffect, useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { MobileHeader } from "./MobileHeader";
-import type { SidebarNavItem } from "./types";
+import type { SidebarNavItem, NavGroup } from "./types";
 
 export interface AdminLayoutProps {
-  items: SidebarNavItem[];
+  /** Flat nav items (backward-compat). Ignored when `groups` is provided. */
+  items?: SidebarNavItem[];
   children: React.ReactNode;
   logo?: React.ReactNode;
   storageKey?: string;
+  /** Grouped nav structure. When present, takes precedence over `items`. */
+  groups?: NavGroup[];
+  /** Rendered at the top of the sidebar, above the nav (e.g. ProjectSwitcher). */
+  headerSlot?: React.ReactNode;
+  /** Rendered at the bottom of the sidebar, below the nav (e.g. user info + LogOut). */
+  footerSlot?: React.ReactNode;
+  /** Override active pathname for nav highlighting (defaults to usePathname inside Sidebar). */
+  activePathname?: string;
+  /** Per-item filter for role-based visibility. Return false to hide an item. */
+  filterItem?: (item: SidebarNavItem) => boolean;
+  /** Optional logo/brand shown in MobileHeader (overrides `logo` for mobile). */
+  mobileLogo?: React.ReactNode;
 }
 
 export function AdminLayout({
-  items,
+  items = [],
   children,
   logo,
   storageKey = "wingx-sidebar",
+  groups,
+  headerSlot,
+  footerSlot,
+  activePathname,
+  filterItem,
+  mobileLogo,
 }: AdminLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -50,16 +69,21 @@ export function AdminLayout({
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       {isMobile ? (
-        <MobileHeader onMenuClick={() => setSidebarOpen(true)} logo={logo} />
+        <MobileHeader onMenuClick={() => setSidebarOpen(true)} logo={mobileLogo ?? logo} />
       ) : null}
       <Sidebar
         items={items}
+        groups={groups}
         collapsed={collapsed}
         onToggle={toggle}
         isMobile={isMobile}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         logo={logo}
+        headerSlot={headerSlot}
+        footerSlot={footerSlot}
+        activePathname={activePathname}
+        filterItem={filterItem}
       />
       <main
         className="flex-1 overflow-auto transition-[margin-left] duration-200"

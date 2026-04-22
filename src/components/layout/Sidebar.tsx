@@ -4,31 +4,85 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { SidebarNavItem } from "./types";
+import type { SidebarNavItem, NavGroup } from "./types";
 
 interface SidebarProps {
-  items: SidebarNavItem[];
+  /** Flat list of items (backward-compat). Ignored when `groups` is provided. */
+  items?: SidebarNavItem[];
+  /** Grouped nav structure. When provided, takes precedence over `items`. */
+  groups?: NavGroup[];
   collapsed: boolean;
   onToggle: () => void;
   isMobile: boolean;
   isOpen: boolean;
   onClose: () => void;
   logo?: React.ReactNode;
+  /** Rendered above the nav list (e.g. ProjectSwitcher). */
+  headerSlot?: React.ReactNode;
+  /** Rendered below the nav list (e.g. user info + LogOut). */
+  footerSlot?: React.ReactNode;
+  /** Override active pathname (defaults to usePathname()). */
+  activePathname?: string;
+  /** Optional item filter applied before render (e.g. role-based filtering). */
+  filterItem?: (item: SidebarNavItem) => boolean;
 }
 
 export function Sidebar({
-  items,
+  items = [],
+  groups,
   collapsed,
   onToggle,
   isMobile,
   isOpen,
   onClose,
   logo,
+  headerSlot,
+  footerSlot,
+  activePathname,
+  filterItem,
 }: SidebarProps) {
-  const pathname = usePathname();
+  const pathnameFromHook = usePathname();
+  const pathname = activePathname ?? pathnameFromHook;
+
+  // Resolve nav structure: groups mode vs flat items mode
+  const resolvedGroups: NavGroup[] | null = groups
+    ? groups.map((g) => ({
+        ...g,
+        items: filterItem ? g.items.filter(filterItem) : g.items,
+      })).filter((g) => g.items.length > 0)
+    : null;
+
+  const resolvedItems: SidebarNavItem[] = resolvedGroups
+    ? []
+    : filterItem ? items.filter(filterItem) : items;
+
+  function renderItem(item: SidebarNavItem) {
+    const Icon = item.icon;
+    const active = pathname === item.href || pathname?.startsWith(item.href + "/");
+    return (
+      <li key={item.href}>
+        <Link
+          href={item.href}
+          onClick={isMobile ? onClose : undefined}
+          className={cn(
+            "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+            active
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+        >
+          {Icon ? <Icon className="size-4 shrink-0" /> : null}
+          <span className={cn(collapsed && !isMobile && "hidden")}>
+            {item.label}
+          </span>
+        </Link>
+      </li>
+    );
+  }
 
   const content = (
     <nav className="flex h-full flex-col bg-card border-r border-border">
+      {/* Logo / collapse toggle header */}
       <div className="flex items-center justify-between px-4 h-14 border-b border-border">
         <div className={cn("flex items-center gap-2", collapsed && !isMobile && "hidden")}>
           {logo ?? (
@@ -60,32 +114,33 @@ export function Sidebar({
         )}
       </div>
 
-      <ul className="flex-1 overflow-auto py-2 px-2 space-y-1">
-        {items.map((item) => {
-          const Icon = item.icon;
-          const active =
-            pathname === item.href || pathname?.startsWith(item.href + "/");
-          return (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                onClick={isMobile ? onClose : undefined}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                  active
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                {Icon ? <Icon className="size-4 shrink-0" /> : null}
-                <span className={cn(collapsed && !isMobile && "hidden")}>
-                  {item.label}
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      {/* Header slot (e.g. ProjectSwitcher) */}
+      {headerSlot ? <div>{headerSlot}</div> : null}
+
+      {/* Nav list — groups mode or flat mode */}
+      <div className="flex-1 overflow-auto py-2 px-2 space-y-3">
+        {resolvedGroups
+          ? resolvedGroups.map((group) => (
+              <div key={group.label}>
+                {!collapsed || isMobile ? (
+                  <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    {group.label}
+                  </p>
+                ) : null}
+                <ul className="space-y-1">
+                  {group.items.map(renderItem)}
+                </ul>
+              </div>
+            ))
+          : (
+            <ul className="space-y-1">
+              {resolvedItems.map(renderItem)}
+            </ul>
+          )}
+      </div>
+
+      {/* Footer slot (e.g. user info + LogOut) */}
+      {footerSlot ? <div className="border-t border-border">{footerSlot}</div> : null}
     </nav>
   );
 
