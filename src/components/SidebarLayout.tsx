@@ -47,20 +47,45 @@ function buildAppsGroup(userRole: string): MCNavGroup | null {
 }
 
 // ─── Footer slot component ────────────────────────────────────────────────────
-// NOTE: AdminLayout owns the collapsed state internally. We cannot read it back
-// from here without lifting state. The footer always renders the expanded form;
-// when the sidebar is at w-16 (collapsed) the content is overflow-hidden clipped
-// by the sidebar's fixed width, so only the avatar initial shows — acceptable UX.
 
 function SidebarFooter({
   me,
   onLogout,
+  collapsed = false,
 }: {
   me: Me | null;
   onLogout: () => void;
+  collapsed?: boolean;
 }) {
   if (!me) return null;
 
+  const initial = (me.name || me.username || '?').charAt(0).toUpperCase();
+
+  // ── Compact variant (collapsed sidebar) ─────────────────────────────────────
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center gap-1 py-3">
+        {/* Mini avatar circle */}
+        <div
+          className="w-8 h-8 rounded-full border bg-[var(--brand-muted)] flex items-center justify-center text-xs font-bold flex-shrink-0 text-[var(--brand)]"
+          style={{ borderColor: 'rgba(245, 158, 11, 0.3)' }}
+          title={`${me.name} (${ROLE_LABEL[me.role] ?? me.role})`}
+        >
+          {initial}
+        </div>
+        {/* Compact LogOut icon */}
+        <button
+          onClick={onLogout}
+          title="Sair"
+          className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--destructive)] hover:bg-[var(--destructive-muted)] transition-colors"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  }
+
+  // ── Expanded variant ─────────────────────────────────────────────────────────
   return (
     <div className="flex-shrink-0 px-3 py-3">
       {/* User card */}
@@ -70,7 +95,7 @@ function SidebarFooter({
           style={{ borderColor: 'rgba(245, 158, 11, 0.3)' }}
           title={`${me.name} (${ROLE_LABEL[me.role] ?? me.role})`}
         >
-          {(me.name || me.username || '?').charAt(0).toUpperCase()}
+          {initial}
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-xs font-medium text-[var(--text-primary)] truncate">{me.name}</div>
@@ -156,15 +181,19 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     items: g.items as unknown as SidebarNavItem[],
   }));
 
-  const headerSlot = me ? (
-    <ProjectSwitcher
-      currentProject={me.currentProject}
-      availableProjects={me.availableProjects}
-      collapsed={false}
-    />
-  ) : null;
+  const headerSlot = me
+    ? ({ collapsed }: { collapsed: boolean }) => (
+        <ProjectSwitcher
+          currentProject={me.currentProject}
+          availableProjects={me.availableProjects}
+          collapsed={collapsed}
+        />
+      )
+    : null;
 
-  const footerSlot = <SidebarFooter me={me} onLogout={handleLogout} />;
+  const footerSlot = ({ collapsed }: { collapsed: boolean }) => (
+    <SidebarFooter me={me} onLogout={handleLogout} collapsed={collapsed} />
+  );
 
   // filterItem at AdminLayout level (belt-and-suspenders on top of buildMCGroups)
   const filterItem = (item: SidebarNavItem) => {

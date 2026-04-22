@@ -4,7 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { SidebarNavItem, NavGroup } from "./types";
+import type { SidebarNavItem, NavGroup, SlotRenderer } from "./types";
+
+/** Resolve a SlotRenderer to a ReactNode given the current collapsed state. */
+function resolveSlot(
+  slot: SlotRenderer | undefined,
+  collapsed: boolean,
+): React.ReactNode {
+  if (slot == null) return null;
+  if (typeof slot === "function") return slot({ collapsed });
+  return slot;
+}
 
 interface SidebarProps {
   /** Flat list of items (backward-compat). Ignored when `groups` is provided. */
@@ -18,9 +28,9 @@ interface SidebarProps {
   onClose: () => void;
   logo?: React.ReactNode;
   /** Rendered above the nav list (e.g. ProjectSwitcher). */
-  headerSlot?: React.ReactNode;
+  headerSlot?: SlotRenderer;
   /** Rendered below the nav list (e.g. user info + LogOut). */
-  footerSlot?: React.ReactNode;
+  footerSlot?: SlotRenderer;
   /** Override active pathname (defaults to usePathname()). */
   activePathname?: string;
   /** Optional item filter applied before render (e.g. role-based filtering). */
@@ -115,7 +125,7 @@ export function Sidebar({
       </div>
 
       {/* Header slot (e.g. ProjectSwitcher) */}
-      {headerSlot ? <div>{headerSlot}</div> : null}
+      {headerSlot ? <div>{resolveSlot(headerSlot, collapsed)}</div> : null}
 
       {/* Nav list — groups mode or flat mode */}
       <div className="flex-1 overflow-auto py-2 px-2 space-y-3">
@@ -140,7 +150,7 @@ export function Sidebar({
       </div>
 
       {/* Footer slot (e.g. user info + LogOut) */}
-      {footerSlot ? <div className="border-t border-border">{footerSlot}</div> : null}
+      {footerSlot ? <div className="border-t border-border">{resolveSlot(footerSlot, collapsed)}</div> : null}
     </nav>
   );
 
