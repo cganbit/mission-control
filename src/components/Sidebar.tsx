@@ -15,23 +15,23 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Role = 'viewer' | 'member' | 'admin';
+export type Role = 'viewer' | 'member' | 'admin';
 
-interface NavItem {
+export interface NavItem {
   href: string;
   label: string;
   icon: React.ElementType;
   minRole: Role;
 }
 
-interface NavGroup {
+export interface MCNavGroup {
   label: string;
   items: NavItem[];
 }
 
 // ─── Navigation structure ─────────────────────────────────────────────────────
 
-const NAV_GROUPS: NavGroup[] = [
+export const NAV_GROUPS: MCNavGroup[] = [
   {
     label: 'Workspace',
     items: [
@@ -71,7 +71,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-const APPS: NavItem[] = [
+export const APPS: NavItem[] = [
   { href: '/paraguai',             label: 'Oportunidades PY', icon: TrendingUp,  minRole: 'member' },
   { href: '/paraguai-assets',      label: 'Assets PY',        icon: Package,     minRole: 'member' },
   { href: '/mercado-livre',        label: 'Mercado Livre',    icon: ShoppingBag, minRole: 'member' },
@@ -81,13 +81,18 @@ const APPS: NavItem[] = [
   { href: '/fila',                    label: 'Fila de Impressão', icon: Printer,  minRole: 'member' },
 ];
 
-const ROLE_LEVEL: Record<string, number> = { admin: 3, member: 2, viewer: 1 };
-const ROLE_LABEL: Record<string, string>  = { admin: 'Admin', member: 'Membro', viewer: 'Viewer' };
-const ROLE_COLOR: Record<string, string>  = {
+export const ROLE_LEVEL: Record<string, number> = { admin: 3, member: 2, viewer: 1 };
+export const ROLE_LABEL: Record<string, string>  = { admin: 'Admin', member: 'Membro', viewer: 'Viewer' };
+export const ROLE_COLOR: Record<string, string>  = {
   admin:  'bg-[var(--brand-muted)] text-[var(--brand)] border border-[var(--brand)]/30',
   member: 'bg-[var(--info-muted)] text-[var(--info)] border border-[var(--info)]/30',
   viewer: 'bg-[var(--bg-muted)] text-[var(--text-secondary)] border border-[var(--border-default)]',
 };
+
+/** Returns true if a user with `userRole` can see an item that requires `minRole`. */
+export function canSeeItem(minRole: Role, userRole: string): boolean {
+  return (ROLE_LEVEL[userRole] ?? 0) >= (ROLE_LEVEL[minRole] ?? 0);
+}
 
 interface Me {
   name: string;
