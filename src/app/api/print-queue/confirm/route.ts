@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { auditLog } from '@/lib/mc-audit';
+import { confirmJobByQr } from '@wingx-app/api-print';
+import type { AuditLogger } from '@wingx-app/api-print';
 
 function htmlError(): NextResponse {
   const html = `<!DOCTYPE html>
@@ -64,32 +66,15 @@ export async function GET(req: NextRequest) {
 
   const db = getPool();
 
-  // 1. Buscar na print_queue WHERE token = $1 AND status = 'done'
-  const row = await db.query(
-    `SELECT id, ml_order_id, seller_nickname FROM print_queue WHERE token = $1 AND status = 'done'`,
-    [token]
+  const audit: AuditLogger = (entry) => auditLog(entry);
+
+  const result = await confirmJobByQr(db, { token }, audit);
+
+  if (result.status !== 'confirmed') return htmlError();
+
+  return htmlSuccess(
+    result.mlOrderId!,
+    result.sellerNickname!,
+    result.confirmedAt!,
   );
-
-  if (!row.rows[0]) return htmlError();
-
-  const { id, ml_order_id, seller_nickname } = row.rows[0];
-
-  // 2. Confirmar: UPDATE status, confirmed_at, confirmed_by
-  await db.query(
-    `UPDATE print_queue SET status = 'confirmed', confirmed_at = NOW(), confirmed_by = 'QR-scan' WHERE id = $1`,
-    [id]
-  );
-
-  const confirmedAt = new Date();
-
-  // 3. Audit log
-  await auditLog({
-    event_type: 'label_confirmed',
-    entity_type: 'print_queue',
-    entity_id: Number(id),
-    seller_nickname,
-    status: 'ok',
-  });
-
-  return htmlSuccess(String(ml_order_id), seller_nickname, confirmedAt);
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { markJobDone } from '@wingx-app/api-print';
 
 const AGENT_KEY = process.env.PRINT_AGENT_KEY ?? '';
 
@@ -13,15 +14,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const { error_msg } = (await req.json().catch(() => ({}))) as { error_msg?: string };
-  const newStatus = error_msg ? 'error' : 'done';
 
   const db = getPool();
-  await db.query(
-    `UPDATE print_queue
-     SET status = $1, error_msg = $2, updated_at = NOW()
-     WHERE id = $3`,
-    [newStatus, error_msg ?? null, id]
-  );
-
-  return NextResponse.json({ ok: true, status: newStatus });
+  const result = await markJobDone(db, { jobId: Number(id), error_msg });
+  return NextResponse.json({ ok: result.ok, status: result.status });
 }
