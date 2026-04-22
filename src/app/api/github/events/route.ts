@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
   const [rows, totalRow] = await Promise.all([
     query(
-      `SELECT id, project_id, event_type, delivery_id, received_at
+      `SELECT id, project_id, event_type, delivery_id, classification, received_at
        FROM github_webhook_events
        ${where}
        ORDER BY received_at DESC

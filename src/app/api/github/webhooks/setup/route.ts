@@ -62,6 +62,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   await query(`ALTER TABLE pipeline_runs ADD COLUMN IF NOT EXISTS github_issue_number INT`);
   await query(`ALTER TABLE pipeline_runs ADD COLUMN IF NOT EXISTS github_repo TEXT`);
 
+  // PRD-040 Camada 2 — classification column (idempotent).
+  await query(`ALTER TABLE github_webhook_events ADD COLUMN IF NOT EXISTS classification TEXT`);
+
   await query(`CREATE INDEX IF NOT EXISTS idx_github_issues_project_repo_number        ON github_issues(project_id, repo, number)`);
   await query(`CREATE INDEX IF NOT EXISTS idx_github_prs_project_repo_number           ON github_prs(project_id, repo, number)`);
   await query(`CREATE INDEX IF NOT EXISTS idx_github_webhook_events_project_received   ON github_webhook_events(project_id, received_at DESC)`);
