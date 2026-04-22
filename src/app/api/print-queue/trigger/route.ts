@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { triggerJobByToken, buildFlowSteps } from '@wingx-app/api-print';
+import type { StepInfo } from '@wingx-app/api-print';
 
-interface StepInfo { label: string; icon: string; active: boolean; done: boolean; }
+// ─── HTML renderer (MC owns this — data comes from triggerJobByToken) ─────────
 
 function html(
   icon: string, title: string, body: string, color: string, httpStatus: number,
@@ -109,106 +111,69 @@ function html(
   return new NextResponse(page, { status: httpStatus, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
 
-const FLOW_STEPS = (activeStatus: string): StepInfo[] => {
-  const order = ['pending', 'printing', 'done', 'confirmed'];
-  const labels: Record<string, string> = {
-    pending: 'Na fila', printing: 'Imprimindo', done: 'Impresso', confirmed: 'Confirmado',
-  };
-  const icons: Record<string, string> = {
-    pending: '⏳', printing: '🖨️', done: '✅', confirmed: '📦',
-  };
-  const activeIdx = order.indexOf(activeStatus);
-  return order.map((s, i) => ({
-    label: labels[s],
-    icon: icons[s],
-    active: i === activeIdx,
-    done: i < activeIdx,
-  }));
-};
-
-const QUEUE_KEY = process.env.QUEUE_KEY ?? '';
-
 // ─── GET /api/print-queue/trigger?token=XXX[&action=reprint] ─────────────────
+
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token');
-  const action = req.nextUrl.searchParams.get('action');
+  const action = req.nextUrl.searchParams.get('action') ?? undefined;
+
   if (!token) return html('❌', 'Link inválido', 'Token não encontrado.', '#ef4444', 400);
 
   const db = getPool();
+  const data = await triggerJobByToken(db, { token, action });
 
-  // Reprint: reseta qualquer status de volta para queued
-  if (action === 'reprint') {
-    const r = await db.query(
-      `UPDATE print_queue SET status = 'queued', error_msg = NULL, updated_at = NOW()
-       WHERE token = $1 RETURNING id, ml_order_id`,
-      [token]
-    );
-    if (!r.rows[0]) return html('❌', 'Link expirado', 'Este link não é mais válido.', '#ef4444', 404);
+  const { status, orderId, steps, errorMsg } = data;
+
+  if (status === 'invalid_token') {
+    return html('❌', 'Link inválido', 'Token não encontrado.', '#ef4444', 400);
+  }
+
+  if (status === 'not_found') {
+    return html('❌', 'Link expirado', 'Este link não é mais válido.', '#ef4444', 404);
+  }
+
+  if (status === 'reprint_queued' || status === 'triggered') {
     return html('🖨️', 'Impressão solicitada!',
       'A etiqueta entrou na fila e será impressa em instantes.',
       '#6366f1', 200,
-      { orderId: r.rows[0].ml_order_id, steps: FLOW_STEPS('pending') });
+      { orderId, steps: steps ?? buildFlowSteps('pending') });
   }
 
-  const result = await db.query(
-    `UPDATE print_queue
-     SET status = 'pending', updated_at = NOW()
-     WHERE token = $1 AND status = 'queued'
-     RETURNING id, ml_order_id`,
-    [token]
-  );
-
-  if (result.rowCount === 0) {
-    const existing = await db.query(
-      `SELECT id, status, error_msg, ml_order_id FROM print_queue WHERE token = $1`,
-      [token]
-    );
-    const row = existing.rows[0];
-    if (!row) return html('❌', 'Link expirado', 'Este link não é mais válido.', '#ef4444', 404);
-
-    const orderId = row.ml_order_id;
-
-    if (row.status === 'confirmed') {
-      return html('📦', 'Coleta confirmada!',
-        'A etiqueta foi impressa e a coleta já foi confirmada.',
-        '#14b8a6', 200,
-        { orderId, steps: FLOW_STEPS('confirmed') });
-    }
-    if (row.status === 'done') {
-      return html('✅', 'Etiqueta já impressa!',
-        'Aguardando confirmação de coleta.',
-        '#22c55e', 200,
-        { orderId, steps: FLOW_STEPS('done') });
-    }
-    if (row.status === 'printing') {
-      return html('🖨️', 'Imprimindo agora!',
-        'Aguarde.',
-        '#a855f7', 200,
-        { orderId, steps: FLOW_STEPS('printing') });
-    }
-    if (row.status === 'pending') {
-      const reprintUrl = `/api/print-queue/trigger?token=${token}&action=reprint`;
-      return html('⏳', 'Na fila de impressão',
-        'A etiqueta já está na fila. O agente irá imprimir em instantes.',
-        '#6366f1', 200,
-        { orderId, steps: FLOW_STEPS('pending'), actionLabel: '🖨️ Imprimir', actionHref: reprintUrl });
-    }
-    if (row.status === 'error') {
-      return html('⚠️', 'Erro ao imprimir',
-        'Ocorreu um problema durante a impressão. A equipe já foi notificada.',
-        '#f59e0b', 200,
-        { orderId, steps: FLOW_STEPS('error'), errorDetail: row.error_msg ?? '' });
-    }
-    return html('ℹ️', 'Status desconhecido', `Status atual: ${row.status}`, '#94a3b8', 200);
+  if (status === 'already_confirmed') {
+    return html('📦', 'Coleta confirmada!',
+      'A etiqueta foi impressa e a coleta já foi confirmada.',
+      '#14b8a6', 200,
+      { orderId, steps: steps ?? buildFlowSteps('confirmed') });
   }
 
-  const { ml_order_id } = result.rows[0];
+  if (status === 'already_done') {
+    return html('✅', 'Etiqueta já impressa!',
+      'Aguardando confirmação de coleta.',
+      '#22c55e', 200,
+      { orderId, steps: steps ?? buildFlowSteps('done') });
+  }
 
-  return html(
-    '🖨️',
-    'Impressão solicitada!',
-    'A etiqueta entrou na fila e será impressa em instantes.',
-    '#6366f1', 200,
-    { orderId: ml_order_id, steps: FLOW_STEPS('pending') }
-  );
+  if (status === 'already_printing') {
+    return html('🖨️', 'Imprimindo agora!',
+      'Aguarde.',
+      '#a855f7', 200,
+      { orderId, steps: steps ?? buildFlowSteps('printing') });
+  }
+
+  if (status === 'already_pending') {
+    const reprintUrl = `/api/print-queue/trigger?token=${token}&action=reprint`;
+    return html('⏳', 'Na fila de impressão',
+      'A etiqueta já está na fila. O agente irá imprimir em instantes.',
+      '#6366f1', 200,
+      { orderId, steps: steps ?? buildFlowSteps('pending'), actionLabel: '🖨️ Imprimir', actionHref: reprintUrl });
+  }
+
+  if (status === 'error_state') {
+    return html('⚠️', 'Erro ao imprimir',
+      'Ocorreu um problema durante a impressão. A equipe já foi notificada.',
+      '#f59e0b', 200,
+      { orderId, steps: steps ?? buildFlowSteps('error'), errorDetail: errorMsg ?? '' });
+  }
+
+  return html('ℹ️', 'Status desconhecido', `Status atual: ${status}`, '#94a3b8', 200);
 }

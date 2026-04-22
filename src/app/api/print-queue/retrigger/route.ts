@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { getSessionFromRequest, hasRole } from '@/lib/auth';
+import { retriggerJob } from '@wingx-app/api-print';
 
 // POST /api/print-queue/retrigger — reativa jobs queued/error pelo dashboard
 export async function POST(req: NextRequest) {
@@ -16,13 +17,6 @@ export async function POST(req: NextRequest) {
   if (!ids.length) return NextResponse.json({ error: 'ids required' }, { status: 400 });
 
   const db = getPool();
-  const result = await db.query(
-    `UPDATE print_queue
-     SET status = 'pending', updated_at = NOW()
-     WHERE id = ANY($1::int[]) AND status IN ('queued', 'error')
-     RETURNING id`,
-    [ids]
-  );
-
-  return NextResponse.json({ ok: true, activated: result.rowCount ?? 0 });
+  const result = await retriggerJob(db, ids);
+  return NextResponse.json({ ok: true, activated: result.activated });
 }
