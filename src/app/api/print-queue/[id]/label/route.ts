@@ -3,7 +3,7 @@ import { join } from 'path';
 import { getPool } from '@/lib/db';
 import { getSessionFromRequest, hasRole } from '@/lib/auth';
 import { auditLog } from '@/lib/mc-audit';
-import { getMlAccounts } from '@/lib/ml-tokens';
+import { getMlAccounts } from '@wingx-app/api-ml';
 import { fetchLabel, storeLabelPdf } from '@wingx-app/api-print';
 import type { AuditLogger, MLTokenSet } from '@wingx-app/api-print';
 

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { backfillPedidos } from '@wingx-app/api-ml';
+import { backfillPedidos, getMlAccounts } from '@wingx-app/api-ml';
 import { getPool } from '@/lib/db';
-import { getMlAccounts } from '@/lib/ml-tokens';
 
 // POST /api/mercado-livre/pedidos/backfill
 // Protected by x-worker-key

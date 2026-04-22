@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { listListings, updateListing } from '@wingx-app/api-ml';
+import { listListings, updateListing, getMlAccounts } from '@wingx-app/api-ml';
 import { getSessionFromRequest } from '@/lib/auth';
-import { getMlAccounts } from '@/lib/ml-tokens';
 
 const provider = { getMlAccounts };
 

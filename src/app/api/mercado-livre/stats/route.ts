@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
-import { getMlAccounts } from "@/lib/ml-tokens";
+import { getMlAccounts } from "@wingx-app/api-ml";
 import { query } from "@/lib/db";
 
 const ML_API = "https://api.mercadolibre.com";
