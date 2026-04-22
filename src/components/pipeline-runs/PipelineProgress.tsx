@@ -31,7 +31,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RunHeader } from './RunHeader';
-import { StepCard } from './StepCard';
+import { ProgressCard } from '@/components/ui/ProgressCard';
+import type { ProgressCardStep } from '@/components/ui/ProgressCard';
 import type { PipelineRun, PipelineStep } from '@/hooks/usePipelineStream';
 
 export interface PipelineProgressProps {
@@ -129,6 +130,42 @@ function phaseOf(stepIndex: number): PhaseKey {
   if (floor >= 6 && floor <= 8) return 'planning';
   if (floor >= 9 && floor <= 21) return 'executing';
   return 'completed';
+}
+
+/** Map a MC domain PipelineStep to the generic ProgressCardStep primitive. */
+function toProgressCardStep(s: PipelineStep): ProgressCardStep {
+  // Derive a human-readable label: prefer output_summary, then agent name,
+  // then fall back to step index string.
+  const label =
+    s.output_summary?.trim() ||
+    s.agent?.trim() ||
+    `Step ${s.step_index}`;
+
+  // Normalise status: MC uses 'ok'/'running'/'queued'/'failed'; map to primitive's union.
+  let status: ProgressCardStep['status'];
+  switch (s.status) {
+    case 'ok':
+    case 'success':
+      status = 'success';
+      break;
+    case 'running':
+      status = 'running';
+      break;
+    case 'failed':
+    case 'error':
+      status = 'error';
+      break;
+    default: // 'queued', 'pending', unknown
+      status = 'pending';
+  }
+
+  return {
+    id: s.step_id,
+    label,
+    status,
+    startedAt: s.started_at ?? undefined,
+    finishedAt: s.finished_at ?? undefined,
+  };
 }
 
 interface StreamState {
@@ -332,16 +369,9 @@ export function PipelineProgress({
                       {phaseSteps.length}
                     </span>
                   </header>
-                  <div className="space-y-2">
-                    {phaseSteps.map((step, i) => (
-                      <StepCard
-                        key={step.step_id}
-                        step={step}
-                        index={i}
-                        totalSteps={phaseSteps.length}
-                      />
-                    ))}
-                  </div>
+                  <ProgressCard
+                    steps={phaseSteps.map(toProgressCardStep)}
+                  />
                 </section>
               );
             })}
