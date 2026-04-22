@@ -1,3 +1,5 @@
+"use client";
+
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import type { SidebarNavItem } from "@/components/layout/types";
 import { LayoutDashboard, Palette, Puzzle } from "lucide-react";
