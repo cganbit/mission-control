@@ -96,10 +96,16 @@ VALUES (
   '#ef4444'
 ) ON CONFLICT (id) DO NOTHING;
 
+-- Migration: rename legacy token_expiry_24h → token_expiry_4h (2026-04-23)
+-- Code (src/app/api/sre/run-checks/route.ts) passou a emitir 'token_expiry_4h'
+-- mas o row antigo '24h' ficou congelado. Rename idempotente antes do INSERT.
+UPDATE sre_checks SET check_name = 'token_expiry_4h'
+  WHERE service = 'ml_tokens' AND check_name = 'token_expiry_24h';
+
 -- Checks iniciais
 INSERT INTO sre_checks (service, check_name, enabled, interval_minutes, escalation_minutes) VALUES
   ('evolution',    'whatsapp_connected', true, 5,  0),
-  ('ml_tokens',    'token_expiry_24h',   true, 60, 60),
+  ('ml_tokens',    'token_expiry_4h',    true, 60, 60),
   ('print_queue',  'jobs_in_error',      true, 5,  0),
   ('n8n',          'workflow_active',    true, 5,  60),
   ('db',           'connectivity',       true, 5,  0)
