@@ -128,6 +128,7 @@ jobs:
           SRE_WHATSAPP_GROUP=${{ secrets.SRE_WHATSAPP_GROUP }}
           EVOLUTION_API_KEY=${{ secrets.EVOLUTION_API_KEY }}
           N8N_API_KEY=${{ secrets.N8N_API_KEY }}
+          N8N_PASSWORD=${{ secrets.N8N_PASSWORD }}
           MELHOR_ENVIO_ENV=${{ secrets.MELHOR_ENVIO_ENV }}
           ME_SANDBOX_TOKEN=${{ secrets.ME_SANDBOX_TOKEN }}
           ME_SANDBOX_CLIENT_SECRET=${{ secrets.ME_SANDBOX_CLIENT_SECRET }}
