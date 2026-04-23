@@ -84,16 +84,16 @@ async function saveClienteAndPedido(order: any, shipment: any, sellerNickname: s
   const shippingStatus = shipment?.status ?? null;
 
   // Upsert pedido — se já existia como payment_required, promove para paid
+  // buyer_name lives em print_queue (JOIN via listPedidos); ml_pedidos schema não tem a coluna
   await db.query(
-    `INSERT INTO ml_pedidos (ml_order_id, ml_buyer_id, seller_nickname, items_json, total, status, shipment_id, logistic_type, listing_type, shipping_status, buyer_name)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    `INSERT INTO ml_pedidos (ml_order_id, ml_buyer_id, seller_nickname, items_json, total, status, shipment_id, logistic_type, listing_type, shipping_status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      ON CONFLICT (ml_order_id) DO UPDATE SET
        status = 'paid',
        logistic_type = COALESCE(EXCLUDED.logistic_type, ml_pedidos.logistic_type),
        listing_type = COALESCE(EXCLUDED.listing_type, ml_pedidos.listing_type),
-       shipping_status = COALESCE(EXCLUDED.shipping_status, ml_pedidos.shipping_status),
-       buyer_name = COALESCE(EXCLUDED.buyer_name, ml_pedidos.buyer_name)`,
-    [order.id, ml_buyer_id, sellerNickname, JSON.stringify(items), order.total_amount ?? 0, order.status, shipment?.id ?? null, logisticType, listingType, shippingStatus, nome]
+       shipping_status = COALESCE(EXCLUDED.shipping_status, ml_pedidos.shipping_status)`,
+    [order.id, ml_buyer_id, sellerNickname, JSON.stringify(items), order.total_amount ?? 0, order.status, shipment?.id ?? null, logisticType, listingType, shippingStatus]
   );
 
   // Retry: se logistic_type ficou null, tentar buscar do shipment com retries
