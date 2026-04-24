@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   try {
     const input = {
       sellerId,
-      status: sp.get('status') ?? 'active',
+      status: sp.get('status') ?? undefined,
       offset: Number(sp.get('offset') ?? 0),
       limit:  Math.min(Number(sp.get('limit') ?? 50), 50),
     };
