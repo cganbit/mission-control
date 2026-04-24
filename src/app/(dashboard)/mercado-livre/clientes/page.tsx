@@ -149,7 +149,7 @@ function MaskedField({ label, raw, maskFn }: { label: string; raw: string | null
 
 // ─── Perfil View ──────────────────────────────────────────────────────────────
 
-function PerfilView({ buyerId, onBack }: { buyerId: string; onBack: () => void }) {
+function PerfilView({ buyerId }: { buyerId: string }) {
   const [perfil, setPerfil] = useState<ClientePerfil | null>(null);
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState('');
@@ -212,147 +212,102 @@ function PerfilView({ buyerId, onBack }: { buyerId: string; onBack: () => void }
   }
 
   if (loading) return (
-    <div className="flex items-center justify-center py-20">
-      <Loader2 className="h-6 w-6 animate-spin text-[var(--text-muted)]" />
+    <div className="flex items-center justify-center py-6">
+      <Loader2 className="h-4 w-4 animate-spin text-[var(--text-muted)]" />
     </div>
   );
 
   if (!perfil) return (
-    <div className="text-center py-20 text-[var(--text-muted)]">Cliente não encontrado.</div>
+    <div className="text-center py-4 text-[var(--text-muted)] text-xs">Sem dados para este cliente.</div>
   );
 
   return (
-    <div className="space-y-6">
-      {/* Back */}
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Voltar para lista
-      </button>
-
-      {/* Card dados pessoais */}
-      <div className="bg-[var(--bg-surface)]/50 border border-[var(--border)]/50 rounded-xl p-6 space-y-5">
-        <div>
-          <h2 className="text-xl font-bold text-[var(--text-primary)]">{perfil.name}</h2>
-          <p className="text-xs text-[var(--text-muted)] mt-0.5 font-mono">ML #{perfil.ml_buyer_id}</p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <MaskedField label="Telefone" raw={perfil.phone} maskFn={maskPhone} />
-          <MaskedField label="Email" raw={perfil.email} maskFn={maskEmail} />
-          <MaskedField label="CPF" raw={perfil.cpf} maskFn={maskCPF} />
-        </div>
-
-        <div>
-          <label className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold block mb-1.5">
-            Notas
-          </label>
-          <textarea
-            className="w-full bg-[var(--bg-muted)]/60 border border-[var(--border)]/50 rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] resize-none focus:outline-none focus:border-[var(--accent)]/50 focus:ring-1 focus:ring-[var(--accent)]/20 transition-colors"
-            rows={3}
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            placeholder="Adicionar notas sobre este cliente..."
-          />
-          <div className="flex items-center justify-end mt-2 gap-2">
-            {saved && <span className="text-xs text-[var(--accent)]">Salvo!</span>}
-            <button
-              onClick={handleSaveNotes}
-              disabled={saving}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--accent-muted)] text-[var(--accent)] border border-[var(--accent)]/30 hover:bg-[var(--accent)]/20 transition-colors disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-              Salvar
-            </button>
-          </div>
-        </div>
+    <div className="space-y-4">
+      {/* Meta compact: phone + email + cpf */}
+      <div className="flex flex-wrap gap-4 text-xs">
+        <span className="text-[var(--text-muted)]">📱 <span className={perfil.phone ? 'text-[var(--text-primary)] font-mono' : 'text-[var(--text-muted)]'}>{perfil.phone || '—'}</span></span>
+        <span className="text-[var(--text-muted)]">✉️ <span className={perfil.email ? 'text-[var(--text-primary)] font-mono' : 'text-[var(--text-muted)]'}>{perfil.email || '—'}</span></span>
+        <span className="text-[var(--text-muted)]">🪪 <span className={perfil.cpf ? 'text-[var(--text-primary)] font-mono' : 'text-[var(--text-muted)]'}>{perfil.cpf || '—'}</span></span>
       </div>
 
-      {/* Card comprou em */}
-      <div className="bg-[var(--bg-surface)]/50 border border-[var(--border)]/50 rounded-xl p-6">
-        <h3 className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold mb-3">Comprou em</h3>
-        <div className="flex flex-wrap gap-2">
+      {/* Notas inline */}
+      <div className="flex items-start gap-2">
+        <textarea
+          className="flex-1 bg-[var(--bg-muted)]/60 border border-[var(--border)]/50 rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] resize-none focus:outline-none focus:border-[var(--accent)]/50 focus:ring-1 focus:ring-[var(--accent)]/20 transition-colors"
+          rows={1}
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          placeholder="Notas sobre este cliente..."
+        />
+        <button
+          onClick={handleSaveNotes}
+          disabled={saving}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--accent-muted)] text-[var(--accent)] border border-[var(--accent)]/30 hover:bg-[var(--accent)]/20 transition-colors disabled:opacity-50 whitespace-nowrap"
+        >
+          {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+          {saved ? 'Salvo!' : 'Salvar'}
+        </button>
+      </div>
+      {/* Lojas compactas */}
+      {perfil.lojas.length > 0 && (
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold self-center">Comprou em</span>
           {perfil.lojas.map(loja => (
-            <span
-              key={loja.nickname}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--bg-muted)] text-[var(--text-primary)] border border-[var(--border)]/50"
-            >
+            <span key={loja.nickname} className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[var(--bg-muted)] border border-[var(--border)]/50">
               <span className="font-bold text-[var(--text-primary)]">{loja.nickname}</span>
-              <span className="text-[var(--text-muted)]">—</span>
-              <span>{loja.total_pedidos} pedido{loja.total_pedidos !== 1 ? 's' : ''}</span>
               <span className="text-[var(--text-muted)]">·</span>
               <span className="text-[var(--accent)]">{fmtBRL(loja.total_gasto)}</span>
             </span>
           ))}
         </div>
-      </div>
+      )}
 
-      {/* Tabela de pedidos */}
-      <div className="bg-[var(--bg-surface)]/50 border border-[var(--border)]/50 rounded-xl overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-[var(--border)]/50">
-          <h3 className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">Pedidos ({perfil.pedidos.length})</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)]">
-                {['Data', 'Conta', 'Item + Qtd', 'Valor', 'Envio', 'Status', 'Etiqueta'].map(col => (
-                  <th key={col} className="text-left text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold px-4 py-3 whitespace-nowrap">
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {perfil.pedidos.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center text-[var(--text-muted)] py-8 text-sm">Nenhum pedido encontrado.</td>
-                </tr>
-              ) : perfil.pedidos.map(p => (
-                <tr key={p.ml_order_id} className="border-b border-[var(--border)]/50 hover:bg-[var(--bg-muted)]/30 transition-colors">
-                  <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap text-xs">{relativeDate(p.created_at)}</td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs font-medium text-[var(--text-primary)] bg-[var(--bg-muted)] px-1.5 py-0.5 rounded">
-                      {p.seller_nickname ?? '—'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-[var(--text-primary)] max-w-[200px] truncate text-xs" title={p.items_summary ?? ''}>
-                    {p.items_summary ?? '—'}
-                    {p.quantity != null && p.quantity > 1 && (
-                      <span className="ml-1.5 text-[var(--text-muted)]">×{p.quantity}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-[var(--text-primary)] whitespace-nowrap text-xs font-medium">
-                    {fmtBRL(p.valor)}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <ShipmentBadge type={p.logistic_type} />
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <StatusBadge status={p.status} />
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {p.has_label && p.label_url ? (
-                      <a
-                        href={p.label_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-[var(--bg-muted)] text-[var(--text-primary)] border border-[var(--border)]/50 hover:border-[var(--border-strong)] transition-colors"
-                      >
-                        <FileText className="h-3 w-3" />
-                        PDF
-                      </a>
-                    ) : (
-                      <span className="text-[var(--text-muted)]">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Pedidos compactos */}
+      <div className="space-y-2">
+        <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest">Histórico de Pedidos ({perfil.pedidos.length})</p>
+        {perfil.pedidos.length === 0 ? (
+          <p className="text-xs text-[var(--text-muted)] italic">Nenhum pedido.</p>
+        ) : perfil.pedidos.map(p => (
+          <div key={p.ml_order_id} className="bg-[var(--bg-muted)]/50 rounded-lg px-3 py-2 text-xs space-y-1">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[var(--text-secondary)] font-medium">#{p.ml_order_id}</span>
+                <span className="text-[var(--text-muted)]">{relativeDate(p.created_at)}</span>
+                {p.seller_nickname && <span className="text-[10px] text-[var(--text-muted)] bg-[var(--bg-muted)] px-1.5 py-0.5 rounded">{p.seller_nickname}</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                <ShipmentBadge type={p.logistic_type} />
+                <StatusBadge status={p.status} />
+                <span className="text-[var(--accent)] font-bold">{fmtBRL(p.valor)}</span>
+              </div>
+            </div>
+            {p.items_summary && (
+              <p className="text-[var(--text-muted)] truncate" title={p.items_summary}>
+                {p.quantity && p.quantity > 1 ? `${p.quantity}× ` : ''}{p.items_summary}
+              </p>
+            )}
+            <div className="flex items-center gap-3">
+              <a
+                href={`https://www.mercadolivre.com.br/vendas/detalhe/${p.ml_order_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
+              >
+                Ver no ML ↗
+              </a>
+              {p.has_label && p.label_url && (
+                <a
+                  href={p.label_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
+                >
+                  <FileText className="h-3 w-3" /> PDF
+                </a>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -471,7 +426,7 @@ function ListaView() {
                       <tr>
                         <td colSpan={6} className="p-0 border-b border-[var(--border)]/50 bg-[var(--bg-muted)]/20">
                           <div className="p-4">
-                            <PerfilView buyerId={String(c.ml_buyer_id)} onBack={() => setExpandedBuyerId(null)} />
+                            <PerfilView buyerId={String(c.ml_buyer_id)} />
                           </div>
                         </td>
                       </tr>
