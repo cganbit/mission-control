@@ -211,7 +211,9 @@ docker exec evolution-api-h4pg-n8n-1 sh -c "env | grep N8N_USER_MANAGEMENT"
 # se sem flag OU =false → User Management (default)
 ```
 
-**Test canônico pós-rotation:** browser anônimo → http://<n8n>/ → login form custom n8n → digita credenciais → verifica visualmente que aceita nova / rejeita antiga.
+**Test canônico pós-rotation:** browser anônimo → http://<n8n>/ → login form custom n8n → **digita EMAIL do user** (ex: `cleiton.terto@gmail.com`) + senha → verifica visualmente que aceita nova / rejeita antiga. **Não é `admin`** (username Basic Auth legacy) — User Management usa email do user registrado.
+
+**Descoberta caso 2026-04-23:** após rotation, meu test inicial usou `admin:<senha>` e retornou 200 pra qualquer coisa — confundiu porque (1) User Management bypassa Basic Auth check + (2) o user real é `cleiton.terto@gmail.com` (email), não `admin` (username legacy). Teste via browser com email + senha é único método confiável.
 
 ### G5 — Rotation sem notificar quebra SRE alerts
 
