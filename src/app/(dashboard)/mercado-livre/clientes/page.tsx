@@ -382,11 +382,5 @@ function ListaView() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ClientesMLPage() {
-  return (
-    <div className="min-h-screen bg-[var(--bg-base)] p-6">
-      <div className="max-w-7xl mx-auto">
-        <ListaView />
-      </div>
-    </div>
-  );
+  return <ListaView />;
 }
