@@ -36,17 +36,35 @@ async function saveClienteAndPedido(order: any, shipment: any, sellerNickname: s
   if (!ml_buyer_id) return;
 
   const nome = [buyer.first_name, buyer.last_name].filter(Boolean).join(' ') || buyer.nickname || null;
-  const cpf = buyer.billing_info?.tax_payer_id ?? null;
 
-  // Telefone: tenta payload do webhook; fallback GET /orders/{id}/billing_info
-  // Fonte: .skills/lib/mercado-livre/SKILL.md §8
-  let phoneObj = buyer.phone;
-  if (!phoneObj && order.id && token) {
+  // Lead capture (CPF + telefone): fonte canônica é /orders/{id}/billing_info
+  // per skill api-mercado-livre §8. Payload webhook omite buyer.phone silenciosamente
+  // (skill §128 gotcha 2026-04-03) e tax_payer_id inline só existe em casos específicos.
+  // Sempre tentamos API se falta qualquer um dos dois; log estruturado em miss.
+  let cpf: string | null = buyer.billing_info?.tax_payer_id ?? null;
+  let phoneObj: any = buyer.phone ?? null;
+
+  if (order.id && token && (!cpf || !phoneObj)) {
     try {
       const billing = await mlGet(`${ML_API}/orders/${order.id}/billing_info`, token);
-      phoneObj = billing?.buyer?.phone ?? null;
-    } catch { /* não bloqueia o fluxo */ }
+      cpf = billing?.billing_info?.doc_number
+         ?? billing?.buyer?.billing_info?.doc_number
+         ?? billing?.buyer?.billing_info?.tax_payer_id
+         ?? cpf;
+      phoneObj = billing?.buyer?.phone ?? phoneObj;
+    } catch (e: any) {
+      console.warn('[billing_info_miss]', {
+        order_id: order.id,
+        buyer_id: ml_buyer_id,
+        reason: e?.message ?? 'unknown',
+        had_cpf: !!cpf,
+        had_phone: !!phoneObj,
+      });
+    }
+  } else if (!token && (!cpf || !phoneObj)) {
+    console.warn('[billing_info_skip_no_token]', { order_id: order.id, buyer_id: ml_buyer_id });
   }
+
   const telefone = phoneObj
     ? `+55${phoneObj.area_code ?? ''}${phoneObj.number ?? ''}`.replace(/\s/g, '')
     : null;
@@ -84,16 +102,20 @@ async function saveClienteAndPedido(order: any, shipment: any, sellerNickname: s
   const shippingStatus = shipment?.status ?? null;
 
   // Upsert pedido — se já existia como payment_required, promove para paid
-  // buyer_name lives em print_queue (JOIN via listPedidos); ml_pedidos schema não tem a coluna
+  // date_created/date_closed vêm do ML order shape (fonte canônica da data real da venda,
+  // não confundir com ml_pedidos.created_at que é DEFAULT NOW() do INSERT no DB).
+  // COALESCE preserva date_created já gravado em re-replays (idempotência).
   await db.query(
-    `INSERT INTO ml_pedidos (ml_order_id, ml_buyer_id, seller_nickname, items_json, total, status, shipment_id, logistic_type, listing_type, shipping_status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `INSERT INTO ml_pedidos (ml_order_id, ml_buyer_id, seller_nickname, items_json, total, status, shipment_id, logistic_type, listing_type, shipping_status, date_created, date_closed)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
      ON CONFLICT (ml_order_id) DO UPDATE SET
        status = 'paid',
        logistic_type = COALESCE(EXCLUDED.logistic_type, ml_pedidos.logistic_type),
        listing_type = COALESCE(EXCLUDED.listing_type, ml_pedidos.listing_type),
-       shipping_status = COALESCE(EXCLUDED.shipping_status, ml_pedidos.shipping_status)`,
-    [order.id, ml_buyer_id, sellerNickname, JSON.stringify(items), order.total_amount ?? 0, order.status, shipment?.id ?? null, logisticType, listingType, shippingStatus]
+       shipping_status = COALESCE(EXCLUDED.shipping_status, ml_pedidos.shipping_status),
+       date_created = COALESCE(ml_pedidos.date_created, EXCLUDED.date_created),
+       date_closed = COALESCE(EXCLUDED.date_closed, ml_pedidos.date_closed)`,
+    [order.id, ml_buyer_id, sellerNickname, JSON.stringify(items), order.total_amount ?? 0, order.status, shipment?.id ?? null, logisticType, listingType, shippingStatus, order.date_created ?? null, order.date_closed ?? null]
   );
 
   // Retry: se logistic_type ficou null, tentar buscar do shipment com retries
@@ -285,13 +307,15 @@ export async function POST(req: NextRequest) {
       const db = getPool();
       try {
         await db.query(
-          `INSERT INTO ml_pedidos (ml_order_id, ml_buyer_id, seller_nickname, items_json, total, status, shipment_id, logistic_type, listing_type)
-           VALUES ($1, $2, $3, $4, $5, 'payment_required', $6, $7, $8)
+          `INSERT INTO ml_pedidos (ml_order_id, ml_buyer_id, seller_nickname, items_json, total, status, shipment_id, logistic_type, listing_type, date_created, date_closed)
+           VALUES ($1, $2, $3, $4, $5, 'payment_required', $6, $7, $8, $9, $10)
            ON CONFLICT (ml_order_id) DO UPDATE SET
              status = 'payment_required',
              logistic_type = COALESCE(EXCLUDED.logistic_type, ml_pedidos.logistic_type),
-             listing_type = COALESCE(EXCLUDED.listing_type, ml_pedidos.listing_type)`,
-          [order.id, ml_buyer_id, sellerNickname, JSON.stringify(items), order.total_amount ?? 0, order.shipping?.id ?? null, prLogisticType, prListingType]
+             listing_type = COALESCE(EXCLUDED.listing_type, ml_pedidos.listing_type),
+             date_created = COALESCE(ml_pedidos.date_created, EXCLUDED.date_created),
+             date_closed = COALESCE(EXCLUDED.date_closed, ml_pedidos.date_closed)`,
+          [order.id, ml_buyer_id, sellerNickname, JSON.stringify(items), order.total_amount ?? 0, order.shipping?.id ?? null, prLogisticType, prListingType, order.date_created ?? null, order.date_closed ?? null]
         );
       } catch (e: any) {
         console.error('[ML Webhook] Erro ao salvar payment_required:', e.message);
