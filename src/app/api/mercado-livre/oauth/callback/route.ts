@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
-
-const ML_API = 'https://api.mercadolibre.com';
+import { handleOAuthCallback, type OAuthCallbackResult } from '@wingx-app/api-ml';
 
 interface MlAccount {
   seller_id: number;
@@ -114,42 +113,30 @@ export async function GET(req: NextRequest) {
     const { appId, clientSecret } = await getAppCredentials();
     const redirectUri = `${process.env.MC_URL ?? 'https://mc.wingx.app.br'}/api/mercado-livre/oauth/callback`;
 
-    // Trocar código por tokens
-    const tokenRes = await fetch(`${ML_API}/oauth/token`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: appId,
-        client_secret: clientSecret,
-        code,
-        redirect_uri: redirectUri,
-      }).toString(),
-      signal: AbortSignal.timeout(15000),
-    });
-
-    if (!tokenRes.ok) {
-      const body = await tokenRes.text();
-      console.error('[ML OAuth] Token exchange failed:', body);
-      return htmlPage(false, undefined, `Falha ao obter token (${tokenRes.status}).`);
+    let result: OAuthCallbackResult;
+    try {
+      result = await handleOAuthCallback({ code, appId, clientSecret, redirectUri });
+    } catch (e: any) {
+      const codeErr = e?.code;
+      if (codeErr === 'ML_TOKEN_EXCHANGE_FAILED') {
+        console.error('[ML OAuth] Token exchange failed:', e?.message);
+        return htmlPage(false, undefined, `Falha ao obter token (${e?.status ?? ''}).`);
+      }
+      if (codeErr === 'ML_USER_FETCH_FAILED') {
+        return htmlPage(false, undefined, 'Falha ao buscar dados do usuário.');
+      }
+      if (codeErr === 'TIMEOUT') {
+        return htmlPage(false, undefined, 'Timeout ao conectar com Mercado Livre.');
+      }
+      throw e;
     }
 
-    const tokenData = await tokenRes.json();
-
-    // Buscar info do usuário
-    const userRes = await fetch(`${ML_API}/users/me`, {
-      headers: { Authorization: `Bearer ${tokenData.access_token}` },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!userRes.ok) return htmlPage(false, undefined, 'Falha ao buscar dados do usuário.');
-    const user = await userRes.json();
-
     const account: MlAccount = {
-      seller_id: user.id,
-      nickname: user.nickname,
-      access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token,
-      expires_at: Date.now() + (tokenData.expires_in ?? 21600) * 1000,
+      seller_id: result.seller_id,
+      nickname: result.nickname,
+      access_token: result.access_token,
+      refresh_token: result.refresh_token,
+      expires_at: Date.now() + (result.expires_in ?? 21600) * 1000,
     };
 
     await saveAccount(account);
