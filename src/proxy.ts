@@ -39,6 +39,7 @@ export async function proxy(req: NextRequest) {
     pathname.startsWith('/api/pipeline-runs') || // Pipeline Runs — dual auth (worker-key para harness, session para UI)
     pathname.startsWith('/api/melhor-envio/') || // Melhor Envio — dual auth (worker-key ou session)
     pathname === '/api/mercado-livre/pedidos/backfill' || // Backfill one-shot — auth via x-worker-key
+    pathname === '/api/mercado-livre/pedidos/backfill-billing-info' || // Backfill retrospectivo Bug-1+Bug-3 (F7 Fase 4) — auth via x-worker-key
     (pathname.startsWith('/api/') && pathname.endsWith('/setup')) || // /setup endpoints — todos self-auth via x-worker-key (D41)
     pathname.startsWith('/api/github/') || // GitHub: webhooks (HMAC auth) + events/issues/prs (session auth inside route, returns 401 JSON)
     pathname.startsWith('/admin-demo') // (admin-demo) route group — demo/showcase, no real auth
