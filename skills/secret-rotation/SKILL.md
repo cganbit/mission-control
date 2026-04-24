@@ -190,6 +190,29 @@ API keys do n8n (`Settings → n8n API → Create API key`) vivem em tabela `use
 
 **Pattern recomendado:** ao criar API key, copiar valor IMEDIATAMENTE pro GH Secret consumer + password manager. Labels descritivos (`mission-control-sre`, `<consumer>-<scope>`) facilitam auditoria de quais consumers usam qual key.
 
+### G9 — n8n v2+ User Management bypassa Basic Auth (2026-04-23)
+
+n8n moderno (v2.x+) introduz **User Management**: sistema de multi-usuários com email/password em tabela `user` do DB interno. Quando habilitado (default em versões recentes), `N8N_BASIC_AUTH_PASSWORD` do env **é efetivamente ignorado** no login pela UI — ela usa login form custom contra o DB.
+
+**Implicação pra auth testing:**
+- `curl -u admin:<senha> http://n8n/` **retorna 200 mesmo sem Basic Auth válido** (UI serve form HTML sem challenge HTTP)
+- Teste válido de rotação: **abrir UI no browser** (janela anônima), digitar user + senha → verifica visualmente
+- `curl` com Basic Auth retorna 200/404 com qualquer senha (ou sem) — NÃO É teste real
+
+**Implicação pra rotation:**
+- Rotation senha via `.env` + restart = no-op (G6 reforçado)
+- Rotation real só via **UI Settings → Profile** (muda password hash em DB user)
+- `N8N_BASIC_AUTH_PASSWORD` em env = só importa pra fresh bootstrap (antes de qualquer user ser criado)
+
+**Como descobrir qual modo está ativo:**
+```bash
+docker exec evolution-api-h4pg-n8n-1 sh -c "env | grep N8N_USER_MANAGEMENT"
+# se N8N_USER_MANAGEMENT_DISABLED=true → Basic Auth legacy ativo
+# se sem flag OU =false → User Management (default)
+```
+
+**Test canônico pós-rotation:** browser anônimo → http://<n8n>/ → login form custom n8n → digita credenciais → verifica visualmente que aceita nova / rejeita antiga.
+
 ### G5 — Rotation sem notificar quebra SRE alerts
 
 Após rotation, SRE checks podem ficar em warning/error por stale cache. Trigger `POST /api/sre/run-checks` manualmente pós-rotation pra forçar re-check + validar green.
