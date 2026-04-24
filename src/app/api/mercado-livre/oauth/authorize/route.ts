@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authorizeOAuth } from '@wingx-app/api-ml';
 import { getSessionFromRequest } from '@/lib/auth';
 import { getPool } from '@/lib/db';
-
-const ML_AUTH_URL = 'https://auth.mercadolivre.com.br/authorization';
 
 async function getAppId(): Promise<string> {
   const db = getPool();
@@ -24,12 +23,8 @@ export async function GET(req: NextRequest) {
     const appId = await getAppId();
     const redirectUri = `${process.env.MC_URL ?? 'https://mc.wingx.app.br'}/api/mercado-livre/oauth/callback`;
 
-    const url = new URL(ML_AUTH_URL);
-    url.searchParams.set('response_type', 'code');
-    url.searchParams.set('client_id', appId);
-    url.searchParams.set('redirect_uri', redirectUri);
-
-    return NextResponse.redirect(url.toString());
+    const { redirectUrl } = await authorizeOAuth({ appId, redirectUri });
+    return NextResponse.redirect(redirectUrl);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
