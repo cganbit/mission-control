@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback, useRef, Fragment } from 'react';
 import { ArrowLeft, Eye, EyeOff, Search, Loader2, FileText } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -162,9 +161,39 @@ function PerfilView({ buyerId, onBack }: { buyerId: string; onBack: () => void }
     fetch(`/api/mercado-livre/clientes/${buyerId}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => {
-        if (d) {
-          setPerfil(d);
-          setNotes(d.notes ?? '');
+        if (d && d.cliente) {
+          const p: ClientePerfil = {
+            ml_buyer_id: d.cliente.ml_buyer_id,
+            name: d.cliente.nome ?? '',
+            phone: d.cliente.telefone || null,
+            email: null,
+            cpf: d.cliente.cpf || null,
+            notes: d.cliente.notas || null,
+            lojas: (d.lojas_compradas ?? []).map((l: any) => ({
+              nickname: l.seller_nickname,
+              total_pedidos: Number(l.total_pedidos ?? 0),
+              total_gasto: Number(l.total_gasto ?? 0),
+            })),
+            pedidos: (d.pedidos ?? []).map((o: any) => {
+              const items = Array.isArray(o.items_json) ? o.items_json : [];
+              const qtyTotal = items.reduce((acc: number, i: any) => acc + Number(i.quantity ?? 0), 0);
+              const summary = items.map((i: any) => i.title ?? '').filter(Boolean).join(', ') || null;
+              return {
+                ml_order_id: String(o.ml_order_id),
+                created_at: o.date_created ?? o.created_at,
+                seller_nickname: o.seller_nickname ?? '',
+                items_summary: summary,
+                quantity: qtyTotal || null,
+                valor: Number(o.total_amount ?? 0),
+                logistic_type: o.logistic_type ?? null,
+                has_label: !!o.has_label,
+                label_url: o.label_url ?? null,
+                status: o.status ?? '',
+              };
+            }),
+          };
+          setPerfil(p);
+          setNotes(p.notes ?? '');
         }
       })
       .finally(() => setLoading(false));
@@ -331,10 +360,11 @@ function PerfilView({ buyerId, onBack }: { buyerId: string; onBack: () => void }
 
 // ─── Lista View ───────────────────────────────────────────────────────────────
 
-function ListaView({ onSelectBuyer }: { onSelectBuyer: (id: number) => void }) {
+function ListaView() {
   const [clientes, setClientes] = useState<ClienteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [expandedBuyerId, setExpandedBuyerId] = useState<number | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async (q: string) => {
@@ -403,37 +433,52 @@ function ListaView({ onSelectBuyer }: { onSelectBuyer: (id: number) => void }) {
                     {search ? 'Nenhum cliente encontrado para esta busca.' : 'Nenhum cliente cadastrado ainda.'}
                   </td>
                 </tr>
-              ) : clientes.map(c => (
-                <tr key={c.ml_buyer_id} className="border-b border-[var(--border)]/50 hover:bg-[var(--bg-muted)]/30 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-[var(--text-primary)]">{c.name}</div>
-                    <div className="text-xs text-[var(--text-muted)] font-mono">#{c.ml_buyer_id}</div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {c.lojas.map(loja => (
-                        <span
-                          key={loja}
-                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--accent-muted)] text-[var(--accent)] border border-[var(--accent)]/30 uppercase tracking-wide"
+              ) : clientes.map(c => {
+                const expanded = expandedBuyerId === c.ml_buyer_id;
+                return (
+                  <Fragment key={c.ml_buyer_id}>
+                    <tr className="border-b border-[var(--border)]/50 hover:bg-[var(--bg-muted)]/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-[var(--text-primary)]">{c.name}</div>
+                        <div className="text-xs text-[var(--text-muted)] font-mono">#{c.ml_buyer_id}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {c.lojas.map(loja => (
+                            <span
+                              key={loja}
+                              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--accent-muted)] text-[var(--accent)] border border-[var(--accent)]/30 uppercase tracking-wide"
+                            >
+                              {loja}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-[var(--text-primary)] font-medium">{c.total_pedidos}</td>
+                      <td className="px-4 py-3 text-[var(--accent)] font-medium whitespace-nowrap">{fmtBRL(c.total_gasto)}</td>
+                      <td className="px-4 py-3 text-[var(--text-secondary)] text-xs whitespace-nowrap">{relativeDate(c.ultima_compra)}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => setExpandedBuyerId(prev => prev === c.ml_buyer_id ? null : c.ml_buyer_id)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--bg-muted)] text-[var(--text-primary)] border border-[var(--border)]/50 hover:border-[var(--accent)]/50 hover:text-[var(--accent)] hover:bg-[var(--accent-muted)] transition-colors whitespace-nowrap"
+                          aria-expanded={expanded}
                         >
-                          {loja}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-[var(--text-primary)] font-medium">{c.total_pedidos}</td>
-                  <td className="px-4 py-3 text-[var(--accent)] font-medium whitespace-nowrap">{fmtBRL(c.total_gasto)}</td>
-                  <td className="px-4 py-3 text-[var(--text-secondary)] text-xs whitespace-nowrap">{relativeDate(c.ultima_compra)}</td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => onSelectBuyer(c.ml_buyer_id)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--bg-muted)] text-[var(--text-primary)] border border-[var(--border)]/50 hover:border-[var(--accent)]/50 hover:text-[var(--accent)] hover:bg-[var(--accent-muted)] transition-colors whitespace-nowrap"
-                    >
-                      Ver perfil
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                          {expanded ? 'Ocultar' : 'Ver perfil'}
+                        </button>
+                      </td>
+                    </tr>
+                    {expanded && (
+                      <tr>
+                        <td colSpan={6} className="p-0 border-b border-[var(--border)]/50 bg-[var(--bg-muted)]/20">
+                          <div className="p-4">
+                            <PerfilView buyerId={String(c.ml_buyer_id)} onBack={() => setExpandedBuyerId(null)} />
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -445,26 +490,10 @@ function ListaView({ onSelectBuyer }: { onSelectBuyer: (id: number) => void }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ClientesMLPage() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const buyerId = searchParams.get('buyer_id');
-
-  function handleSelectBuyer(id: number) {
-    router.push(`?buyer_id=${id}`);
-  }
-
-  function handleBack() {
-    router.push('/mercado-livre/clientes');
-  }
-
   return (
     <div className="min-h-screen bg-[var(--bg-base)] p-6">
       <div className="max-w-7xl mx-auto">
-        {buyerId ? (
-          <PerfilView buyerId={buyerId} onBack={handleBack} />
-        ) : (
-          <ListaView onSelectBuyer={handleSelectBuyer} />
-        )}
+        <ListaView />
       </div>
     </div>
   );
