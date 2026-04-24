@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listClientes, updateClienteNotas } from '@wingx-app/api-ml';
+import type { ShippingGroup } from '@wingx-app/api-ml';
+
+const VALID_SHIPPING: readonly ShippingGroup[] = ['full', 'flex', 'me', 'proprio'];
 import { getSessionFromRequest } from '@/lib/auth';
 import { getPool } from '@/lib/db';
 import { safeDecrypt } from '@/lib/crypto';
@@ -13,10 +16,15 @@ export async function GET(req: NextRequest) {
 
   try {
     const sp = req.nextUrl.searchParams;
+    const rawShip = sp.get('shipping');
+    const shipping = rawShip && (VALID_SHIPPING as readonly string[]).includes(rawShip)
+      ? (rawShip as ShippingGroup)
+      : undefined;
     const input = {
       search: sp.get('search') ?? undefined,
       page:   Math.max(1, Number(sp.get('page')  ?? 1)),
       limit:  Math.min(Number(sp.get('limit') ?? 20), 200),
+      shipping,
     };
 
     const db = getPool();

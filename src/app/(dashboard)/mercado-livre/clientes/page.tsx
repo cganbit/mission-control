@@ -266,13 +266,15 @@ function ListaView() {
   const [clientes, setClientes] = useState<ClienteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [shipping, setShipping] = useState('');
   const [expandedBuyerId, setExpandedBuyerId] = useState<number | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const load = useCallback(async (q: string) => {
+  const load = useCallback(async (q: string, ship: string) => {
     setLoading(true);
     const params = new URLSearchParams();
     if (q) params.set('search', q);
+    if (ship) params.set('shipping', ship);
     const res = await fetch(`/api/mercado-livre/clientes?${params}`);
     if (res.ok) {
       const data = await res.json();
@@ -281,12 +283,12 @@ function ListaView() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(''); }, [load]);
+  useEffect(() => { load(search, shipping); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [shipping, load]);
 
   function handleSearch(val: string) {
     setSearch(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => load(val), 400);
+    debounceRef.current = setTimeout(() => load(val, shipping), 400);
   }
 
   return (
@@ -297,15 +299,29 @@ function ListaView() {
           <h1 className="text-xl font-bold text-[var(--text-primary)]">Clientes ML</h1>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">Histórico de compradores por conta</p>
         </div>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-muted)] pointer-events-none" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => handleSearch(e.target.value)}
-            placeholder="Buscar por nome ou ID..."
-            className="bg-[var(--bg-muted)]/60 border border-[var(--border)]/50 rounded-lg pl-9 pr-4 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]/50 focus:ring-1 focus:ring-[var(--accent)]/20 transition-colors w-64"
-          />
+        <div className="flex items-center gap-2">
+          <select
+            value={shipping}
+            onChange={e => setShipping(e.target.value)}
+            className="bg-[var(--bg-muted)]/60 border border-[var(--border)]/50 rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]/50 focus:ring-1 focus:ring-[var(--accent)]/20 transition-colors"
+            aria-label="Filtrar por tipo de envio"
+          >
+            <option value="">Todos os envios</option>
+            <option value="full">Full</option>
+            <option value="flex">Flex</option>
+            <option value="me">Mercado Envios</option>
+            <option value="proprio">Envio próprio</option>
+          </select>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-muted)] pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+              placeholder="Buscar por nome ou ID..."
+              className="bg-[var(--bg-muted)]/60 border border-[var(--border)]/50 rounded-lg pl-9 pr-4 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]/50 focus:ring-1 focus:ring-[var(--accent)]/20 transition-colors w-64"
+            />
+          </div>
         </div>
       </div>
 

@@ -730,6 +730,7 @@ export default function PedidosMLPage() {
 
   const [filterAccount, setFilterAccount] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterShipping, setFilterShipping] = useState('');
   const [filterFrom, setFilterFrom] = useState(thirtyDaysAgo());
   const [filterTo, setFilterTo] = useState(todayStr());
   const [sendingToPrint, setSendingToPrint] = useState<string | null>(null);
@@ -758,6 +759,7 @@ export default function PedidosMLPage() {
     const params = new URLSearchParams();
     if (filterAccount) params.set('account', filterAccount);
     if (filterStatus) params.set('status', filterStatus);
+    if (filterShipping) params.set('shipping', filterShipping);
     if (filterFrom) params.set('from', filterFrom);
     if (filterTo) params.set('to', filterTo + 'T23:59:59');
     const res = await fetch(`/api/mercado-livre/pedidos?${params}`);
@@ -767,7 +769,7 @@ export default function PedidosMLPage() {
       setAccounts(data.accounts);
     }
     if (showLoading) setLoading(false);
-  }, [filterAccount, filterStatus, filterFrom, filterTo]);
+  }, [filterAccount, filterStatus, filterShipping, filterFrom, filterTo]);
 
   // Alias: load com loading spinner (primeira carga + mudança de filtros)
   const load = useCallback(() => fetchOrders(true), [fetchOrders]);
@@ -859,6 +861,20 @@ export default function PedidosMLPage() {
               <option value="">Todos</option>
               <option value="paid">Pago</option>
               <option value="payment_required">Aguardando pgto</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-[var(--text-secondary)] uppercase tracking-wide">Envio</label>
+            <select
+              className="bg-[var(--bg-muted)] border border-[var(--border-strong)] rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+              value={filterShipping}
+              onChange={e => setFilterShipping(e.target.value)}
+            >
+              <option value="">Todos</option>
+              <option value="full">Full</option>
+              <option value="flex">Flex</option>
+              <option value="me">Mercado Envios</option>
+              <option value="proprio">Envio próprio</option>
             </select>
           </div>
           <div className="space-y-1">
