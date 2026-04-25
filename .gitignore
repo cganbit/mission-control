@@ -18,3 +18,9 @@ __pycache__/
 *.tmp
 .DS_Store
 Thumbs.db
+
+# Workspace state (cross-repo, ver wingx-platform/CLAUDE.md §Convenções cross-repo)
+.wingx/
+
+# Worktrees (Plan B D24 — pre-criar manual quando Agent isolation:worktree falha)
+_worktrees/
