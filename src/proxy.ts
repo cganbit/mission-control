@@ -31,8 +31,9 @@ export async function proxy(req: NextRequest) {
     pathname === '/api/tasks/batch' || // Jarvis — cria tasks em batch via x-worker-key
     /^\/api\/tasks\/[^/]+\/heartbeat$/.test(pathname) || // Jarvis — heartbeat de tasks via x-worker-key (regex exato — M2 fix)
     pathname === '/api/jarvis/task' || // Jarvis — PATCH de conclusão via x-worker-key (POST requer sessão)
-    pathname === '/api/agents' || // Jarvis — step 0: descobre agent_ids via x-worker-key
-    pathname === '/api/squads' || // Jarvis — descobre squad_ids via x-worker-key
+    pathname.startsWith('/api/agents') || // Jarvis + wingx-platform sync — agent_ids + CRUD via x-worker-key
+    pathname.startsWith('/api/squads') || // Jarvis + wingx-platform sync — squad_ids + CRUD via x-worker-key
+    pathname.startsWith('/api/activity') || // wingx-platform telemetry — emit activity events via x-worker-key (PRD-041 §13.4)
     pathname === '/api/analytics/setup' || // Analytics — criação de schema via x-worker-key
     pathname === '/api/analytics/sessions' || // Analytics — POST métricas via x-worker-key (GET aceita session)
     pathname.startsWith('/api/analytics/') || // Analytics — todos endpoints aceitam dual auth (worker-key ou session)
