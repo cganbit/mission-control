@@ -35,19 +35,33 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const session = await getSessionFromRequest(req);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (!session.projectId) {
-    return NextResponse.json({ error: 'No active project in session' }, { status: 400 });
+  const isWorker = !session && verifyWorkerKey(req);
+  if (!session && !isWorker) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { squad_id, name, role, system_prompt } = await req.json();
+  const body = await req.json();
+  const { squad_id, name, role, system_prompt, tools, workflow } = body;
   if (!squad_id || !name) return NextResponse.json({ error: 'squad_id and name required' }, { status: 400 });
 
+  // Resolve project_id: session takes precedence; worker accepts body.project_id
+  // OR falls back to first project (single-tenant assumption).
+  let projectId = session?.projectId ?? body.project_id;
+  if (isWorker && !projectId) {
+    const [proj] = await query(`SELECT id FROM projects ORDER BY created_at LIMIT 1`, [], { worker: true });
+    projectId = proj?.id;
+  }
+  if (!projectId) {
+    return NextResponse.json({ error: 'No active project (provide project_id in body or login)' }, { status: 400 });
+  }
+
+  const scope = isWorker ? { worker: true } : { projectId };
+
   const [agent] = await query(
-    `INSERT INTO agents (squad_id, name, role, system_prompt, project_id)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [squad_id, name, role ?? null, system_prompt ?? null, session.projectId],
-    { projectId: session.projectId }
+    `INSERT INTO agents (squad_id, name, role, system_prompt, tools, workflow, project_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [squad_id, name, role ?? null, system_prompt ?? null, tools ?? null, workflow ?? null, projectId],
+    scope
   );
 
   return NextResponse.json(agent, { status: 201 });

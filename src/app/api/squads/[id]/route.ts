@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionFromRequest, hasRole } from '@/lib/auth';
+import { getSessionFromRequest, hasRole, verifyWorkerKey } from '@/lib/auth';
 import { query, queryOne } from '@/lib/db';
 import { getProjectScopeFromRequest } from '@/lib/session-scope';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionFromRequest(req);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const isWorker = !session && verifyWorkerKey(req);
+  if (!session && !isWorker) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await params;
-  const scope = await getProjectScopeFromRequest(req);
+  const scope = isWorker ? { worker: true } : await getProjectScopeFromRequest(req);
   const squad = await queryOne('SELECT * FROM squads WHERE id = $1', [id], scope);
   if (!squad) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json(squad);
@@ -15,9 +16,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionFromRequest(req);
-  if (!hasRole(session, 'member')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const isWorker = !session && verifyWorkerKey(req);
+  if (!isWorker && !hasRole(session, 'member')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
   const { id } = await params;
-  const scope = await getProjectScopeFromRequest(req);
+  const scope = isWorker ? { worker: true } : await getProjectScopeFromRequest(req);
   const { name, description, mission, color } = await req.json();
 
   const [squad] = await query(

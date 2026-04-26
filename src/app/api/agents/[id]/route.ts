@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionFromRequest, hasRole } from '@/lib/auth';
+import { getSessionFromRequest, hasRole, verifyWorkerKey } from '@/lib/auth';
 import { query, queryOne } from '@/lib/db';
 import { getProjectScopeFromRequest } from '@/lib/session-scope';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!await getSessionFromRequest(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await getSessionFromRequest(req);
+  const isWorker = !session && verifyWorkerKey(req);
+  if (!session && !isWorker) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await params;
-  const scope = await getProjectScopeFromRequest(req);
+  const scope = isWorker ? { worker: true } : await getProjectScopeFromRequest(req);
   const agent = await queryOne('SELECT * FROM agents WHERE id = $1', [id], scope);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json(agent);
@@ -14,9 +16,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionFromRequest(req);
-  if (!hasRole(session, 'member')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const isWorker = !session && verifyWorkerKey(req);
+  if (!isWorker && !hasRole(session, 'member')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
   const { id } = await params;
-  const scope = await getProjectScopeFromRequest(req);
+  const scope = isWorker ? { worker: true } : await getProjectScopeFromRequest(req);
   const body = await req.json();
 
   const [agent] = await query(
