@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS squads (
 );
 
 -- Agents por squad
+-- tools/workflow added via migration 20260426-agents-tools-workflow.sql (PRD-041 §13.3 D5.1)
+-- Schema drift fix: campos referenciados em API/UI mas faltavam aqui.
 CREATE TABLE IF NOT EXISTS agents (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   squad_id       UUID NOT NULL REFERENCES squads(id) ON DELETE CASCADE,
@@ -22,6 +24,8 @@ CREATE TABLE IF NOT EXISTS agents (
   status         VARCHAR(20) DEFAULT 'idle' CHECK (status IN ('active','idle','stopped')),
   last_heartbeat TIMESTAMPTZ,
   system_prompt  TEXT,
+  tools          TEXT,
+  workflow       TEXT,
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
