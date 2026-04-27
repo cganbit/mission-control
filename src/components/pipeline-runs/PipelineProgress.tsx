@@ -134,10 +134,13 @@ function phaseOf(stepIndex: number): PhaseKey {
 
 /** Map a MC domain PipelineStep to the generic ProgressCardStep primitive. */
 function toProgressCardStep(s: PipelineStep): ProgressCardStep {
-  // Derive a human-readable label: prefer output_summary, then agent name,
-  // then fall back to step index string.
+  // Derive a human-readable label: prefer output_summary, then step_id (LangGraph
+  // node id — unique per design), then agent name, then fall back to step index.
+  // (PRD-041 §13.7 follow-up: step_id prioritized so all steps show distinct
+  // labels even before backend per-node agent override propagates.)
   const label =
     s.output_summary?.trim() ||
+    s.step_id?.trim() ||
     s.agent?.trim() ||
     `Step ${s.step_index}`;
 
