@@ -18,6 +18,7 @@ interface Job {
   has_label: boolean;
   token: string | null;
   qr_code_url: string | null;
+  payment_status: string | null;
 }
 
 type Tab = 'queued' | 'processing' | 'done' | 'error' | 'confirmed';
@@ -361,6 +362,17 @@ function FilaContent() {
                       <span className="inline-block mt-1.5 text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-muted)] text-[var(--text-secondary)] border border-[var(--border)]">
                         {translateLogistic(job.logistic_type)}
                       </span>
+                    )}
+
+                    {/* Pagamento */}
+                    {job.payment_status === 'paid' && (
+                      <span className="inline-block mt-1.5 ml-1.5 bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs font-medium">Pago</span>
+                    )}
+                    {job.payment_status === 'payment_required' && (
+                      <span className="inline-block mt-1.5 ml-1.5 bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs font-medium">Pendente</span>
+                    )}
+                    {(job.payment_status === null || (job.payment_status !== 'paid' && job.payment_status !== 'payment_required')) && (
+                      <span className="inline-block mt-1.5 ml-1.5 text-gray-400 text-xs">—</span>
                     )}
 
                     {job.error_msg && (

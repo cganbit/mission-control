@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { getSessionFromRequest } from '@/lib/auth';
-import { listRecentJobs, activateJob, reprintJob, deleteJob48h } from '@wingx-app/api-print';
+import { activateJob, reprintJob, deleteJob48h } from '@wingx-app/api-print';
 
 const QUEUE_KEY = process.env.QUEUE_KEY ?? '';
 
@@ -21,8 +21,34 @@ export async function GET(req: NextRequest) {
   if (!(await checkAuth(req))) return unauthorized();
 
   const db = getPool();
-  const jobs = await listRecentJobs(db);
-  return NextResponse.json({ jobs });
+  const result = await db.query<{
+    id: number;
+    ml_order_id: string;
+    ml_shipment_id: string | null;
+    seller_nickname: string;
+    status: string;
+    error_msg: string | null;
+    created_at: string;
+    updated_at: string;
+    items_summary: string | null;
+    logistic_type: string | null;
+    buyer_name: string | null;
+    has_label: boolean;
+    token: string | null;
+    qr_code_url: string | null;
+    payment_status: string | null;
+  }>(`
+    SELECT pq.id, pq.ml_order_id, pq.ml_shipment_id, pq.seller_nickname,
+           pq.status, pq.error_msg, pq.created_at, pq.updated_at,
+           pq.items_summary, pq.logistic_type, pq.buyer_name, pq.has_label,
+           pq.token, pq.qr_code_url,
+           mp.status AS payment_status
+    FROM print_queue pq
+    LEFT JOIN ml_pedidos mp ON pq.ml_order_id = mp.ml_order_id
+    WHERE pq.created_at > NOW() - INTERVAL '48 hours'
+    ORDER BY pq.created_at DESC
+  `);
+  return NextResponse.json({ jobs: result.rows });
 }
 
 // POST /api/print-queue/manage?key=XXX
