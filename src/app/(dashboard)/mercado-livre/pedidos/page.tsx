@@ -59,6 +59,9 @@ interface Order {
   me_carrier: string | null;
   me_cost: number | null;
   me_delivery_address: Record<string, string> | null;
+  // WhatsApp notification fields
+  wa_notified_paid: boolean;
+  wa_notified_pr: boolean;
 }
 
 interface FreightService {
@@ -926,6 +929,7 @@ export default function PedidosMLPage() {
                   <th className="text-center px-4 py-3 font-medium">Entrega</th>
                   <th className="text-center px-4 py-3 font-medium">Impressão</th>
                   <th className="text-center px-4 py-3 font-medium">ME Envio</th>
+                  <th className="text-center px-4 py-3 font-medium">WhatsApp</th>
                   <th className="text-left px-4 py-3 font-medium">Data</th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -1000,6 +1004,24 @@ export default function PedidosMLPage() {
                         ) : (
                           <span className="text-[var(--text-muted)]">—</span>
                         )}
+                      </td>
+                      {/* WhatsApp notification badges */}
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex gap-1 justify-center">
+                          {order.wa_notified_paid && (
+                            <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs font-medium" title="Alerta WhatsApp 'venda paga' enviado">
+                              WA paga ✓
+                            </span>
+                          )}
+                          {order.wa_notified_pr && (
+                            <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs font-medium" title="Alerta WhatsApp 'pendente de pagamento' enviado">
+                              WA pendente ✓
+                            </span>
+                          )}
+                          {!order.wa_notified_paid && !order.wa_notified_pr && (
+                            <span className="text-gray-400 text-xs">—</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-[var(--text-secondary)] text-xs whitespace-nowrap">
                         {new Date(order.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
