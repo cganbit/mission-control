@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
-import { sendWhatsApp, sendWhatsAppMedia } from '@/lib/whatsapp';
+// MIGRATED 2026-04-28: WhatsApp dispatch agora é responsabilidade
+// do ml-saas/mcp-server alert-agent (PRD-047 Phase 1).
+// MC webhook agora APENAS persiste em ml_pedidos.
+// Refs: PRD-047 D47.3
 import crypto from 'crypto';
 import { encrypt } from '@/lib/crypto';
 
@@ -155,73 +158,6 @@ async function saveClienteAndPedido(order: any, shipment: any, sellerNickname: s
   }
 }
 
-// ─── Formatar mensagem WhatsApp ───────────────────────────────────────────────
-
-function formatAddr(addr: any): { line1: string; line2: string } | null {
-  if (!addr) return null;
-  const line1 = `${addr.street_name ?? ''}, ${addr.street_number ?? ''}${addr.comment ? ` (${addr.comment})` : ''}`.trim();
-  const line2 = `${addr.city?.name ?? ''} - ${addr.state?.name ?? ''}, CEP ${addr.zip_code ?? ''}`;
-  return { line1, line2 };
-}
-
-function formatSaleMessage(order: any, shipment: any, nickname: string): string {
-  // Produtos
-  const items = order.order_items ?? [];
-  const itemLines = items.map((i: any) => `  • ${i.quantity}x ${i.item?.title ?? 'Produto'}`).join('\n');
-
-  // Valores
-  const total = order.total_amount ?? 0;
-  const orderId = order.id;
-
-  // Comprador
-  const buyer = order.buyer ?? {};
-  const nome = [buyer.first_name, buyer.last_name].filter(Boolean).join(' ') || buyer.nickname || 'Comprador';
-  const cpf = buyer.billing_info?.tax_payer_id ?? order.billing_info?.cpf ?? null;
-  const phone = buyer.phone;
-  const telefone = phone ? `(${phone.area_code}) ${phone.number}` : null;
-
-  // Endereços
-  const entrega = formatAddr(shipment?.receiver_address);
-  const fiscal = formatAddr(order.billing_info?.billing_address ?? buyer.billing_info?.address);
-  const enderecosDiferentes = entrega && fiscal && entrega.line1 !== fiscal.line1;
-
-  // Envio — traduz logistic_type para label legível
-  const logisticType = shipment?.logistic_type ?? order.shipping?.logistic_type ?? '';
-  const shippingMode = shipment?.mode ?? '';
-  const shippingLabel = (() => {
-    if (logisticType === 'fulfillment') return 'Full';
-    if (logisticType === 'self_service' && shippingMode === 'me2') return 'Mercado Envios';
-    if (logisticType === 'self_service' || logisticType === 'custom') return 'Envio próprio';
-    if (['xd_drop_off', 'drop_off', 'cross_docking'].includes(logisticType)) return 'Mercado Envios';
-    if (['me1', 'flex'].includes(logisticType)) return 'Flex';
-    return logisticType || 'Correios';
-  })();
-
-  return [
-    `🛍️ *Nova Venda — ${nickname}*`,
-    ``,
-    `📦 *Produto(s):*`,
-    itemLines,
-    ``,
-    `💰 *Total:* R$ ${Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-    `📋 *Pedido:* #${orderId}`,
-    ``,
-    `👤 *Comprador:* ${nome}`,
-    cpf ? `🪪 *CPF:* ${cpf}` : null,
-    telefone ? `📱 *Telefone:* ${telefone}` : null,
-    ``,
-    `🚚 *Envio:* Mercado Envios ${shippingLabel}`,
-    entrega ? `📍 *Entrega:* ${entrega.line1}` : null,
-    entrega ? `    ${entrega.line2}` : null,
-    enderecosDiferentes && fiscal ? `🧾 *Nota Fiscal:* ${fiscal.line1}` : null,
-    enderecosDiferentes && fiscal ? `    ${fiscal.line2}` : null,
-  ].filter(l => l !== null).join('\n');
-}
-
-function getThumbnail(order: any): string | null {
-  return order.order_items?.[0]?.item?.thumbnail ?? null;
-}
-
 // ─── Criar job de impressão na fila ──────────────────────────────────────────
 
 async function createPrintJob(
@@ -321,38 +257,9 @@ export async function POST(req: NextRequest) {
         console.error('[ML Webhook] Erro ao salvar payment_required:', e.message);
       }
 
-      // Dedup: só notifica uma vez por pedido neste status
-      try {
-        const dupRow = await db.query(
-          `SELECT wa_notified_pr FROM ml_pedidos WHERE ml_order_id = $1`,
-          [order.id]
-        );
-        if (dupRow.rows[0]?.wa_notified_pr) {
-          return NextResponse.json({ ok: true, skipped: true, reason: 'already_notified_pr' });
-        }
-      } catch { /* não bloqueia */ }
-
-      // Mensagem padronizada — mesmo layout da venda paga, sem links de impressão
-      const basePr = formatSaleMessage(order, null, sellerNickname);
-      const linesPr = basePr.split('\n');
-      linesPr.splice(1, 0, '⏳ *Aguardando Pagamento*');
-      const prMsg = linesPr.join('\n');
-
-      try {
-        const cfgRowPr = await db.query(
-          `SELECT notification_group FROM ml_account_configs WHERE seller_id = $1`,
-          [account.seller_id]
-        );
-        const notifGroupPr: string | undefined = cfgRowPr.rows[0]?.notification_group || undefined;
-        await sendWhatsApp(prMsg, notifGroupPr);
-        // Marcar como notificado para evitar reenvio em retries do ML
-        await db.query(
-          `UPDATE ml_pedidos SET wa_notified_pr = true WHERE ml_order_id = $1`,
-          [order.id]
-        );
-      } catch (e: any) {
-        console.error('[ML Webhook] Erro ao enviar WhatsApp payment_required:', e.message);
-      }
+      // MIGRATED 2026-04-28: WhatsApp dispatch removido — ml-saas alert-agent
+      // faz claim-then-dispatch atômico via UPDATE...RETURNING (PRD-047 D47.3).
+      // wa_notified_pr flag agora é setado exclusivamente pelo ml-saas.
 
       return NextResponse.json({ ok: true, saved: 'payment_required' });
     }
@@ -371,17 +278,14 @@ export async function POST(req: NextRequest) {
       } catch { /* opcional */ }
     }
 
-    const thumbnail = getThumbnail(order);
-
-    // Buscar config por conta (notification_group, print_queue_enabled)
+    // Buscar config por conta (print_queue_enabled)
     const db = getPool();
     const cfgRow = await db.query(
-      `SELECT print_queue_enabled, notification_group FROM ml_account_configs WHERE seller_id = $1`,
+      `SELECT print_queue_enabled FROM ml_account_configs WHERE seller_id = $1`,
       [account.seller_id]
     );
     const accountCfg = cfgRow.rows[0] ?? null;
     const printEnabled = accountCfg ? accountCfg.print_queue_enabled : true;
-    const notifGroup: string | undefined = accountCfg?.notification_group || undefined;
 
     // Criar job de impressão (se habilitado) + salvar cliente/pedido em paralelo
     const [printToken] = await Promise.all([
@@ -393,37 +297,11 @@ export async function POST(req: NextRequest) {
       ),
     ]);
 
-    // Dedup: só notifica uma vez por pedido no status paid
-    try {
-      const paidDupRow = await db.query(
-        `SELECT wa_notified_paid FROM ml_pedidos WHERE ml_order_id = $1`,
-        [order.id]
-      );
-      if (paidDupRow.rows[0]?.wa_notified_paid) {
-        return NextResponse.json({ ok: true, skipped: true, reason: 'already_notified_paid' });
-      }
-    } catch { /* não bloqueia */ }
+    // MIGRATED 2026-04-28: WhatsApp dispatch removido — ml-saas alert-agent
+    // faz claim-then-dispatch atômico via UPDATE...RETURNING (PRD-047 D47.3).
+    // wa_notified_paid flag agora é setado exclusivamente pelo ml-saas.
 
-    // Montar link de impressão e incluir na mesma mensagem
-    const baseUrl = process.env.MC_URL ?? 'https://mc.wingx.app.br';
-    const queueKey = process.env.QUEUE_KEY ?? '';
-    const queueLine = queueKey ? `\n📋 *Ver fila:* ${baseUrl}/fila?key=${queueKey}` : '';
-    const printLine = (printToken && shipmentId)
-      ? `\n🖨️ *Imprimir etiqueta:* ${baseUrl}/api/print-queue/trigger?token=${printToken}${queueLine}`
-      : queueLine;
-
-    const message = formatSaleMessage(order, shipment, account.nickname) + printLine;
-
-    // Enviar notificação para o grupo configurado por conta (ou padrão)
-    await (thumbnail ? sendWhatsAppMedia(thumbnail, message, notifGroup) : sendWhatsApp(message, notifGroup));
-
-    // Marcar como notificado para evitar reenvio em retries do ML
-    await db.query(
-      `UPDATE ml_pedidos SET wa_notified_paid = true WHERE ml_order_id = $1`,
-      [order.id]
-    ).catch((e: any) => console.error('[ML Webhook] Erro ao marcar wa_notified_paid:', e.message));
-
-    return NextResponse.json({ ok: true, order_id: order.id });
+    return NextResponse.json({ ok: true, order_id: order.id, print_token: printToken ?? undefined });
   } catch (e: any) {
     console.error('[ML Webhook] Error:', e.message);
     return NextResponse.json({ ok: true, error: e.message });
