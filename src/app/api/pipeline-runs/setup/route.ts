@@ -105,6 +105,17 @@ export async function POST(req: NextRequest) {
   await query(`CREATE INDEX IF NOT EXISTS idx_pipeline_runs_project   ON pipeline_runs(project_id)`);
   await query(`CREATE INDEX IF NOT EXISTS idx_harness_health_project ON harness_health_scores(project_id)`);
 
+  // PRD-042 Phase 3 §16 MC-B (2026-05-02) — observability foundation columns.
+  // run_health: state.runHealth consolidated by close-sprint step 7 emit_telemetry.
+  //   Shape: { steps: {[stepId]: {duration_ms, status, error?}}, agents: {[name]:
+  //   {response_time_ms, tokens, cost_usd, invocation_count}}, retries: {[step]: count},
+  //   hard_fails: [{node, reason, ts}] }.
+  // sprint_work: 14 fields produzidas por close-sprint step 2 metrics_apply (only
+  //   close-sprint runs — null pra fix/task/epic). Shape em
+  //   wingx-platform/lib/mc-telemetry.ts:SprintWork interface.
+  await query(`ALTER TABLE pipeline_runs ADD COLUMN IF NOT EXISTS run_health JSONB`);
+  await query(`ALTER TABLE pipeline_runs ADD COLUMN IF NOT EXISTS sprint_work JSONB`);
+
   return NextResponse.json(
     { ok: true, message: 'Pipeline Runs tables created' },
     { status: 201 }
