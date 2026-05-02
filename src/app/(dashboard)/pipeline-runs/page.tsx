@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Workflow, Search, RefreshCw } from 'lucide-react';
+import { Workflow, Search, RefreshCw, Activity } from 'lucide-react';
 import { RunStatusBadge } from '@/components/pipeline-runs/RunStatusBadge';
 
 interface RunListRow {
@@ -122,14 +122,24 @@ export default function PipelineRunsPage() {
             Execuções do harness em tempo real — sprint-close, tasks, fixes e spikes
           </p>
         </div>
-        <button
-          onClick={fetchList}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
-          title="Refresh"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/pipeline-runs/observability"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
+            title="Aggregate observability dashboard"
+          >
+            <Activity className="h-3.5 w-3.5" />
+            Observability
+          </Link>
+          <button
+            onClick={fetchList}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Filters */}

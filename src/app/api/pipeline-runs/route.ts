@@ -93,6 +93,10 @@ export async function GET(req: NextRequest) {
   const toDate = url.searchParams.get('to_date');
   const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '20', 10), 100);
   const offset = parseInt(url.searchParams.get('offset') ?? '0', 10);
+  // PRD-042 Phase 3 §16 MC-C v2 — opt-in observability payload (run_health +
+  // sprint_work jsonb columns). Default OFF pra preservar list-page perf;
+  // /pipeline-runs/observability aggregate page sets =1 e filtra runs sem data.
+  const includeObservability = url.searchParams.get('include_observability') === '1';
 
   const conditions: string[] = [];
   const params: unknown[] = [];
@@ -109,6 +113,9 @@ export async function GET(req: NextRequest) {
   }
   if (fromDate) { conditions.push(`started_at >= $${idx++}`); params.push(fromDate); }
   if (toDate) { conditions.push(`started_at <= $${idx++}`); params.push(toDate); }
+  if (includeObservability) {
+    conditions.push(`(run_health IS NOT NULL OR sprint_work IS NOT NULL)`);
+  }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -130,6 +137,7 @@ export async function GET(req: NextRequest) {
        pr.estimated_cost_usd,
        pr.triggered_by,
        pr.last_heartbeat_at,
+       ${includeObservability ? 'pr.run_health, pr.sprint_work,' : ''}
        (SELECT COUNT(*) FROM pipeline_steps ps WHERE ps.run_id = pr.id) AS step_count,
        (SELECT COUNT(*) FROM pipeline_steps ps WHERE ps.run_id = pr.id AND ps.status = 'ok') AS steps_done,
        (SELECT step_id FROM pipeline_steps ps WHERE ps.run_id = pr.id AND ps.status = 'running' LIMIT 1) AS current_step
