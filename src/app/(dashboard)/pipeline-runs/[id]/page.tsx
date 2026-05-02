@@ -4,6 +4,7 @@ import { use } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { PipelineProgress } from '@/components/pipeline-runs/PipelineProgress';
+import { RunObservability } from '@/components/pipeline-runs/RunObservability';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -26,6 +27,8 @@ export default function PipelineRunDetailPage({ params }: PageProps) {
       </div>
 
       <PipelineProgress runId={id} />
+      {/* PRD-042 Phase 3 §16 MC-C — observability drill-down */}
+      <RunObservability runId={id} />
     </div>
   );
 }
