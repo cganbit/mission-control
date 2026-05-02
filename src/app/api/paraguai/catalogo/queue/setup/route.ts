@@ -31,16 +31,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // preco_ml_cache extensions previously done inline in processJobInline (hot-path DDL).
   await db.query(`
     ALTER TABLE preco_ml_cache
-      ADD COLUMN IF NOT EXISTS ml_catalog_id    TEXT,
-      ADD COLUMN IF NOT EXISTS ml_catalog_url   TEXT,
-      ADD COLUMN IF NOT EXISTS ml_catalogs_json JSONB,
-      ADD COLUMN IF NOT EXISTS ml_price_premium NUMERIC(10,2),
-      ADD COLUMN IF NOT EXISTS ml_price_classic NUMERIC(10,2),
-      ADD COLUMN IF NOT EXISTS ml_shipping_type TEXT
+      ADD COLUMN IF NOT EXISTS ml_catalog_id          TEXT,
+      ADD COLUMN IF NOT EXISTS ml_catalog_url         TEXT,
+      ADD COLUMN IF NOT EXISTS ml_catalogs_json       JSONB,
+      ADD COLUMN IF NOT EXISTS ml_price_premium       NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS ml_price_classic       NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS ml_shipping_type       TEXT,
+      ADD COLUMN IF NOT EXISTS ml_catalogs_pinned_json JSONB DEFAULT '[]'::jsonb
   `).catch(() => {});
 
   return NextResponse.json(
-    { ok: true, message: 'catalog_refresh_queue + preco_ml_cache schema ready' },
+    { ok: true, message: 'catalog_refresh_queue + preco_ml_cache schema ready + pinned_json' },
     { status: 201 }
   );
 }

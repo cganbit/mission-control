@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
         c.preco_ml_real,
         c.ml_price_premium,
         c.ml_price_classic,
-        c.ml_catalogs_json,
+        COALESCE(c.ml_catalogs_pinned_json, '[]'::jsonb) || COALESCE(c.ml_catalogs_json, '[]'::jsonb) AS ml_catalogs_json,
         c.ml_catalog_id,
         c.ml_catalog_url,
         c.ml_shipping_type as shipping_type,
